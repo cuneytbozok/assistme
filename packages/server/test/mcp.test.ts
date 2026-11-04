@@ -21,7 +21,14 @@ const REQ = `req_${'R'.repeat(22)}`;
 
 /** MOCK extension: answers forwards like the real one would, with fake data. */
 function fakeExtension(ext: MockExtension) {
-  const state = { approved: false, claimed: false, ops: [] as Record<string, unknown>[] };
+  const state = {
+    approved: false,
+    claimed: false,
+    ops: [] as Record<string, unknown>[],
+    instances: [
+      { alias: 'dev', label: 'PDI', host: 'dev469966.service-now.com', env: 'dev' as string },
+    ],
+  };
   ext.extOut.on('data', () => {
     for (;;) {
       const idx = ext.reader.received.findIndex((m) => m.kind === 'forward');
@@ -36,19 +43,18 @@ function fakeExtension(ext: MockExtension) {
         case 'registry.get':
           reply({
             type: 'registry.get',
-            instances: [
-              {
-                alias: 'dev',
-                label: 'PDI',
-                host: 'dev469966.service-now.com',
-                env: 'dev',
-                connection: 'connected',
-                thisClient: { pendingRequest: false, activeGrant: state.claimed },
-              },
-            ],
+            instances: state.instances.map((i) => ({
+              ...i,
+              connection: 'connected',
+              thisClient: { pendingRequest: false, activeGrant: state.claimed },
+            })),
           });
           break;
         case 'scope.request':
+          if (!state.instances.some((i) => i.alias === (r.instances as string[])[0])) {
+            fail('INSTANCE_NOT_REGISTERED', 'No registered instance.');
+            break;
+          }
           reply({
             type: 'scope.request',
             requestId: REQ,
@@ -283,6 +289,49 @@ describe('AC4: request → approve → claim → query (mock extension)', () => 
       op: { kind: 'table.list', table: 'incident', limit: 1, offset: 0 },
     });
     expect(JSON.stringify(state?.ops[0])).not.toMatch(/https?:|\/api\/now/);
+  });
+});
+
+describe('registry changes (T-010)', () => {
+  it('list_instances reflects registry changes without a restart, and pushes update the cache', async () => {
+    const { call, state, ext, bridge } = await setup();
+    if (!state) throw new Error('no state');
+    const aliases = async () =>
+      (await call('list_instances')).body.data.instances.map(
+        (i: { alias: string; env: string }) => `${i.alias}:${i.env}`,
+      );
+    expect(await aliases()).toEqual(['dev:dev']);
+    expect(bridge.cachedRegistry?.instances.map((i) => i.alias)).toEqual(['dev']);
+
+    // The user adds an instance and reclassifies dev; the extension pushes registry.update.
+    state.instances = [
+      { alias: 'dev', label: 'PDI', host: 'dev469966.service-now.com', env: 'test' },
+      { alias: 'acme', label: '', host: 'itsm.acme.example', env: 'unclassified' },
+    ];
+    ext.send({
+      v: 1,
+      kind: 'registry.update',
+      instances: state.instances.map((i) => ({ ...i, connection: 'unknown' })),
+    });
+    for (let i = 0; i < 50 && bridge.cachedRegistry?.instances.length !== 2; i++) {
+      await new Promise((r) => setTimeout(r, 10));
+    }
+    expect(bridge.cachedRegistry?.instances.map((i) => `${i.alias}:${i.env}`)).toEqual([
+      'dev:test',
+      'acme:unclassified',
+    ]);
+    expect(await aliases()).toEqual(['dev:test', 'acme:unclassified']);
+
+    // Removal: list_instances drops it; request_scope fails with exact-match hint.
+    state.instances = [state.instances[1] as (typeof state.instances)[number]];
+    expect(await aliases()).toEqual(['acme:unclassified']);
+    const r = await call('request_scope', { instance: 'dev', purpose: 'x' });
+    expect(r.isError).toBe(true);
+    expect(r.body.error).toMatchObject({
+      code: 'INSTANCE_NOT_REGISTERED',
+      message: expect.stringMatching(/exactly/),
+      hint: 'Registered aliases: acme.',
+    });
   });
 });
 

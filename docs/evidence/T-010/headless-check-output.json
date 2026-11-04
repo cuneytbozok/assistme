@@ -1,0 +1,65 @@
+{
+  "load": {
+    "id": "clipfeocpiljpcngmjpdbegciimchbol"
+  },
+  "info": {
+    "state": "ENABLED",
+    "location": "UNPACKED",
+    "permissions": {
+      "runtimeHostPermissions": {
+        "hasAllHosts": false,
+        "hostAccess": "ON_ALL_SITES",
+        "hosts": []
+      },
+      "simplePermissions": [
+        {
+          "message": "Bildirimleri görüntüleme",
+          "submessages": []
+        },
+        {
+          "message": "İşbirliği yapan yerel uygulamalarla iletişim kurma",
+          "submessages": []
+        }
+      ]
+    },
+    "installWarnings": [],
+    "manifestErrors": [],
+    "runtimeErrors": []
+  },
+  "manifestPerms": ["storage", "scripting", "nativeMessaging", "notifications", "activeTab"],
+  "seed": "ok",
+  "openPopup": "opened",
+  "rendered1": [
+    "DEV dev — PDI dev12345.service-now.com Host permission missing — remove and register again. Edit Remove"
+  ],
+  "suggestionHidden": true,
+  "addNoPerm": {
+    "ok": false,
+    "message": "Access to itsm.acme.example was not granted."
+  },
+  "edit": {
+    "ok": true,
+    "entry": {
+      "alias": "dev",
+      "host": "dev12345.service-now.com",
+      "label": "Renamed",
+      "env": "unclassified",
+      "addedAt": "2026-11-04T18:44:04.806Z"
+    },
+    "invalidated": 0
+  },
+  "editBad": {
+    "ok": false,
+    "message": "Choose an environment."
+  },
+  "stateAfterEdit": [["dev", "Renamed", "unclassified"]],
+  "ui": {
+    "hasEdit": true,
+    "removePanel": "Remove dev? Any active access to it ends now. Also remove Chrome's access to dev12345.service-now.com Confirm remove Cancel",
+    "afterRemove": 0,
+    "message": "Removed dev."
+  },
+  "storageAfterRemove": [],
+  "consoleErrors": [],
+  "swLogs": []
+}

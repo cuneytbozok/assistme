@@ -116,6 +116,11 @@ Metadata only: kind, instance alias, table, status, duration, byte sizes. Log fi
 
 `{alias, host, label, env: dev|test|prod|unclassified}`. Unclassified is treated as PROD. Adding an instance calls `chrome.permissions.request` for that origin, which needs a user gesture. Detected ServiceNow tabs are shown as suggestions only.
 
+- Detection uses `activeTab`: only the tab the popup was opened on (ADR-007 addendum, T-010).
+- Add, edit and remove run in the service worker (`popup.registry.*` messages from the popup only). Alias and host are immutable; label and env are editable.
+- Removal or env change invalidates that instance's grants and open requests. Grants are also bound to the approved `{alias, host, env}` and re-checked on every `sn.op` (ADR-003 addendum).
+- Every registry change is pushed as `registry.update` to the broker and all clients. The MCP server keeps the latest snapshot in memory as a hint (error messages); `list_instances` always reads live via `registry.get`.
+
 ### 5.2 Request → approve → claim
 
 ```

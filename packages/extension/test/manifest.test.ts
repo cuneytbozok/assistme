@@ -27,7 +27,7 @@ describe('manifest.json', () => {
 
   it('has exactly the approved permission set', () => {
     expect([...(manifest.permissions as string[])].sort()).toEqual(
-      ['nativeMessaging', 'notifications', 'scripting', 'storage'].sort(),
+      ['activeTab', 'nativeMessaging', 'notifications', 'scripting', 'storage'].sort(),
     );
   });
 
@@ -53,7 +53,6 @@ describe('manifest.json', () => {
     }
     for (const perm of [
       'tabs',
-      'activeTab',
       'webRequest',
       'debugger',
       'declarativeNetRequest',
@@ -98,6 +97,14 @@ describe('entry points', () => {
     const requests = src.match(/chrome\.permissions\.request\(\{[^}]*\}\)/g) ?? [];
     expect(requests).toEqual([
       'chrome.permissions.request({ origins: [originPattern(entry.host)] })',
+    ]);
+  });
+
+  it('popup reads only the active tab (activeTab) and never injects scripts', () => {
+    const src = readFileSync(join(root, 'src/popup/popup.ts'), 'utf8');
+    expect(src).not.toMatch(/chrome\.scripting/);
+    expect(src.match(/chrome\.tabs\.\w+\([^)]*\)/g)).toEqual([
+      'chrome.tabs.query({ active: true, currentWindow: true })',
     ]);
   });
 });

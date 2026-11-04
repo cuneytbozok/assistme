@@ -19,7 +19,7 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 | T-007 | Extension ↔ host port, executor, minimal grants | 005, 006 | DONE        |
 | T-008 | Minimal MCP server                              | 006, 003 | DONE        |
 | T-009 | PoC end-to-end in Claude Code + Desktop (M1)    | 007, 008 | DONE        |
-| T-010 | Full instance registry                          | 007      | TODO        |
+| T-010 | Full instance registry                          | 007      | DONE        |
 | T-011 | Full grant model                                | 010      | TODO        |
 | T-012 | MCP scope enforcement                           | 008, 011 | TODO        |
 | T-013 | Session lifecycle & status                      | 011      | TODO        |
@@ -466,7 +466,7 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 
 ### T-010 — Full instance registry
 
-- **Status:** TODO
+- **Status:** DONE
 - **Purpose:** Complete user-managed instance registry (FR-2).
 - **Dependencies:** T-007
 - **Deliverables:**
@@ -484,7 +484,31 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
   5. Suggestions never auto-register.
 - **Verification:** unit tests; manual popup run.
 - **DoD:** popup usage documented.
-- **Evidence:** —
+- **Evidence (2026-11-04):**
+  - Implemented:
+    - `registry.ts`: `validateEdit`, `Registry.edit`, serialized `add`/`edit`/`remove`, `suggestionFromTabUrl` (pure).
+    - `grants.ts`: request/grant `targets` (`{alias, host, env}` at approval), `targetMatches`, `Grants.reconcile(registry)`.
+    - `authz.ts`: every `sn.op` checks the grant's target against the current entry.
+    - `popup-api.ts`: `popup.registry.add` (refuses an origin without host permission), `.edit`, `.remove` (with optional host-permission removal); edit/remove run `reconcile`.
+    - `index.ts`: wiring; `reconcile` also runs on every registry storage change (backstop), then `registry.update` is pushed.
+    - Popup: Edit panel (label, env), Remove confirmation with "also remove Chrome's access" (default on), activeTab suggestion with **Use it** (fills the form only).
+    - `manifest.json`: `activeTab` added (user decision, ADR-007 addendum). No `tabs`.
+    - Server: `BridgeClient` keeps the latest pushed `registry.update` in memory (cleared on disconnect); `list_instances` refreshes it; `request_scope` adds a `Registered aliases: …` hint on `INSTANCE_NOT_REGISTERED`.
+    - Tests: `extension/test/registry-lifecycle.test.ts` (new), `manifest.test.ts`, `server/test/mcp.test.ts`.
+  - Root `npm run build` → exit 0. `npm test` → shared 240, server 58, extension 105 passed. `npm run lint` → exit 0 (two pre-existing warnings in server tests).
+  - **Acceptance criteria:**
+    - AC1 ✔ Add, edit and remove through the popup API persist; a fresh `Registry` on the same storage sees the change. Duplicates (alias or host), case-variant aliases, bad env and unknown aliases are refused. Edits can't change alias or host. Concurrent adds aren't lost. Custom domains (`servicenow.acme.example`) register.
+    - AC2 ✔ Removing an instance drops its grant at once (`invalidated: 1`; the next `sn.op` gets `SCOPE_UNKNOWN`) and denies its pending and approved-unclaimed requests. Registering the same alias again with another host doesn't revive the old scope, and the new host is never fetched. An env change ends grants; a label-only edit doesn't. A direct storage write that skips `reconcile` is still caught by the per-request target check.
+    - AC3 ✔ Unclassified needs the host typed (a wrong or missing host is refused) and gets the PROD TTL (15 min); DEV gets 4 h without typing.
+    - AC4 ✔ `registry.get` reads the current registry on every call (extension test). The MCP test shows `list_instances` following add, reclassify and remove on one running server, and the pushed `registry.update` updating the server cache.
+    - AC5 ✔ `suggestionFromTabUrl` covers SN hosts, custom domains via SN UI paths, and rejects http, ports, IPs, credentials, non-SN sites, `chrome://` and already-registered hosts. A suggestion only fills the URL field; a test checks the registry stays empty. The manifest test checks the popup uses only `chrome.tabs.query({ active: true, currentWindow: true })` and never `chrome.scripting`.
+  - **Mutation checks** (each reverted): no `reconcile` on remove (2 failures), no per-request target check (1), both together (3), unclassified → dev (3), add without the permission check (1).
+  - **Headless Chrome check** (Google Chrome 156, throwaway profile deleted; `docs/evidence/T-010/headless-check.{mjs,output.json}`):
+    - Loaded via CDP `Extensions.loadUnpacked` with ID `clipfeocpiljpcngmjpdbegciimchbol`, `ENABLED`, and empty `installWarnings`, `manifestErrors` and `runtimeErrors`. `activeTab` adds no permission warning (only notifications and native messaging are listed).
+    - Popup opened with `chrome.action.openPopup()` showed a seeded entry with "Host permission missing". `popup.registry.add` without permission was refused. Edit to `unclassified` was saved; a bad env was refused. Through the UI: Edit panel shown; Remove confirmation → entry removed. No console errors in the popup or the service worker.
+  - Unverified:
+    - The activeTab suggestion in a real browser. Headless `openPopup()` isn't a user action, so Chrome gives no tab URL (the suggestion stayed hidden, as expected).
+    - The permission prompt → add path after T-010, and `list_instances` in Claude Desktop following a popup change (shown with the mock extension only). Both need a manual run in the user's Chrome.
 
 ### T-011 — Full grant model
 

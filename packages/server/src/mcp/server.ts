@@ -63,14 +63,19 @@ export function createMcpServer(bridge: BridgeClient): McpServer {
   );
 
   type CallOutcome<T extends string> =
-    | { ok: false; error: CallToolResult }
+    | { ok: false; error: CallToolResult; code?: string }
     | { ok: true; value: Ok<T> };
 
   async function call<T extends string>(type: T, request: BridgeRequest): Promise<CallOutcome<T>> {
     try {
       const r = await bridge.request(request);
-      if (!r.ok)
-        return { ok: false, error: toolError(r.error.code, r.error.message, r.error.hint) };
+      if (!r.ok) {
+        return {
+          ok: false,
+          error: toolError(r.error.code, r.error.message, r.error.hint),
+          code: r.error.code,
+        };
+      }
       if (r.result.type !== type) {
         return {
           ok: false,
@@ -105,6 +110,7 @@ export function createMcpServer(bridge: BridgeClient): McpServer {
         Ok<'registry.get'>['result'],
         { type: 'registry.get' }
       >;
+      bridge.noteRegistry(result.instances.map(({ thisClient: _t, ...info }) => info));
       return ok({
         provenance: { source: 'extension registry', retrieved_at: now() },
         data: {
@@ -149,7 +155,19 @@ export function createMcpServer(bridge: BridgeClient): McpServer {
         mode: 'single',
         purpose,
       });
-      if (!r.ok) return r.error;
+      if (!r.ok) {
+        const known = bridge.cachedRegistry?.instances.map((i) => i.alias);
+        if (r.code === 'INSTANCE_NOT_REGISTERED' && known) {
+          return toolError(
+            'INSTANCE_NOT_REGISTERED',
+            `No registered instance "${instance}". Aliases match exactly.`,
+            known.length > 0
+              ? `Registered aliases: ${known.join(', ')}.`
+              : 'No instances are registered. Ask the user to register one in the extension popup.',
+          );
+        }
+        return r.error;
+      }
       const res = r.value.result as Extract<
         Ok<'scope.request'>['result'],
         { type: 'scope.request' }

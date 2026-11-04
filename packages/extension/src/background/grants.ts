@@ -41,6 +41,15 @@ export interface ScopeRequestRecord {
   approvedAt?: number;
   /** Set on approval; the grant's lifetime starts then. */
   ttlMinutes?: number;
+  /** Set on approval: what the user approved (alias → host and env at that moment). */
+  targets?: GrantTarget[];
+}
+
+/** The registry entry a grant was approved for. A grant never follows a changed entry. */
+export interface GrantTarget {
+  alias: string;
+  host: string;
+  env: InstanceEntry['env'];
 }
 
 export interface GrantRecord {
@@ -52,6 +61,14 @@ export interface GrantRecord {
   mode: 'single' | 'compare';
   createdAt: number;
   expiresAt: number;
+  targets: GrantTarget[];
+}
+
+/** True when the registry entry still matches exactly what the user approved. */
+export function targetMatches(targets: readonly GrantTarget[], entry: InstanceEntry): boolean {
+  return targets.some(
+    (t) => t.alias === entry.alias && t.host === entry.host && t.env === entry.env,
+  );
 }
 
 interface GrantState {
@@ -238,6 +255,7 @@ export class Grants {
       r.status = 'approved';
       r.approvedAt = this.deps.now();
       r.ttlMinutes = Math.min(...resolved.map((e) => defaultTtlMinutes(e.env)));
+      r.targets = resolved.map((e) => ({ alias: e.alias, host: e.host, env: e.env }));
       return { value: { ok: true, value: true }, save: true };
     });
   }
@@ -274,6 +292,7 @@ export class Grants {
         mode: r.mode,
         createdAt: now,
         expiresAt,
+        targets: (r.targets ?? []).map((t) => ({ ...t })),
       });
       r.status = 'claimed';
       return {
@@ -343,6 +362,36 @@ export class Grants {
       const before = state.grants.length;
       state.grants = state.grants.filter((g) => g.grantId !== grantId);
       return { value: state.grants.length < before, save: true };
+    });
+  }
+
+  /**
+   * Registry changed (T-010): drops every grant, and denies every open request, that refers to
+   * an alias no longer registered or whose host/env differ from what was approved. Called with
+   * the new registry after every registry mutation, and on every storage change as a backstop.
+   * Returns the number of grants and requests invalidated.
+   */
+  reconcile(registry: readonly InstanceEntry[]): Promise<number> {
+    return this.exclusive(async (state) => {
+      const valid = (alias: string, targets: readonly GrantTarget[] | undefined): boolean => {
+        const e = registry.find((x) => x.alias === alias);
+        if (!e) return false;
+        return targets === undefined || targetMatches(targets, e);
+      };
+      let n = 0;
+      state.grants = state.grants.filter((g) => {
+        const keep = g.instances.every((a) => valid(a, g.targets ?? []));
+        if (!keep) n++;
+        return keep;
+      });
+      for (const r of state.requests) {
+        if (r.status !== 'pending' && r.status !== 'approved') continue;
+        if (!r.instances.every((a) => valid(a, r.targets))) {
+          r.status = 'denied';
+          n++;
+        }
+      }
+      return { value: n, save: n > 0 };
     });
   }
 

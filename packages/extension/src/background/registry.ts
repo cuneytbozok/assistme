@@ -1,9 +1,12 @@
 import { ALIAS_RE, type Env, EnvSchema, HOST_RE } from '@sn-mcp/shared';
 
 /**
- * Minimal instance registry (T-004; extended in T-010).
+ * Instance registry (T-004, completed in T-010; PRODUCT_SPEC FR-2, ARCHITECTURE §5.1).
  *
- * The registry is user-managed: only the popup (a user gesture) adds or removes entries.
+ * The registry is user-managed: only the popup (a user gesture) adds, edits or removes entries.
+ * Alias and host are immutable once registered; to change either, remove and register again.
+ * Label and environment can be edited. Every mutation that changes what a grant was approved
+ * for (removal, environment change) invalidates that instance's grants (see Grants).
  * Each entry is bound to exactly one https origin, and registering it requests host
  * permission for that origin only. Nothing here ever looks at the active tab to pick a target.
  *
@@ -83,6 +86,15 @@ export interface RegisterInput {
   env: string;
 }
 
+function validateLabel(raw: string | undefined): RegistryResult<string> {
+  const label = (raw ?? '').trim();
+  if (label.length > MAX_LABEL_LENGTH)
+    return fail(`Label is limited to ${MAX_LABEL_LENGTH} chars.`);
+  // biome-ignore lint/suspicious/noControlCharactersInRegex: rejecting control characters
+  if (/[\u0000-\u001f\u007f-\u009f]/.test(label)) return fail('Label contains control characters.');
+  return { ok: true, value: label };
+}
+
 /** Validates a new entry against the current registry. Pure; does not touch storage. */
 export function validateNewEntry(
   entries: readonly InstanceEntry[],
@@ -98,11 +110,8 @@ export function validateNewEntry(
   if (!isValidInstanceHost(input.host)) return fail('Invalid host.');
   const env = EnvSchema.safeParse(input.env);
   if (!env.success) return fail('Choose an environment.');
-  const label = (input.label ?? '').trim();
-  if (label.length > MAX_LABEL_LENGTH)
-    return fail(`Label is limited to ${MAX_LABEL_LENGTH} chars.`);
-  // biome-ignore lint/suspicious/noControlCharactersInRegex: rejecting control characters
-  if (/[\u0000-\u001f\u007f-\u009f]/.test(label)) return fail('Label contains control characters.');
+  const label = validateLabel(input.label);
+  if (!label.ok) return label;
   if (entries.some((e) => e.alias === alias)) return fail(`Alias "${alias}" is already used.`);
   if (entries.some((e) => e.host === input.host)) {
     return fail(`${input.host} is already registered.`);
@@ -110,8 +119,68 @@ export function validateNewEntry(
   if (entries.length >= MAX_INSTANCES) return fail(`At most ${MAX_INSTANCES} instances.`);
   return {
     ok: true,
-    value: { alias, host: input.host, label, env: env.data, addedAt: now.toISOString() },
+    value: {
+      alias,
+      host: input.host,
+      label: label.value,
+      env: env.data,
+      addedAt: now.toISOString(),
+    },
   };
+}
+
+export interface EditInput {
+  label?: string;
+  env?: string;
+}
+
+/** Validates an edit of label and/or env. Alias and host cannot be edited. Pure. */
+export function validateEdit(
+  entries: readonly InstanceEntry[],
+  alias: string,
+  input: EditInput,
+): RegistryResult<{ before: InstanceEntry; after: InstanceEntry }> {
+  const before = entries.find((e) => e.alias === alias);
+  if (!before) return fail(`No registered instance "${alias}".`);
+  const after: InstanceEntry = { ...before };
+  if (input.label !== undefined) {
+    const label = validateLabel(input.label);
+    if (!label.ok) return label;
+    after.label = label.value;
+  }
+  if (input.env !== undefined) {
+    const env = EnvSchema.safeParse(input.env);
+    if (!env.success) return fail('Choose an environment.');
+    after.env = env.data;
+  }
+  return { ok: true, value: { before, after } };
+}
+
+/**
+ * Tab-based suggestion (activeTab only: the tab the user opened the popup on). Returns the
+ * host to offer, or undefined. A suggestion only pre-fills the form; it never registers
+ * anything and never selects a target (FR-3.9).
+ */
+export function suggestionFromTabUrl(
+  url: string | undefined,
+  entries: readonly InstanceEntry[],
+): string | undefined {
+  if (!url) return undefined;
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return undefined;
+  }
+  if (parsed.protocol !== 'https:') return undefined;
+  const host = parseInstanceHost(url);
+  if (!host.ok) return undefined;
+  if (entries.some((e) => e.host === host.value)) return undefined;
+  // Custom domains are recognised by ServiceNow UI paths; other sites are not suggested.
+  const snPath = /^\/(now\/|[a-z0-9_]+\.do$|[a-z0-9_]+_list\.do$|navpage\.do$|login\.do$)/i.test(
+    parsed.pathname,
+  );
+  return looksLikeServiceNow(host.value) || snPath ? host.value : undefined;
 }
 
 /** Drops malformed stored entries instead of trusting storage contents. */
@@ -145,25 +214,48 @@ export function sanitizeStored(raw: unknown): InstanceEntry[] {
 }
 
 export class Registry {
+  private chain: Promise<unknown> = Promise.resolve();
+
   constructor(private readonly storage: RegistryStorage) {}
+
+  /** Serializes read-modify-write cycles. */
+  private exclusive<T>(fn: (entries: InstanceEntry[]) => Promise<T>): Promise<T> {
+    const run = this.chain.then(async () => fn(await this.list()));
+    this.chain = run.catch(() => undefined);
+    return run;
+  }
 
   async list(): Promise<InstanceEntry[]> {
     return sanitizeStored(await this.storage.load());
   }
 
-  async add(entry: InstanceEntry): Promise<RegistryResult<InstanceEntry>> {
-    const entries = await this.list();
-    const checked = validateNewEntry(entries, entry, new Date(entry.addedAt));
-    if (!checked.ok) return checked;
-    await this.storage.save([...entries, checked.value]);
-    return checked;
+  add(input: RegisterInput, now: Date = new Date()): Promise<RegistryResult<InstanceEntry>> {
+    return this.exclusive(async (entries) => {
+      const checked = validateNewEntry(entries, input, now);
+      if (checked.ok) await this.storage.save([...entries, checked.value]);
+      return checked;
+    });
   }
 
-  async remove(alias: string): Promise<InstanceEntry | undefined> {
-    const entries = await this.list();
-    const found = entries.find((e) => e.alias === alias);
-    if (found) await this.storage.save(entries.filter((e) => e.alias !== alias));
-    return found;
+  edit(
+    alias: string,
+    input: EditInput,
+  ): Promise<RegistryResult<{ before: InstanceEntry; after: InstanceEntry }>> {
+    return this.exclusive(async (entries) => {
+      const checked = validateEdit(entries, alias, input);
+      if (checked.ok) {
+        await this.storage.save(entries.map((e) => (e.alias === alias ? checked.value.after : e)));
+      }
+      return checked;
+    });
+  }
+
+  remove(alias: string): Promise<InstanceEntry | undefined> {
+    return this.exclusive(async (entries) => {
+      const found = entries.find((e) => e.alias === alias);
+      if (found) await this.storage.save(entries.filter((e) => e.alias !== alias));
+      return found;
+    });
   }
 }
 

@@ -11,7 +11,7 @@ import {
   type Result,
 } from '@sn-mcp/shared';
 import type { ExecResult } from './executor.js';
-import type { Grants } from './grants.js';
+import { type Grants, targetMatches } from './grants.js';
 import { type InstanceEntry, originPattern } from './registry.js';
 
 export interface AuthzDeps {
@@ -86,6 +86,14 @@ export async function handleForward(
             id,
             'INSTANCE_NOT_REGISTERED',
             `No registered instance "${request.instance}".`,
+          );
+        }
+        if (!targetMatches(grant.value.targets ?? [], entry)) {
+          // The registration changed after approval (env or host). Never follow it.
+          return errorResponse(
+            id,
+            'SCOPE_UNKNOWN',
+            `The registration of "${entry.alias}" changed after approval. Request a new scope.`,
           );
         }
         if (!(await d.hasPermission(originPattern(entry.host)))) {

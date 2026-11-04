@@ -23,15 +23,29 @@ After rebuilding, press the reload icon on the extension card.
 
 ## Register an instance
 
-Paste the instance URL (for example `https://dev12345.service-now.com`), choose an alias and an
-environment, and click **Register**. Chrome asks for access to **that one host only**. If you
-decline, nothing is saved. **Remove** deletes the entry and revokes the host permission.
+Paste the instance URL (for example `https://dev12345.service-now.com`, or a custom domain such
+as `https://itsm.example.com`), choose an alias and an environment, and click **Register**.
+Chrome asks for access to **that one host only**. If you decline, nothing is saved.
 
-Unclassified instances are treated as PROD. The active tab is never used to pick a target.
+If you open the popup on a ServiceNow tab that isn't registered yet, the popup offers
+**Use it** to fill in the URL. It never registers anything by itself, and the tab never
+decides which instance Claude uses.
+
+Aliases are lowercase, unique and matched exactly. Unclassified instances are treated as PROD.
+
+## Manage instances
+
+- **Edit** changes the label or environment. Alias and host can't be edited; remove the
+  instance and register it again. Changing the environment ends any active access to it.
+- **Remove** asks for confirmation. It ends all active access to that instance and denies its
+  pending requests at once. By default it also removes Chrome's access to the host; untick
+  the box to keep it.
+- Claude sees changes on its next `list_instances` call; no restart is needed.
 
 ## Permissions
 
-`storage`, `scripting`, `nativeMessaging`, `notifications`, plus optional `https://*/*`, from
+`storage`, `scripting`, `nativeMessaging`, `notifications`, `activeTab` (tab suggestions only; see
+ADR-007), plus optional `https://*/*`, from
 which only exact registered hosts are ever requested. There is no `cookies` permission, no
 `externally_connectable`, no content scripts and no web-accessible resources. The manifest unit
 test (`test/manifest.test.ts`) enforces this set.

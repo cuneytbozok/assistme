@@ -5,7 +5,7 @@
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAvZS3LI5gc9S0jFmEYs3g7lDSbPHrY4xFj052qpNvgne1Acb4P8btIBUSlPq8EwD1Ck4C1hBuitTVCdXoTqr57gylhHvugH0KV/K7re/RLqeCH+D7WxTBqhXluUC9aenpdB90nrdvNYVosAbtWb/dpGldkcu4yfMuUpnFhX329Kn+fLN00++RlNH+I9Z+M+EHMqG2+1m2Ws7mtKv+jfE++KHPNJ6XZoLVEva+ZFN5Loz8VKnsJnviQXzMY9t1vbcAsgr/p7tDnmflK8wmgTvLBMaIJ05E50Td+H3rGxDhy/CusPgu8flasnqDQa6Hyn6cBpe/C/UVIojgZPeXp4rGBQIDAQAB",
   "description": "Read-only bridge between a local ServiceNow MCP server and your ServiceNow session. You approve every instance.",
   "minimum_chrome_version": "116",
-  "permissions": ["storage", "scripting", "nativeMessaging", "notifications"],
+  "permissions": ["storage", "scripting", "nativeMessaging", "notifications", "activeTab"],
   "optional_host_permissions": ["https://*/*"],
   "background": {
     "service_worker": "background.js",

@@ -1,10 +1,11 @@
 # Handoff
 
-_Last updated: 2026-11-04 (after T-009)_
+_Last updated: 2026-11-04 (after T-010)_
 
 ## Current project state
 
 - **Phase 0 (Foundation):** complete (T-001, T-002, T-003).
+- **Phase 2:** T-010 (full instance registry) is DONE: add, edit and remove in the popup; grants bound to `{alias, host, env}` and invalidated on removal or env change; `activeTab` suggestions; server-side `registry.update` cache.
 - **Phase 1:** T-004 is DONE. The MV3 extension builds to `packages/extension/dist/` with stable ID `clipfeocpiljpcngmjpdbegciimchbol` (`packages/extension/EXTENSION_ID`). It has a minimal popup registry: paste the URL, pick alias and env, and it requests the exact host permission and saves to `chrome.storage.local`.
 - **Packages:**
   - `packages/shared`: protocol schemas, errors, limits, identifier validation, query module.
@@ -45,12 +46,14 @@ _Last updated: 2026-11-04 (after T-009)_
 ## Tasks
 
 - **Current task:** none (nothing IN_PROGRESS).
-- **Last completed task:** T-009 — PoC end to end (commit `T-009: PoC end to end in Claude Desktop and Claude Code (M1)`). Evidence: `docs/evidence/T-009/`.
-- **Next task:** **T-010 — Full instance registry** (depends on T-007 ✔). It includes tab suggestions, which were deferred from T-004 (decide `activeTab` vs pasting the URL).
+- **Last completed task:** T-010 — Full instance registry (commit `T-010: full instance registry`). Evidence: TASKS T-010 and `docs/evidence/T-010/`.
+- **Next task:** **T-011 — Full grant model** (depends on T-010 ✔). Build on T-010's `targets` binding: compare mode needs one target per instance, and `reconcile` already handles multi-instance grants.
 - **Also eligible:** T-016 (request builder hardening; depends on T-007 ✔ and T-003 ✔).
+- **Needs a manual check by the user (from T-010):** reload the extension, open the popup on an unregistered ServiceNow tab and check that **Use it** appears and only fills the form. Then edit or remove an instance and confirm `list_instances` in Claude Desktop follows. Removing `dev` ends any active scope.
 - **Finding to carry forward:**
   - In the Claude Desktop app, all conversations share one `sn-mcp` server process and therefore one `client_key_id` (ADR-003 addendum; notes added to T-011, T-012, T-015).
   - A standalone Claude Code CLI is untested: the bundled CLI isn't logged in on its own.
+  - The MCP server connects to the broker lazily, so it only receives `registry.update` pushes after its first tool call. The cache is a hint only; `list_instances` always reads live.
 
 ## Current setup on the user's Mac
 
@@ -60,18 +63,20 @@ _Last updated: 2026-11-04 (after T-009)_
 
 ## Files changed in last task
 
-- Server:
-  - New: `src/native-host/capture.ts`, `src/bin/check-capture.ts`, `test/capture.test.ts`.
-  - Modified: `broker.ts` (capture hooks), `main.ts` (capture env), `install/installer.ts` + `bin/install-native-host.ts` (`--capture`), `package.json` (`check-capture`), `README.md` (registration, capture).
-- Docs:
-  - `docs/evidence/T-009/*`
-  - TASKS (T-009 evidence; notes on T-011, T-012, T-015)
-  - DECISIONS (ADR-003 and ADR-008 addenda), ARCHITECTURE §5.5, HANDOFF.
+- Extension:
+  - `manifest.json` (`activeTab`)
+  - `src/background/{registry,grants,authz,popup-api,index}.ts`
+  - `src/popup/{popup.ts,popup.html,popup.css}`
+  - `README.md`
+  - `test/registry-lifecycle.test.ts` (new), `test/manifest.test.ts`
+- Server: `src/bridge/client.ts` (registry cache), `src/mcp/server.ts` (cache refresh, alias hint), `test/mcp.test.ts`.
+- Docs: TASKS, HANDOFF, DECISIONS (ADR-003 and ADR-007 addenda), ARCHITECTURE §5.1, `docs/evidence/T-010/`.
 
 ## Tests performed
 
-- Root build, tests (shared 240, server 57, extension 74) and lint all exit 0.
-- Live: Desktop chat run, Claude Code session run, `check-capture` (markers + exact token) PASS.
+- Root build, tests (shared 240, server 58, extension 105) and lint all exit 0.
+- Mutation checks: 5 of 5 caught.
+- Headless Chrome: loads clean, no warnings; popup edit and remove work; no console errors.
 
 ## Open blockers
 
@@ -86,8 +91,8 @@ _Last updated: 2026-11-04 (after T-009)_
   - ADR-004: operation descriptors only.
   - ADR-005: structured filters + validated encoded queries.
   - ADR-006: budgets, signed cursors, `AMBIGUOUS_MATCH`.
-- **ADR-002 (session access path) is still Proposed**, pending live T-005 results.
-- **Dependencies:** `zod@4.6.7` is in shared. `@modelcontextprotocol/server` isn't installed yet (comes in T-008; re-check the version with `npm view`).
+- **ADR-002 (session access path): Accepted, Path A** (T-005). _Discrepancy fixed in T-010: this line still said "Proposed"._
+- **Dependencies:** `zod@4.6.7` is in shared. `@modelcontextprotocol/server@2.4.0` is in the server (T-008, ADR-008).
 - **Query module usage:** use `compileFilter(input, {allowTextSearch})` for structured input. Use `parseEncodedQuery(q, {profile:'strict'})` for raw model input in the server, and `{profile:'enforce'}` in the extension. `referencedFields` feeds dictionary validation (T-018). To verify live in T-005: `RELATIVEGE@unit@ago@n` and plain-date `BETWEEN`.
 - **Loading the extension headlessly for checks:** branded Chrome ignores `--load-extension`. Use `--headless=new --enable-unsafe-extension-debugging --remote-debugging-port=N` with a throwaway `--user-data-dir`, then the CDP `Extensions.loadUnpacked`. `chrome.developerPrivate.getExtensionInfo(id)` on `chrome://extensions` gives the errors and warnings.
 - **Native host runtime files:** `~/Library/Application Support/sn-mcp/` (0700) holds `broker.sock` (0600), `broker.key` (0600, rotates per start), `broker.pid` and `broker.log` (0600, metadata only). Host exit codes: 64 bad origin, 78 unsafe path, 75 conflict.

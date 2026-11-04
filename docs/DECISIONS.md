@@ -98,6 +98,11 @@ Format: Status · Context · Decision · Alternatives considered · Consequences
   - Binding is therefore per process, and the `scope_id` bearer handle (plus the approval code shown only in the requesting conversation) is the only per-conversation separation. This matches the residual risk in ARCHITECTURE §5.5, which now explicitly includes Code sessions in the Desktop app.
   - A standalone Claude Code CLI starts its own server process and gets its own identity.
 
+- *Addendum (T-010, 2026-11-04):*
+  - **Grants are bound to the registry entry, not just the alias.** On approval, the request records `targets: [{alias, host, env}]` and the grant copies them. Every `sn.op` checks that the current registry entry still matches exactly; otherwise `SCOPE_UNKNOWN` ("registration changed after approval"). This stops a grant following an alias that was removed and registered again with another host, or reclassified (for example DEV → PROD, which would otherwise skip PROD's typed confirmation and short TTL).
+  - **Registry mutations invalidate grants.** Removing an instance or changing its env drops its grants and denies its open requests (`Grants.reconcile`). A label-only edit keeps them. `reconcile` also runs on every `chrome.storage.local` registry change as a backstop. Grants stored before T-010 have no `targets` and are dropped (session storage only).
+  - Alias and host are immutable once registered; to change them, remove and register again.
+
 ## ADR-004 — Operation descriptors, never URLs
 
 - **Status:** Accepted (2026-11-04)
@@ -166,6 +171,7 @@ Format: Status · Context · Decision · Alternatives considered · Consequences
     - **zod in the extension runs `jitless`:** zod v4 otherwise probes `new Function("")`, which MV3's CSP reports as an error on `chrome://extensions`. `src/csp.ts` must be the first import of every entry point, and a test enforces this.
     - **Stable ID:** a 2048-bit RSA public key in `manifest.json` `key`; ID `clipfeocpiljpcngmjpdbegciimchbol` in `packages/extension/EXTENSION_ID`. The private key is never written (not needed for unpacked loading or the Web Store, which is out of scope).
     - **Registry host rules (minor):** instance hosts are https, default port, no credentials, and not IP literals. Tab suggestions are deferred to T-010, because reading tab URLs needs `tabs` or `activeTab`, which T-004 does not add. Users paste the instance URL instead.
+  - *Addendum (T-010, 2026-11-04, user-approved):* **`activeTab` is added** for tab suggestions; `tabs` is not. When the user opens the popup, it reads only that tab's URL and, if it looks like ServiceNow (`*.service-now.com`, `*.servicenowservices.com`, or a ServiceNow UI path such as `/now/…` or `*.do` for custom domains), offers to fill in the form. A suggestion never registers anything and never selects a target (FR-3.9). `activeTab` shows no install warning. With `scripting` it would also allow injecting into that tab; the popup never calls `chrome.scripting` or any `chrome.tabs` API other than `query({active, currentWindow})`, and a test enforces this.
 - **Alternatives considered:**
   - pnpm: not needed for distribution.
   - WXT/CRXJS: more abstraction than needed.

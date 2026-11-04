@@ -75,6 +75,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   void handlePopupMessage(message, {
     grants,
     registry: () => registry.list(),
+    registryStore: registry,
+    hasPermission: (origin) => chrome.permissions.contains({ origins: [origin] }),
+    removePermission: (origin) => chrome.permissions.remove({ origins: [origin] }),
     bridgeState: () => bridgeState,
     onChanged: () => void updateBadge(),
   }).then(sendResponse);
@@ -82,7 +85,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 });
 
 chrome.storage.onChanged.addListener((changes, area) => {
-  if (area === 'local' && REGISTRY_STORAGE_KEY in changes) void sendRegistryUpdate();
+  if (area !== 'local' || !(REGISTRY_STORAGE_KEY in changes)) return;
+  // Backstop for any registry write: grants never outlive or follow a changed entry.
+  void registry
+    .list()
+    .then((entries) => grants.reconcile(entries))
+    .then(() => updateBadge());
+  void sendRegistryUpdate();
 });
 chrome.runtime.onInstalled.addListener(() => port.start());
 chrome.runtime.onStartup.addListener(() => port.start());

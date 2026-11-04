@@ -7,10 +7,14 @@
  *   rotates on every broker start, so every connect re-authenticates).
  * - Requests in flight when the connection drops fail with BRIDGE_UNAVAILABLE and are never
  *   replayed.
+ * - Registry cache (T-010): the extension pushes `registry.update` on every registry change;
+ *   the latest snapshot is kept in memory while connected. It is a hint only (e.g. for error
+ *   messages); authorization and list_instances always ask the extension.
  */
 import { randomBytes } from 'node:crypto';
 import {
   type ErrorCode,
+  type InstanceInfo,
   PROTOCOL_VERSION,
   type RequestEnvelope,
   type ResponseEnvelope,
@@ -57,9 +61,20 @@ export class BridgeClient {
   >();
   private seq = 0;
   private readonly dir: string;
+  private registry?: { instances: InstanceInfo[]; receivedAt: number };
 
   constructor(private readonly o: BridgeClientOptions) {
     this.dir = o.dir ?? defaultRuntimeDir();
+  }
+
+  /** Latest registry pushed by the extension on this connection, if any. */
+  get cachedRegistry(): { instances: InstanceInfo[]; receivedAt: number } | undefined {
+    return this.registry;
+  }
+
+  /** Records a fresh registry read (registry.get) so the cache never lags behind it. */
+  noteRegistry(instances: InstanceInfo[]): void {
+    this.registry = { instances, receivedAt: Date.now() };
   }
 
   get keyIdPrefix(): string | undefined {
@@ -82,6 +97,10 @@ export class BridgeClient {
             if (this.conn === conn) this.conn = undefined;
             return;
           }
+          if (m.kind === 'registry.update') {
+            if (this.conn === conn) this.noteRegistry(m.instances);
+            return;
+          }
           if (m.kind !== 'response') return;
           const p = this.pending.get(m.id);
           if (!p || p.conn !== conn) return;
@@ -90,7 +109,10 @@ export class BridgeClient {
           p.resolve(m);
         });
         conn.onClose(() => {
-          if (this.conn === conn) this.conn = undefined;
+          if (this.conn === conn) {
+            this.conn = undefined;
+            this.registry = undefined; // may be stale once disconnected
+          }
           // Only this connection's requests fail; never those sent on a newer connection.
           for (const [id, p] of this.pending) {
             if (p.conn !== conn) continue;
