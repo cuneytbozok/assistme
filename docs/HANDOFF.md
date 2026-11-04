@@ -1,12 +1,12 @@
 # Handoff
 
-_Last updated: 2026-11-04 (after T-001)_
+_Last updated: 2026-11-04 (after T-002)_
 
 ## Current project state
 
-- **Phase 0 (Foundation):** T-001 DONE. A git repository (`main`) has been initialized with an npm-workspaces scaffold.
+- **Phase 0 (Foundation):** T-001 and T-002 DONE. The shared package now has the full bridge protocol (zod v4), error codes with hints, limits, and identifier validation.
 - **Packages:**
-  - `packages/shared`: `@sn-mcp/shared`, built to `dist/`, exports `PROTOCOL_VERSION`.
+  - `packages/shared`: `@sn-mcp/shared`, built to `dist/`. Exports the protocol schemas (`ClientToBrokerSchema`, `BrokerToClientSchema`, `BrokerToExtensionSchema`, `ExtensionToBrokerSchema`, `OperationSchema`, …), `ERROR_CODES`/`DEFAULT_HINTS`/`protocolError`, `limits`, and the identifier regexes and schemas.
   - `packages/server`: `@sn-mcp/server`, built to `dist/`, imports shared.
   - `packages/extension`: `@sn-mcp/extension`, type-check only for now (esbuild bundle comes in T-004).
 - **Toolchain:** Node 24, TypeScript 7.0.2, vitest 5.1.0, Biome 2.6.5 (lint/format TS/JSON; `*.md` excluded).
@@ -14,18 +14,21 @@ _Last updated: 2026-11-04 (after T-001)_
 ## Tasks
 
 - **Current task:** none (nothing IN_PROGRESS).
-- **Last completed task:** T-001 — Repository scaffold (commit `T-001: repository scaffold`).
-- **Next task:** **T-002 — Shared protocol schemas** (depends on T-001 ✔). Other eligible tasks: T-004 (extension skeleton).
+- **Last completed task:** T-002 — Shared protocol schemas (commit `T-002: shared protocol schemas`).
+- **Next task:** **T-003 — Shared query module + attack corpus** (depends on T-002 ✔). Also eligible: T-004 (extension skeleton) and T-006 (native host/broker).
 
 ## Files changed in last task
 
-- Root: `package.json`, `package-lock.json`, `tsconfig.base.json`, `biome.json`, `.gitignore`, `.nvmrc`, `.editorconfig`.
-- `packages/{shared,server,extension}/{package.json,tsconfig.json,src/index.ts,test/index.test.ts}`.
-- Docs: TASKS (T-001 evidence), DECISIONS (ADR-007 addendum), HANDOFF. Markdown tables were re-aligned by a one-time Biome run, with no content change.
+- `packages/shared/src/{protocol,errors,limits,validation,index}.ts` (new or rewritten).
+- `packages/shared/test/{fixtures,protocol.test}.ts` (new); `packages/shared/test/index.test.ts` (removed, superseded).
+- `packages/shared/package.json` and `package-lock.json` (added `zod@4.6.7`).
+- Docs: TASKS (T-002 evidence) and HANDOFF.
+- A separate earlier commit, `T-001: correct task status in TASKS.md section`, fixed a T-001 section that still read IN_PROGRESS (Biome had added blank lines after headings, so the original replacement didn't match).
 
 ## Tests performed
 
-`npm run build`, `npm test`, and `npm run lint` all exit 0, both in the working tree and in a clean clone. Details are in TASKS.md, T-001 evidence.
+- Root `npm run build`, `npm test` (shared 71, server 1, extension 1), `npm run lint`: all exit 0.
+- Mutation check on strictness and the redaction audit (see T-002 evidence).
 
 ## Open blockers
 
@@ -41,7 +44,8 @@ _Last updated: 2026-11-04 (after T-001)_
   - ADR-005: structured filters + validated encoded queries.
   - ADR-006: budgets, signed cursors, `AMBIGUOUS_MATCH`.
 - **ADR-002 (session access path) is still Proposed**, pending live T-005 results.
-- **Not yet installed:** `zod` and `@modelcontextprotocol/server` (add `zod@4` to shared in T-002, and the MCP SDK to server in T-008). Re-check versions with `npm view`.
+- **Dependencies:** `zod@4.6.7` is in shared. `@modelcontextprotocol/server` isn't installed yet (comes in T-008; re-check the version with `npm view`).
+- **Docs editing:** Biome formatted the markdown once, so headings are followed by a blank line (`### T-00N — …\n\n- **Status:** …`). Match that when scripting status edits.
 - **Workspace build order** is the `workspaces` array order (shared → server → extension). The server resolves `@sn-mcp/shared` via `dist/`, so build shared before running server type-checks.
 - **Paths:**
   - `.claude/settings.local.json` is git-ignored (local Claude Code settings).

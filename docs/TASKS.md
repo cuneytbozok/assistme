@@ -11,7 +11,7 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 | ID    | Title                                           | Deps     | Status      |
 | ----- | ----------------------------------------------- | -------- | ----------- |
 | T-001 | Repository scaffold                             | —        | DONE        |
-| T-002 | Shared protocol schemas                         | 001      | TODO        |
+| T-002 | Shared protocol schemas                         | 001      | DONE        |
 | T-003 | Shared query module + attack corpus             | 002      | TODO        |
 | T-004 | MV3 extension skeleton + minimal registry       | 001      | TODO        |
 | T-005 | Live session hypothesis spike (H1–H8)           | 004      | TODO        |
@@ -86,7 +86,7 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 
 ### T-002 — Shared protocol schemas
 
-- **Status:** TODO
+- **Status:** DONE
 - **Purpose:** One typed contract for all hops (MCP server ↔ broker ↔ extension).
 - **Dependencies:** T-001
 - **Deliverables:** `packages/shared/src/protocol.ts` (zod v4) containing:
@@ -103,7 +103,30 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
   4. A redaction property test generates random valid envelopes and asserts none can contain the keys `cookie`, `headers`, `url`, `method`, or `token`.
 - **Verification:** `npm test -w packages/shared`.
 - **DoD:** schemas exported and documented in code comments.
-- **Evidence:** —
+- **Evidence (2026-11-04):**
+  - Implemented `packages/shared/src/{protocol,errors,limits,validation,index}.ts` with `zod@4.6.7`.
+  - Wire schemas, one union per direction:
+    - `ClientToBroker`: hello, auth, ping, sn.op, scope.request/claim/release, registry.get.
+    - `BrokerToClient`: challenge, auth_ok, pong, registry.update, broker.status, response.
+    - `BrokerToExtension`: forward, ping, pong, broker.status.
+    - `ExtensionToBroker`: response, registry.update, ping, pong.
+  - `Operation` is a closed union (`table.list`, `table.get`, `stats.aggregate`, `probe`). All objects are `strictObject`.
+  - `npm test -w @sn-mcp/shared` → 71 passed. Root `npm run build`, `npm test`, `npm run lint` → exit 0.
+  - AC1 ✔: a static walk of every wire schema's declared keys finds none matching `cookie|header|url|uri|method|token|jsession|g_ck|csrf|password|secret`.
+  - AC2 ✔: unknown kinds (e.g. `http.request`, `sn.write`), wrong protocol version, cross-direction messages, and extra properties are all rejected.
+  - AC3 ✔: 28 fixtures cover all 15 message kinds and every result type; each parses and JSON round-trips.
+  - AC4 ✔ (with a deviation): instead of randomly generated envelopes, the test is **exhaustive**. It injects each of `cookie`, `Cookie`, `headers`, `url`, `method`, `token`, `X-UserToken`, `g_ck`, `JSESSIONID`, `extra` at every object node of every fixture, and all are rejected. This is deterministic and stronger than random sampling, so no extra dependency (fast-check) was needed. The `body` field of `sn.op` results is excluded by design (it carries ServiceNow record data as `unknown`).
+  - Mutation check: making `TableListOpSchema` non-strict made 2 tests fail; adding a `url` field to the probe op made 2 tests fail (including the static key audit). Both mutations were reverted.
+  - Also delivered:
+    - Broadcast `registry.update` can't carry per-client state; per-client `registry.get` uses `ClientInstanceInfoSchema`, which still has no scope ids.
+    - Approval codes use an unambiguous alphabet.
+    - Purpose text rejects control characters.
+    - Operation bounds: limit ≤100, offset ≤2000, ≤50 fields, dot-walk ≤3, query ≤2048 chars with no control characters.
+  - Notes:
+    - `validation.ts` (identifier regexes) was created here because the protocol depends on it. T-003 extends it with query normalization.
+    - `PROTOCOL_VERSION` moved to `limits.ts`; it is still re-exported from the index.
+    - One `biome-ignore` on `NO_CONTROL_CHARS_RE`, since matching control characters is that regex's purpose.
+  - Unverified: none for this task. Schemas aren't yet exercised by the broker or extension (T-006/T-007).
 
 ### T-003 — Shared query module + attack corpus
 

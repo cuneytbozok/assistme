@@ -1,7 +1,8 @@
 /**
- * @sn-mcp/shared — protocol schemas, error codes, limits and query validation
- * shared by the MCP server and the Chrome extension.
- *
- * Populated from T-002 (protocol) and T-003 (query module) onward.
+ * @sn-mcp/shared — protocol schemas, error codes, limits and validation shared by the
+ * MCP server, the native-host broker and the Chrome extension.
  */
-export const PROTOCOL_VERSION = 1 as const;
+export * from './errors.js';
+export * from './limits.js';
+export * from './protocol.js';
+export * from './validation.js';
