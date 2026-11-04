@@ -32,6 +32,7 @@ import {
   removeBrokerKey,
   writeBrokerKey,
 } from './auth.js';
+import type { CaptureWriter } from './capture.js';
 import {
   encodeFrame,
   FrameDecoder,
@@ -58,6 +59,8 @@ export interface BrokerOptions {
   /** Safety net if the extension never answers (> the extension's max request timeout). */
   pendingTimeoutMs?: number;
   limiter?: AuthFailureLimiter;
+  /** Dev-only traffic capture (T-009). */
+  capture?: CaptureWriter;
 }
 
 type ClientState = 'await_hello' | 'await_auth' | 'authenticated' | 'closed';
@@ -212,6 +215,7 @@ export class Broker {
       return;
     }
     const m = parsed.data;
+    this.o.capture?.record('ext>broker', m);
     switch (m.kind) {
       case 'ping':
         this.sendToExtension({ v, kind: 'pong', id: m.id });
@@ -249,6 +253,7 @@ export class Broker {
       this.o.logger.log('ext.refused_outbound');
       return false;
     }
+    this.o.capture?.record('broker>ext', checked.data);
     try {
       this.o.extOut.write(encodeFrame(checked.data, MAX_TO_EXTENSION_BYTES));
       return true;
@@ -350,6 +355,7 @@ export class Broker {
       return;
     }
     const m = parsed.data;
+    this.o.capture?.record('client>broker', m);
     if (m.kind === 'hello' || m.kind === 'auth') {
       this.closeClient(c, 'protocol_violation');
       return;
@@ -428,6 +434,7 @@ export class Broker {
 
   private sendToClient(c: ClientConn, message: unknown): void {
     if (c.state === 'closed' || c.socket.destroyed) return;
+    if (c.state === 'authenticated') this.o.capture?.record('broker>client', message);
     try {
       c.socket.write(encodeFrame(message));
     } catch {

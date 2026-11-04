@@ -153,6 +153,8 @@ PROD differs only in **authorization**. Operational safeguards (timeout, size, c
 
 Within one Desktop process, a `scope_id` is a bearer capability that only the claiming conversation knows. This is the strongest binding available without conversation IDs.
 
+Observed in T-009: the Claude Desktop app runs one `sn-mcp` process for **all** its conversations, chat and Code tab alike. So they share a `client_key_id`, and the popup shows the same client label for each. The approval code (shown only in the requesting conversation) and the `scope_id` are what keep conversations apart.
+
 ## 6. Query security (ADR-005)
 
 ### 6.1 Structured filters

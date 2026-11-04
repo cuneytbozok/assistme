@@ -10,6 +10,7 @@ import { join } from 'node:path';
 import { EXTENSION_ORIGIN, PROTOCOL_VERSION } from '@sn-mcp/shared';
 import { currentUid } from './auth.js';
 import { Broker } from './broker.js';
+import { CAPTURE_FILE, CAPTURE_MODE, CaptureWriter } from './capture.js';
 import { encodeFrame } from './framing.js';
 import { FileLogger } from './logger.js';
 import { BrokerStartError, defaultRuntimeDir, ensureRuntimeDir, LOG_FILE } from './socket-guard.js';
@@ -39,7 +40,19 @@ export async function main(argv: readonly string[]): Promise<number | 'running'>
     return EXIT.unsafePath;
   }
   const logger = new FileLogger(join(dir, LOG_FILE));
-  const broker = new Broker({ dir, uid, extIn: process.stdin, extOut: process.stdout, logger });
+  const capture =
+    process.env.SN_MCP_CAPTURE === CAPTURE_MODE
+      ? new CaptureWriter(join(dir, CAPTURE_FILE))
+      : undefined;
+  if (capture) logger.log('capture.enabled', { reason: CAPTURE_MODE });
+  const broker = new Broker({
+    dir,
+    uid,
+    extIn: process.stdin,
+    extOut: process.stdout,
+    logger,
+    ...(capture ? { capture } : {}),
+  });
   try {
     await broker.start();
   } catch (e) {

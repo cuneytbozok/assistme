@@ -93,6 +93,11 @@ Format: Status · Context · Decision · Alternatives considered · Consequences
   - One approval step per conversation per instance.
   - Residual risk: within a Desktop process, the `scope_id` is a bearer secret known only to the claiming conversation.
 
+- *Addendum (T-009, 2026-11-04):*
+  - In the Claude Desktop app, chat **and** Code conversations use the single `sn-mcp` server that Desktop starts from its config. All of them share one `client_key_id`, and grants show the same client label.
+  - Binding is therefore per process, and the `scope_id` bearer handle (plus the approval code shown only in the requesting conversation) is the only per-conversation separation. This matches the residual risk in ARCHITECTURE §5.5, which now explicitly includes Code sessions in the Desktop app.
+  - A standalone Claude Code CLI starts its own server process and gets its own identity.
+
 ## ADR-004 — Operation descriptors, never URLs
 
 - **Status:** Accepted (2026-11-04)
@@ -175,7 +180,7 @@ Format: Status · Context · Decision · Alternatives considered · Consequences
 - *Addendum (T-008, 2026-11-04):*
   - `@modelcontextprotocol/server@2.4.0` is used with `McpServer.registerTool(name, {inputSchema: z.strictObject(...), outputSchema, annotations}, cb)` and `StdioServerTransport` from `@modelcontextprotocol/server/stdio`.
   - Tests use `@modelcontextprotocol/client@2.4.0` (`InMemoryTransport.createLinkedPair`, `StdioClientTransport`).
-  - Desktop protocol compatibility is still to be confirmed in T-009 (v1 fallback stays available).
+  - **Confirmed in T-009:** SDK v2 works with Claude Desktop and Claude Code 2.1.317. No v1 fallback needed.
 
 ## ADR-009 — Skills strategy
 

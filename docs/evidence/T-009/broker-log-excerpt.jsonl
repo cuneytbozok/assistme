@@ -1,0 +1,19 @@
+{"at":"2026-11-04T18:26:27.678Z","event":"client.authenticated","client":"31260728","clientName":"Claude Desktop","clients":1}
+{"at":"2026-11-04T18:26:27.679Z","event":"request.forwarded","kind":"registry.get","client":"31260728","inFlight":1}
+{"at":"2026-11-04T18:26:27.684Z","event":"request.done","kind":"registry.get","client":"31260728","durationMs":5,"code":"ok"}
+{"at":"2026-11-04T18:26:37.742Z","event":"request.forwarded","kind":"scope.request","client":"31260728","inFlight":1}
+{"at":"2026-11-04T18:26:37.747Z","event":"request.done","kind":"scope.request","client":"31260728","durationMs":5,"code":"ok"}
+{"at":"2026-11-04T18:27:01.620Z","event":"request.forwarded","kind":"scope.claim","client":"31260728","inFlight":1}
+{"at":"2026-11-04T18:27:01.624Z","event":"request.done","kind":"scope.claim","client":"31260728","durationMs":5,"code":"ok"}
+{"at":"2026-11-04T18:27:09.639Z","event":"request.forwarded","kind":"sn.op","client":"31260728","inFlight":1}
+{"at":"2026-11-04T18:27:10.259Z","event":"request.done","kind":"sn.op","client":"31260728","durationMs":620,"code":"ok"}
+{"at":"2026-11-04T18:28:03.760Z","event":"request.forwarded","kind":"registry.get","client":"31260728","inFlight":1}
+{"at":"2026-11-04T18:28:03.762Z","event":"request.done","kind":"registry.get","client":"31260728","durationMs":2,"code":"ok"}
+{"at":"2026-11-04T18:28:06.538Z","event":"request.forwarded","kind":"scope.request","client":"31260728","inFlight":1}
+{"at":"2026-11-04T18:28:06.542Z","event":"request.done","kind":"scope.request","client":"31260728","durationMs":4,"code":"ok"}
+{"at":"2026-11-04T18:28:28.578Z","event":"request.forwarded","kind":"scope.claim","client":"31260728","inFlight":1}
+{"at":"2026-11-04T18:28:28.584Z","event":"request.done","kind":"scope.claim","client":"31260728","durationMs":6,"code":"ok"}
+{"at":"2026-11-04T18:28:31.518Z","event":"request.forwarded","kind":"sn.op","client":"31260728","inFlight":1}
+{"at":"2026-11-04T18:28:32.068Z","event":"request.done","kind":"sn.op","client":"31260728","durationMs":550,"code":"ok"}
+{"at":"2026-11-04T18:30:31.269Z","event":"request.forwarded","kind":"registry.get","client":"31260728","inFlight":1}
+{"at":"2026-11-04T18:30:31.272Z","event":"request.done","kind":"registry.get","client":"31260728","durationMs":4,"code":"ok"}

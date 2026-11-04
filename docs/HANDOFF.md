@@ -1,6 +1,6 @@
 # Handoff
 
-_Last updated: 2026-11-04 (after T-008)_
+_Last updated: 2026-11-04 (after T-009)_
 
 ## Current project state
 
@@ -36,28 +36,42 @@ _Last updated: 2026-11-04 (after T-008)_
   - `errors.ts`: `RATE_LIMITED`, revised hints.
   - Tests updated: 240 shared tests pass.
 
+## Milestones
+
+- **M1 — PoC end to end: ACHIEVED (2026-11-04, T-009).**
+  - Claude Desktop chat and a Claude Code session each read INC0000060 from `dev469966` through MCP → broker → extension → Table API, after user approval.
+  - The capture check, including the exact-token check, passed.
+
 ## Tasks
 
 - **Current task:** none (nothing IN_PROGRESS).
-- **Last completed task:** T-008 — Minimal MCP server (commit `T-008: minimal MCP server`). Tools: `list_instances`, `request_scope`, `claim_scope`, `query_records` (PoC). Entry point: `packages/server/dist/bin/mcp-server.js`.
-- **Next task:** **T-009 — PoC end-to-end in Claude Code + Desktop (Milestone M1).** It depends on T-007 ✔ and T-008 ✔. It needs:
-  - registering the server with Claude Code (`claude mcp add`) and with Claude Desktop (`claude_desktop_config.json`);
-  - the user's Chrome with the extension, and a logged-in `dev469966` tab;
-  - a broker traffic capture showing no cookie or token;
-  - confirming the SDK v2 protocol works with Desktop.
-- **Installed on the user's Mac:** the native host (see T-007).
+- **Last completed task:** T-009 — PoC end to end (commit `T-009: PoC end to end in Claude Desktop and Claude Code (M1)`). Evidence: `docs/evidence/T-009/`.
+- **Next task:** **T-010 — Full instance registry** (depends on T-007 ✔). It includes tab suggestions, which were deferred from T-004 (decide `activeTab` vs pasting the URL).
+- **Also eligible:** T-016 (request builder hardening; depends on T-007 ✔ and T-003 ✔).
+- **Finding to carry forward:**
+  - In the Claude Desktop app, all conversations share one `sn-mcp` server process and therefore one `client_key_id` (ADR-003 addendum; notes added to T-011, T-012, T-015).
+  - A standalone Claude Code CLI is untested: the bundled CLI isn't logged in on its own.
+
+## Current setup on the user's Mac
+
+- **Native host:** installed without capture. Capture file deleted.
+- **Claude Desktop:** `claude_desktop_config.json` has `mcpServers.sn-mcp` (node `/opt/homebrew/Cellar/node@24/24.21.0/bin/node`, `dist/bin/mcp-server.js`, `SN_MCP_CLIENT_NAME=Claude Desktop`). Run `npm run build` after server changes and restart Claude Desktop to pick them up.
+- **No `.mcp.json` in the repo.** Code sessions in the Desktop app use the Desktop server.
 
 ## Files changed in last task
 
 - Server:
-  - New: `src/bridge/client.ts`, `src/mcp/{server,results,scope-store}.ts`, `src/bin/mcp-server.ts`, `test/mcp.test.ts`.
-  - Modified: `src/bridge/handshake.ts` (`isOpen`), `src/native-host/broker.ts` (register-before-send fix), `test/broker.test.ts` (regression), `package.json` (deps, `bin`, `start`), `README.md`.
-- Docs: TASKS (T-008 evidence), DECISIONS (ADR-008 addendum), HANDOFF.
+  - New: `src/native-host/capture.ts`, `src/bin/check-capture.ts`, `test/capture.test.ts`.
+  - Modified: `broker.ts` (capture hooks), `main.ts` (capture env), `install/installer.ts` + `bin/install-native-host.ts` (`--capture`), `package.json` (`check-capture`), `README.md` (registration, capture).
+- Docs:
+  - `docs/evidence/T-009/*`
+  - TASKS (T-009 evidence; notes on T-011, T-012, T-015)
+  - DECISIONS (ADR-003 and ADR-008 addenda), ARCHITECTURE §5.5, HANDOFF.
 
 ## Tests performed
 
-- Root build, tests (shared 240, server 48, extension 74) and lint all exit 0.
-- Live stdio smoke: 4 tools; `list_instances` → `dev`; `SCOPE_REQUIRED` without a scope.
+- Root build, tests (shared 240, server 57, extension 74) and lint all exit 0.
+- Live: Desktop chat run, Claude Code session run, `check-capture` (markers + exact token) PASS.
 
 ## Open blockers
 

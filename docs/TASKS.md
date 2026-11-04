@@ -18,7 +18,7 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 | T-006 | Native host / authenticated broker              | 002      | DONE        |
 | T-007 | Extension ↔ host port, executor, minimal grants | 005, 006 | DONE        |
 | T-008 | Minimal MCP server                              | 006, 003 | DONE        |
-| T-009 | PoC end-to-end in Claude Code + Desktop (M1)    | 007, 008 | TODO        |
+| T-009 | PoC end-to-end in Claude Code + Desktop (M1)    | 007, 008 | DONE        |
 | T-010 | Full instance registry                          | 007      | TODO        |
 | T-011 | Full grant model                                | 010      | TODO        |
 | T-012 | MCP scope enforcement                           | 008, 011 | TODO        |
@@ -412,7 +412,7 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 
 ### T-009 — PoC end-to-end in Claude Code + Desktop (Milestone M1)
 
-- **Status:** TODO
+- **Status:** DONE
 - **Purpose:** Prove real connectivity: Claude → MCP → broker → extension → ServiceNow → Claude.
 - **Dependencies:** T-007, T-008
 - **Deliverables:**
@@ -431,7 +431,36 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 - **Verification:** manual run in both clients; save transcripts or screenshots (redacted) under `docs/evidence/T-009/`; run `check-capture`.
 - **DoD:** M1 marked achieved in HANDOFF.
 - **Blocker:** requires a DEV instance.
-- **Evidence:** —
+- **Evidence (2026-11-04):** see `docs/evidence/T-009/` (README, `check-capture.txt`, `broker-log-excerpt.jsonl`, `claude-desktop-chat.md`).
+  - **Implemented:**
+    - Broker capture `src/native-host/capture.ts`, enabled with `SN_MCP_CAPTURE=metadata+bodies-redacted` via `install-native-host --capture`. Per frame it stores credential-pattern findings on the raw frame, hashes of long strings, and a redacted frame (record values, proofs, nonces, scope/request ids).
+    - `src/bin/check-capture.ts` (`npm run check-capture -w @sn-mcp/server`), with an optional exact-token check through `SN_MCP_TOKEN` that compares hashes only.
+    - The README has the Desktop config snippet and the `claude mcp add` command.
+    - Tests: server 57 passed (9 new in `test/capture.test.ts`).
+  - **Live setup:**
+    - Claude Desktop config entry `sn-mcp` (node + `dist/bin/mcp-server.js`, `SN_MCP_CLIENT_NAME=Claude Desktop`); Desktop restarted by the user.
+    - The native host was reinstalled with `--capture` for the run, then reinstalled without it. The capture file was deleted.
+  - **Acceptance criteria:**
+    - AC1 ✔ **Claude Desktop chat:** `request_scope` → user approved → `claim_scope` → `query_records incident limit 1` → INC0000060 "Unable to connect to email". Broker `sn.op` OK in 620 ms at 18:27:09 UTC.
+    - AC1 ✔ **Claude Code session** (Claude Code 2.1.317 in the Desktop app's Code tab): code `4RH4-2P` → user approved → claim (scope `…3IuA`) → `query_records` → INC0000060. Broker `sn.op` OK in 550 ms at 18:28:31 UTC.
+    - AC1 caveats:
+      - Both runs were served by the Desktop-configured server process (see the finding below).
+      - A standalone Claude Code CLI wasn't exercised: the bundled CLI isn't logged in on its own (`OAuth session expired`), and logging it in would need the user's credentials.
+    - AC2 ✔ The extension code calls only `chrome.tabs.query` and `chrome.scripting.executeScript` (read `g_ck`). A grep finds no `tabs.update/create/reload`, `location.*`, `window.open` or `history.*`. The user reported no tab change.
+    - AC3 ✔ The capture of both runs (152 frames, all 4 directions, 2 successful `sn.op`) has no `Cookie`/`JSESSIONID`/`glide_`/`g_ck`/`X-UserToken`. The user's exact-token check with the active `g_ck` (`SN_MCP_TOKEN` from the clipboard) → `performed` → PASS.
+    - AC4 ✔ Provenance in both answers: instance `dev`, host `dev469966.service-now.com`, env `dev`, scope suffix, `retrieved_at`, source `table incident`, `page{returned:1,total:67}`, `complete:false` with `omitted` (PoC limit).
+    - AC5 ✔ Real Claude clients, the real MCP server, the real broker launched by Chrome, the real extension, and the real instance. No mocks in the chain.
+  - **ADR-008:** SDK v2 (`@modelcontextprotocol/server` 2.4.0) works with Claude Desktop and Claude Code 2.1.317. No v1 fallback needed.
+  - **Finding (recorded for T-011/T-012/T-015, ADR-003 addendum):**
+    - In the Claude Desktop app, chat and Code conversations share one `sn-mcp` server process, so they share one `client_key_id`.
+    - Grants are labelled "Claude Desktop" even for a Code session.
+    - `list_instances.this_session` reflects the process, not the conversation.
+    - Each conversation still had its own approval code and scope id.
+  - **Deviations:**
+    - The headless CLI run was abandoned (CLI not logged in).
+    - The project `.mcp.json` server was registered but unused (the Desktop server took priority), and was removed afterwards.
+    - `check-capture` lives in `src/bin/` (compiled), per the ADR-001 addendum, not `scripts/`.
+
 
 ## Phase 2 — Authorization & lifecycle (Milestone M2)
 
@@ -469,6 +498,7 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
   - Single-use claim with `client_key_id` binding; request expiry of 5 min.
   - Revoke and revoke-all; red badge while PROD is active; notifications for new requests.
   - Grants stored as `{scopeHash, clientKeyId, instances, mode, env, expiresAt}` in `storage.session`.
+  - **From T-009:** in the Claude Desktop app, all conversations share one MCP server process and so one `client_key_id`. Consider showing the request's purpose and approval time more prominently in the popup, since the client label is the same for every conversation.
 - **Files:** `packages/extension/src/background/{grants,authz}.ts`, popup, tests
 - **Acceptance criteria:**
   1. Unit tests cover: claim twice → fail; claim from another client → fail; expired → `SCOPE_EXPIRED`; revoked → `SCOPE_UNKNOWN`; PROD approval without the typed host → impossible; PROD TTL capped at 60 min; a compare grant can't be used for a third instance; a single grant can't be used for another instance.
@@ -489,6 +519,7 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
   - `list_instances` shows this client's pending or active state without IDs.
   - Provenance helper.
   - Error mapping.
+  - **From T-009:** rename `list_instances.this_session` to reflect that access state is per MCP server process (shared by every conversation in the Desktop app). Keep scope ids unlisted, because the scope id is the only per-conversation separation.
 - **Files:** `packages/server/src/mcp/{scope-store,errors}.ts`, tools, tests
 - **Acceptance criteria:**
   1. No tool output (including `list_instances`) contains a scope ID, except the `claim_scope` result.
@@ -570,6 +601,7 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
   - `request-builder.ts`: fixed templates, param allowlist, fixed headers, `redirect:'manual'`, 30 s timeout (default; becomes user-configurable in T-019).
   - Re-validation of every operation with the shared module.
   - `executor.ts` uses only the builder.
+  - **From T-009:** include a case where two conversations in the Desktop app hold separate scopes through the same server process. Each must work only with its own scope id; a released scope in one must not affect the other.
 - **Files:** `packages/extension/src/background/{request-builder,executor}.ts`, tests
 - **Acceptance criteria:**
   1. Tests prove that no non-GET method, no path outside the two templates, no non-allowlisted param, and no host other than the granted host can be produced.

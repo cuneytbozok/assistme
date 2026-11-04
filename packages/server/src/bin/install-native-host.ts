@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 /**
- *   npm run install-native-host -- [--dry-run] [--uninstall] [--node /abs/path/to/node]
+ *   npm run install-native-host -- [--dry-run] [--uninstall] [--capture] [--node /abs/path/to/node]
+ *   --capture: DEV ONLY, enables broker traffic capture (T-009).
  */
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -31,7 +32,7 @@ try {
     );
     process.exit(0);
   }
-  const plan = planInstall(paths, currentUid());
+  const plan = planInstall(paths, currentUid(), { capture: flag('--capture') });
   console.log(`Wrapper:  ${plan.wrapperPath}\n${plan.wrapperContent}`);
   console.log(`Manifest: ${plan.manifestPath}\n${JSON.stringify(plan.manifest, null, 2)}`);
   if (flag('--dry-run')) {

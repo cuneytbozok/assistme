@@ -1,0 +1,20 @@
+Capture: ~/Library/Application Support/sn-mcp/broker.capture.jsonl
+Frames: 152 (broker>ext: 66, ext>broker: 66, broker>client: 11, client>broker: 9)
+Clients seen: Claude Desktop
+Successful sn.op responses (HTTP 200): 2
+Credential markers checked: Cookie, JSESSIONID, glide_, g_ck, X-UserToken
+Session token value check: skipped (set SN_MCP_TOKEN to enable)
+
+PASS — no credential material in the capture.
+
+---
+Above: re-run by Claude without the token (markers only), after the user's run below.
+
+User's run (2026-11-04, in their own terminal, token supplied from the clipboard via `copy(g_ck)`; never shown):
+$ SN_MCP_TOKEN="$(pbpaste)" npm run check-capture -w @sn-mcp/server
+Frames: 152 (broker>ext: 66, ext>broker: 66, broker>client: 11, client>broker: 9)
+Clients seen: Claude Desktop
+Successful sn.op responses (HTTP 200): 2
+Credential markers checked: Cookie, JSESSIONID, glide_, g_ck, X-UserToken
+Session token value check: performed (hash prefix only)
+PASS — no credential material in the capture.

@@ -24,7 +24,53 @@ All of them are read-only. None accepts a URL, method or header.
 
 ### Registering with Claude
 
-Registration with Claude Code and Claude Desktop is covered in T-009, T-035 and T-036. The command is `node <repo>/packages/server/dist/bin/mcp-server.js`. `SN_MCP_CLIENT_NAME` sets the client name the approval popup shows.
+Use absolute paths. Node must be the same one the native host uses; `which node` shows it. After a Node upgrade, re-run `npm run install-native-host`.
+
+**Claude Desktop:** add this to `~/Library/Application Support/Claude/claude_desktop_config.json`, then fully quit and reopen Claude Desktop (Cmd+Q):
+
+```json
+{
+  "mcpServers": {
+    "sn-mcp": {
+      "command": "/opt/homebrew/bin/node",
+      "args": ["/ABSOLUTE/PATH/AssistMe/packages/server/dist/bin/mcp-server.js"],
+      "env": { "SN_MCP_CLIENT_NAME": "Claude Desktop" }
+    }
+  }
+}
+```
+
+**Code sessions inside the Claude Desktop app** use the server from the Desktop config above; they need nothing extra. All conversations in the app share that one server process, so the approval popup labels their requests "Claude Desktop". Each conversation still gets its own approval code and `scope_id` (T-009 evidence).
+
+**Claude Code CLI (standalone):**
+
+```bash
+claude mcp add --scope user sn-mcp --env SN_MCP_CLIENT_NAME="Claude Code" -- node /ABSOLUTE/PATH/AssistMe/packages/server/dist/bin/mcp-server.js
+```
+
+`SN_MCP_CLIENT_NAME` sets the client name the approval popup shows.
+
+### Traffic capture (dev only)
+
+Turn capture on:
+
+```bash
+npm run install-native-host -- --capture   # then restart the host (reload the extension)
+npm run check-capture -w @sn-mcp/server
+```
+
+`--capture` writes `broker.capture.jsonl` (0600) next to the socket. Each frame is stored with record values, handshake proofs and scope/request IDs redacted, plus credential-pattern findings and hashes of long strings.
+
+To prove that a specific session token never crossed the bridge, without the token being printed or stored:
+
+1. In the ServiceNow tab, open DevTools and run `copy(g_ck)`.
+2. Run:
+
+   ```bash
+   SN_MCP_TOKEN="$(pbpaste)" npm run check-capture -w @sn-mcp/server
+   ```
+
+Turn capture off with `npm run install-native-host` (no `--capture`), then delete the capture file.
 
 ## Native host
 

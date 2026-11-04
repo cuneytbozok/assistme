@@ -10,7 +10,8 @@
     "test": "tsc -p tsconfig.json && vitest run",
     "install-native-host": "node dist/bin/install-native-host.js",
     "dev-client": "node dist/bin/dev-client.js",
-    "start": "node dist/bin/mcp-server.js"
+    "start": "node dist/bin/mcp-server.js",
+    "check-capture": "node dist/bin/check-capture.js"
   },
   "dependencies": {
     "@modelcontextprotocol/server": "^2.4.0",
