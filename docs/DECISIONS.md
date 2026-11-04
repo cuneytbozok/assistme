@@ -137,6 +137,11 @@ Format: Status · Context · Decision · Alternatives considered · Consequences
   - TypeScript strict, esbuild (server bundle, extension, .mcpb single file), vitest, Biome (lint + format).
   - The extension is plain TS + HTML (no UI framework).
   - *Addendum (T-001, 2026-11-04):* TypeScript 7.0.2 (native compiler) is used, since it was the current release. If a TS 7 incompatibility blocks a later task, pin `typescript@5.9` and record it here. Biome excludes `*.md`, so doc formatting stays hand-controlled.
+  - *Addendum (T-004, 2026-11-04):*
+    - **Extension bundling:** esbuild 0.28.2 bundles `background.js` (module service worker) and `popup.js` as ESM for `chrome116`. Its npm `postinstall` script is denied (`allowScripts.esbuild: false`); the platform binary comes from the `@esbuild/darwin-arm64` optional dependency and works without it.
+    - **zod in the extension runs `jitless`:** zod v4 otherwise probes `new Function("")`, which MV3's CSP reports as an error on `chrome://extensions`. `src/csp.ts` must be the first import of every entry point, and a test enforces this.
+    - **Stable ID:** a 2048-bit RSA public key in `manifest.json` `key`; ID `clipfeocpiljpcngmjpdbegciimchbol` in `packages/extension/EXTENSION_ID`. The private key is never written (not needed for unpacked loading or the Web Store, which is out of scope).
+    - **Registry host rules (minor):** instance hosts are https, default port, no credentials, and not IP literals. Tab suggestions are deferred to T-010, because reading tab URLs needs `tabs` or `activeTab`, which T-004 does not add. Users paste the instance URL instead.
 - **Alternatives considered:**
   - pnpm: not needed for distribution.
   - WXT/CRXJS: more abstraction than needed.

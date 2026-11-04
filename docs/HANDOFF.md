@@ -1,32 +1,45 @@
 # Handoff
 
-_Last updated: 2026-11-04 (after T-003)_
+_Last updated: 2026-11-04 (after T-004)_
 
 ## Current project state
 
-- **Phase 0 (Foundation): complete** (T-001, T-002, T-003 DONE). The shared package has the bridge protocol (zod v4), error codes with hints, limits, identifier validation, and the query module (structured filter compiler + encoded-query validator with `enforce`/`strict` profiles).
+- **Phase 0 (Foundation):** complete (T-001, T-002, T-003).
+- **Phase 1:** T-004 is DONE. The MV3 extension builds to `packages/extension/dist/` with stable ID `clipfeocpiljpcngmjpdbegciimchbol` (`packages/extension/EXTENSION_ID`). It has a minimal popup registry: paste the URL, pick alias and env, and it requests the exact host permission and saves to `chrome.storage.local`.
 - **Packages:**
-  - `packages/shared`: `@sn-mcp/shared`, built to `dist/`. Exports the protocol schemas (`ClientToBrokerSchema`, `BrokerToClientSchema`, `BrokerToExtensionSchema`, `ExtensionToBrokerSchema`, `OperationSchema`, …), `ERROR_CODES`/`DEFAULT_HINTS`/`protocolError`, `limits`, and the identifier regexes and schemas.
-  - `packages/server`: `@sn-mcp/server`, built to `dist/`, imports shared.
-  - `packages/extension`: `@sn-mcp/extension`, type-check only for now (esbuild bundle comes in T-004).
-- **Toolchain:** Node 24, TypeScript 7.0.2, vitest 5.1.0, Biome 2.6.5 (lint/format TS/JSON; `*.md` excluded).
+  - `packages/shared`: protocol schemas, errors, limits, identifier validation, query module.
+  - `packages/server`: placeholder.
+  - `packages/extension`: service worker (`src/background/index.ts`, logging only), `src/background/registry.ts` (pure logic plus a `chrome.storage.local` adapter), popup (`src/popup/*`), and `src/csp.ts` (zod `jitless`; must be the first import of every entry point).
+- **Toolchain:** Node 24, TypeScript 7.0.2, vitest 5.1.0, Biome 2.6.5, esbuild 0.28.2 (its postinstall is denied in `allowScripts`; it works without it).
 
 ## Tasks
 
 - **Current task:** none (nothing IN_PROGRESS).
-- **Last completed task:** T-003 — Shared query module + attack corpus (commit `T-003: shared query module and attack corpus`).
-- **Next task:** **T-004 — MV3 extension skeleton + minimal registry** (depends on T-001 ✔). Also eligible: T-006 (native host/broker). T-005 (live session spike) follows T-004 and needs a ServiceNow DEV instance. T-004 includes a manual step: loading the unpacked extension in Chrome.
+- **Last completed task:** T-004 — MV3 extension skeleton + minimal registry (commit `T-004: MV3 extension skeleton and minimal registry`).
+- **Next task:** **T-005 — Live session hypothesis spike (H1–H8).** It depends on T-004 ✔ and needs a ServiceNow DEV instance (a PDI is fine), logged in, in the user's Chrome.
+  - **First step of T-005:** the user loads `packages/extension/dist` unpacked in their own Chrome and registers the DEV instance (this also checks the granted → saved path, unverified in T-004).
+- **Also eligible:** T-006 (native host/broker), which needs no instance.
 
 ## Files changed in last task
 
-- New: `packages/shared/src/query/{operators,normalize,encoded-query,filter-compiler,index}.ts`, `packages/shared/test/query.test.ts`, `packages/shared/test/fixtures/{attack-corpus,valid-corpus}.json`.
-- Modified: `packages/shared/src/index.ts` (exports query), `packages/shared/package.json` (`coverage` script), root `package.json` and lock file (`@vitest/coverage-v8`).
-- Docs: TASKS (T-003 evidence), DECISIONS (ADR-005 addendum), ARCHITECTURE (§6.1 relative ops, §6.4a profiles), HANDOFF.
+- New:
+  - `packages/extension/{manifest.json,build.mjs,EXTENSION_ID,README.md}` and `scripts/gen-extension-key.mjs`.
+  - `src/csp.ts`, `src/background/{index,registry}.ts` and `src/popup/{popup.html,popup.css,popup.ts}`.
+  - `test/{manifest,registry}.test.ts`.
+- Removed: the placeholder `packages/extension/src/index.ts` and `test/index.test.ts`.
+- Modified:
+  - `packages/extension/package.json` (build = tsc + esbuild, `gen-key` script, deps `zod` and `esbuild`).
+  - Root `package.json` (`allowScripts.esbuild: false`) and the lock file.
+- Docs: TASKS (T-004 evidence), DECISIONS (ADR-007 T-004 addendum), HANDOFF.
 
 ## Tests performed
 
-- Root `npm run build`, `npm test` (shared 238, server 1, extension 1), `npm run lint`: all exit 0.
-- `npm run coverage -w @sn-mcp/shared`: query module at 97.4% statements / 95.8% branches (90% thresholds enforced).
+- Root `npm run build`, `npm test` (shared 238, server 1, extension 50) and `npm run lint`: all exit 0.
+- Mutation checks on the manifest and popup tests.
+- Live headless Chrome 156 load through DevTools `Extensions.loadUnpacked` in a throwaway profile:
+  - ENABLED, with no install warnings, manifest errors or runtime errors; the ID matches.
+  - The popup requested exactly one origin.
+  - Details are in the TASKS evidence.
 
 ## Open blockers
 
@@ -44,6 +57,7 @@ _Last updated: 2026-11-04 (after T-003)_
 - **ADR-002 (session access path) is still Proposed**, pending live T-005 results.
 - **Dependencies:** `zod@4.6.7` is in shared. `@modelcontextprotocol/server` isn't installed yet (comes in T-008; re-check the version with `npm view`).
 - **Query module usage:** use `compileFilter(input, {allowTextSearch})` for structured input. Use `parseEncodedQuery(q, {profile:'strict'})` for raw model input in the server, and `{profile:'enforce'}` in the extension. `referencedFields` feeds dictionary validation (T-018). To verify live in T-005: `RELATIVEGE@unit@ago@n` and plain-date `BETWEEN`.
+- **Loading the extension headlessly for checks:** branded Chrome ignores `--load-extension`. Use `--headless=new --enable-unsafe-extension-debugging --remote-debugging-port=N` with a throwaway `--user-data-dir`, then the CDP `Extensions.loadUnpacked`. `chrome.developerPrivate.getExtensionInfo(id)` on `chrome://extensions` gives the errors and warnings.
 - **Docs editing:** Biome formatted the markdown once, so headings are followed by a blank line (`### T-00N — …\n\n- **Status:** …`). Match that when scripting status edits.
 - **Workspace build order** is the `workspaces` array order (shared → server → extension). The server resolves `@sn-mcp/shared` via `dist/`, so build shared before running server type-checks.
 - **Paths:**

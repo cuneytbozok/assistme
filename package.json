@@ -25,5 +25,8 @@
     "@vitest/coverage-v8": "^5.1.0",
     "typescript": "^7.0.2",
     "vitest": "^5.1.0"
+  },
+  "allowScripts": {
+    "esbuild": false
   }
 }

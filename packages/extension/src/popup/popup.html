@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>sn-mcp Session Bridge</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <header>
+      <h1>sn-mcp Session Bridge</h1>
+      <p class="sub">Read-only. Claude can only use instances you register and approve here.</p>
+    </header>
+
+    <section>
+      <h2>Registered instances</h2>
+      <p id="empty" class="muted">No instances registered yet.</p>
+      <ul id="instances"></ul>
+    </section>
+
+    <section>
+      <h2>Register an instance</h2>
+      <form id="register" autocomplete="off">
+        <label>
+          Instance URL or host
+          <input id="url" name="url" type="text" placeholder="https://dev12345.service-now.com" required />
+        </label>
+        <label>
+          Alias
+          <input id="alias" name="alias" type="text" placeholder="dev" maxlength="32" required />
+        </label>
+        <label>
+          Environment
+          <select id="env" name="env" required>
+            <option value="unclassified" selected>Unclassified (treated as PROD)</option>
+            <option value="dev">DEV</option>
+            <option value="test">TEST</option>
+            <option value="prod">PROD</option>
+          </select>
+        </label>
+        <label>
+          Label (optional)
+          <input id="label" name="label" type="text" maxlength="80" />
+        </label>
+        <button type="submit">Register and grant access to this host</button>
+      </form>
+      <p id="message" role="status"></p>
+    </section>
+
+    <script type="module" src="popup.js"></script>
+  </body>
+</html>

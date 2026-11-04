@@ -5,14 +5,17 @@
   "description": "Chrome MV3 extension: ServiceNow session bridge, instance registry and user approvals",
   "type": "module",
   "scripts": {
-    "build": "tsc -p tsconfig.json --noEmit",
+    "build": "tsc -p tsconfig.json --noEmit && node build.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "gen-key": "node scripts/gen-extension-key.mjs"
   },
   "dependencies": {
-    "@sn-mcp/shared": "0.0.0"
+    "@sn-mcp/shared": "0.0.0",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
-    "@types/chrome": "^0.3.7"
+    "@types/chrome": "^0.3.7",
+    "esbuild": "^0.28.2"
   }
 }

@@ -13,7 +13,7 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 | T-001 | Repository scaffold                             | —        | DONE        |
 | T-002 | Shared protocol schemas                         | 001      | DONE        |
 | T-003 | Shared query module + attack corpus             | 002      | DONE        |
-| T-004 | MV3 extension skeleton + minimal registry       | 001      | TODO        |
+| T-004 | MV3 extension skeleton + minimal registry       | 001      | DONE        |
 | T-005 | Live session hypothesis spike (H1–H8)           | 004      | TODO        |
 | T-006 | Native host / authenticated broker              | 002      | TODO        |
 | T-007 | Extension ↔ host port, executor, minimal grants | 005, 006 | TODO        |
@@ -171,7 +171,7 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 
 ### T-004 — MV3 extension skeleton + minimal registry
 
-- **Status:** TODO
+- **Status:** DONE
 - **Purpose:** A loadable extension with a stable ID and a way to register an instance.
 - **Dependencies:** T-001
 - **Deliverables:**
@@ -187,7 +187,25 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
   4. The manifest has no `cookies` or `externally_connectable` entries.
 - **Verification:** manual load (screenshot of the extensions page with the ID); a unit test on the manifest asserting the permission set.
 - **DoD:** load instructions in the package README.
-- **Evidence:** —
+- **Evidence (2026-11-04):**
+  - Implemented:
+    - `packages/extension/{manifest.json,build.mjs,EXTENSION_ID,README.md}` and `scripts/gen-extension-key.mjs`.
+    - `src/csp.ts` (zod `jitless`), `src/background/{index,registry}.ts` and `src/popup/{popup.html,popup.css,popup.ts}`.
+    - `test/{manifest,registry}.test.ts`; the T-001 placeholder `src/index.ts` and its test are removed.
+  - Extension ID `clipfeocpiljpcngmjpdbegciimchbol`. A second key-generator run without `--force` refuses (exit 1).
+  - Root `npm run build` → exit 0, producing `dist/{manifest.json,background.js,popup.js,popup.html,popup.css}`; `dist/manifest.json` is identical to the source.
+  - `npm test` → shared 238, server 1, extension 50 passed. `npm run lint` → exit 0.
+  - **Mutation checks** (each reverted afterwards):
+    - Adding `cookies`, adding `tabs`, turning `optional_host_permissions` into `host_permissions`, adding `externally_connectable`, a wrong `EXTENSION_ID`, and a popup requesting an extra `https://*/*` origin each fail the tests.
+  - **Live Chrome check** (Google Chrome 156.0.8078.80, headless, throwaway profile deleted afterwards). The extension was loaded with DevTools `Extensions.loadUnpacked`, since branded Chrome ignores `--load-extension`.
+    - AC1 ✔ `chrome.developerPrivate.getExtensionInfo` on `chrome://extensions` reports `state: ENABLED`, `location: UNPACKED`, and empty `installWarnings`, `manifestErrors` and `runtimeErrors`. The service worker logged `[sn-mcp] installed (install): protocol v1, 0 registered instance(s)`. No console errors in the service worker or the popup.
+    - AC2 ✔ `loadUnpacked` returned ID `clipfeocpiljpcngmjpdbegciimchbol`, the same as `EXTENSION_ID`. Inside the service worker, `chrome.runtime.id` gives the same value. Granted origins at install: `[]`.
+    - AC3 ✔ Submitting `https://DEV12345.service-now.com/now/nav/ui/classic` in the real popup, with a user gesture, called `chrome.permissions.request` exactly once with `{origins:["https://dev12345.service-now.com/*"]}`. When the request was denied, nothing was stored. Invalid hosts (`http://…`, `10.0.0.1`) are rejected before Chrome is asked. Unit tests cover the exact-origin pattern.
+    - AC4 ✔ The manifest test asserts the exact permission set, no `cookies` anywhere, and no `externally_connectable`, content scripts, web-accessible resources or `host_permissions`.
+  - Deviation (recorded in the ADR-007 addendum): tab suggestions are deferred to T-010, to avoid adding `tabs`/`activeTab` here; users paste the instance URL.
+  - Unverified:
+    - The look of Chrome's permission dialog itself (headless Chrome has no prompt UI).
+    - The granted → saved path, which needs a person to click Allow. It will be exercised when the DEV instance is registered at the start of T-005.
 
 ### T-005 — Live session hypothesis spike (H1–H8)
 
