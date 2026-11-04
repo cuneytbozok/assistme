@@ -109,7 +109,7 @@ export class FakeServiceNow {
         rows.sort((a, b) => {
           const x = String(this.value(a, o.field) ?? '');
           const y = String(this.value(b, o.field) ?? '');
-          const c = x.localeCompare(y, 'en', { numeric: true });
+          const c = x < y ? -1 : x > y ? 1 : 0; // ServiceNow-like: plain string order
           return o.descending ? -c : c;
         });
       }

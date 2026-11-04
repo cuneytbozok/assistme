@@ -92,6 +92,18 @@ function fakeExtension(ext: MockExtension) {
             });
             break;
           }
+          if (((r.op as { offset?: number }).offset ?? 0) > 0) {
+            reply({
+              type: 'sn.op',
+              instance: 'dev',
+              host: 'dev469966.service-now.com',
+              env: 'dev',
+              status: 200,
+              body: [],
+              bytes: 2,
+            });
+            break;
+          }
           state.ops.push(r);
           if (r.scopeId !== SCOPE) fail('SCOPE_UNKNOWN', 'Unknown scope. Request a new one.');
           else
@@ -294,9 +306,10 @@ describe('AC4: request → approve → claim → query (mock extension)', () => 
         source: 'table incident',
       },
       data: { records: [{ number: 'INC0000060' }] },
-      page: { returned: 1, total: 67 },
-      complete: false,
-      omitted: [{ kind: 'rows' }],
+      // The mock has one readable row (then an empty page) but counts 67: like ACL-hidden rows.
+      page: { returned: 1, has_more: false, next_cursor: null, total: 67 },
+      complete: true,
+      hints: [expect.stringMatching(/counted 67 .* 1 .*ACL/)],
     });
     expect(q.raw.structuredContent).toEqual(q.body);
     // What actually crossed the bridge: an operation descriptor, never a URL.
@@ -304,7 +317,7 @@ describe('AC4: request → approve → claim → query (mock extension)', () => 
       kind: 'sn.op',
       scopeId: SCOPE,
       instance: 'dev',
-      op: { kind: 'table.list', table: 'incident', limit: 1, offset: 0 },
+      op: { kind: 'table.list', table: 'incident', limit: 2, offset: 0 }, // limit + 1 lookahead
     });
     expect(JSON.stringify(state?.ops[0])).not.toMatch(/https?:|\/api\/now/);
   });

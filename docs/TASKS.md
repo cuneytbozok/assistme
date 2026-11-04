@@ -32,7 +32,7 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 | T-020 | Sensitive data protection                       | 017      | DONE        |
 | T-021 | Untrusted content, error catalog, SECURITY.md   | 018, 019 | DONE        |
 | T-022 | Read-only verification (M3)                     | 021      | DONE        |
-| T-023 | Response shaping, pagination, completeness      | 018      | TODO        |
+| T-023 | Response shaping, pagination, completeness      | 018      | DONE        |
 | T-024 | `query_records` full                            | 023      | TODO        |
 | T-025 | `get_record`                                    | 024      | TODO        |
 | T-026 | `discover_tables` + `describe_table`            | 017, 023 | TODO        |
@@ -933,7 +933,7 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 
 ### T-023 — Response shaping, automatic pagination, completeness contract
 
-- **Status:** TODO
+- **Status:** DONE
 - **Purpose:** Compact results that never silently truncate and can always continue (FR-6, ADR-011).
 - **Dependencies:** T-018
 - **Deliverables:**
@@ -954,7 +954,28 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
   6. `max_chars` above the ceiling is clamped, and the response says so in `hints`.
 - **Verification:** `npm test`.
 - **DoD:** response contract documented in ARCHITECTURE §8.3.
-- **Evidence:** —
+- **Evidence (2026-11-04):**
+  - Implemented (server):
+    - `cursor.ts` (HMAC-signed `CursorCodec`).
+    - `paginate.ts`: automatic paging with lookahead, budget stop, adaptive halving, an oversized-record fallback, ACL-safe end detection via count, and partial results with a continuation on mid-read errors.
+    - `compact.ts`: `defaultProjection`, `compactValue` `{v,d}`, `compactRecord` previews, `fitRecord`, `recordLink`.
+    - `response.ts`: the `listResponse` envelope.
+    - `config.ts` already held the server settings (T-018).
+    - `query_records`: `limit` default 20 with no maximum; `cursor`, `fields:["*"]` and `max_chars`; sensitive stripping per record. Filters remain for T-024.
+    - `metadata.ts`: `sys_id` is always resolvable.
+  - Tests: `test/pagination.test.ts` (new; a fake bridge over `fake-sn.ts`, every emitted operation passed through the extension's real `buildRequest`). The mock extensions in `mcp`, `scope-e2e` and `resilience` tests now honour offsets like ServiceNow; the `fake-sn` ordering is now plain string order like ServiceNow.
+  - Root build → exit 0. `npm test` → shared 240, server 168, extension 295 passed. Lint → exit 0.
+  - **Acceptance criteria:**
+    - AC1 ✔ A 5,000-row walk (`limit` 250) returns all 5,000 sys_ids exactly once, in `sys_id` order. Offsets go past 4,750, with no ceiling. A 1,200-row walk at `max_chars` 4,000 stops mid-page on the budget each time and resumes exactly there. Ordering ends with the `ORDERBYsys_id` tiebreak.
+    - AC2 ✔ A 25-trial seeded property test (random table size, limit, page size, preview size, budget, `["*"]`, long fields): whenever `has_more`, field omissions or a short result occur, `complete` is false and `omitted` is non-empty. Each `rows.next` is exactly `{query_records, {scope_id, cursor}}`. Each field `next` names the exact table, sys_id and field, with a true `total_chars` and a prefix-correct preview. Following cursors yields every row exactly once.
+    - AC3 ✔ Tampered payload, flipped signature, garbage, an empty signature, a cursor from another process key, or a cursor combined with a different table, fields or `include_total` → `INVALID_INPUT`. A new scope for the same instance continues the cursor; a PROD scope with a DEV cursor → `INVALID_INPUT`.
+    - AC4 ✔ `fields:["*"]` with `limit` 100,000 sends no `sysparm_fields`, returns every field, and walks all 700 rows via cursors.
+    - AC5 ✔ A stubbed `RESPONSE_TOO_LARGE` for windows over 12 halves the page size (41 → 21 → …) and returns 40 rows with a hint. A single record over the cap (an html `u_body`) is refetched without its large fields, with an `omitted` entry `reason: too_large` and the `get_field_content` call.
+    - AC6 ✔ `max_chars` 10,000,000 with a 50,000 ceiling → clamped, with a hint; 10 → raised to the minimum, with a hint.
+    - Also: ACL-hidden rows (stretches and every 7th row) are walked without loss; a fully hidden first window is skipped using the count; a small read costs 2 requests or fewer.
+  - **Mutation checks** (each reverted): an empty page ends without a count (2 failures), no signature check (1), no tiebreak (1), a budget stop claiming no more rows (4), a preview without an omitted entry (1), a short page advancing by rows only (2).
+  - DoD ✔ ARCHITECTURE §8.3 documents the implemented contract.
+  - Open, to verify live (T-034): `sysparm_offset` counting pre-ACL rows (ADR-011 addendum).
 
 ### T-024 — `query_records` full
 

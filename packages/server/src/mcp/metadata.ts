@@ -292,7 +292,19 @@ export class MetadataService {
     for (let i = 0; i < segments.length; i++) {
       const seg = segments[i] as string;
       const fields = await this.fields(ctx, current);
-      const f = fields.get(seg);
+      // Every ServiceNow table has sys_id, even when a dictionary read doesn't list it.
+      const f =
+        fields.get(seg) ??
+        (seg === 'sys_id'
+          ? {
+              name: 'sys_id',
+              definedOn: current,
+              label: 'Sys ID',
+              type: 'GUID',
+              mandatory: false,
+              display: false,
+            }
+          : undefined);
       if (!f) {
         const suggestions = closeMatches(seg, [...fields.keys()]);
         throw new MetadataError(

@@ -57,6 +57,8 @@ function attach(ext: MockExtension, st: ReturnType<typeof extensionState>) {
     execute: async (_host: string, op: unknown) => {
       const m = answerMetadata(op);
       if (m) return m;
+      if (((op as { offset?: number }).offset ?? 0) > 0)
+        return { ok: true as const, status: 200, body: [], bytes: 2 };
       st.executions++;
       const gate = st.gate;
       st.gate = undefined;

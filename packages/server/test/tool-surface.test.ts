@@ -116,7 +116,16 @@ describe('AC1: tool surface snapshot', () => {
       { name: 'list_instances', inputs: [], readOnly: true, destructive: false },
       {
         name: 'query_records',
-        inputs: ['fields', 'include_total', 'instance', 'limit', 'scope_id', 'table'],
+        inputs: [
+          'cursor',
+          'fields',
+          'include_total',
+          'instance',
+          'limit',
+          'max_chars',
+          'scope_id',
+          'table',
+        ],
         readOnly: true,
         destructive: false,
       },

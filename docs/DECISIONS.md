@@ -277,6 +277,8 @@ Format: Status · Context · Decision · Alternatives considered · Consequences
   - Deep offset pages on very large tables can be slow. The per-request timeout protects the instance, and the timeout hint suggests narrowing the order or range. Keyset pagination is a possible later optimization if live use shows a need.
   - Offset pagination over data that changes during the walk can skip or repeat rows. Each page reports `retrieved_at`.
 
+
+- *Addendum (T-023, 2026-11-04): ACL-hidden rows and paging.* ServiceNow applies row-level ACLs after windowing (`sysparm_offset` counts rows before ACL filtering), so short or empty pages don't prove the end. The paginator counts a short window as read and, after a short or empty page, uses the total count (which includes hidden rows) to decide whether to skip a fully hidden window. **To verify live in T-034:** that `sysparm_offset` counts pre-ACL rows. If it counts post-ACL rows, advancing by the window would skip readable rows, and the window advance must change to rows received. Accepted cost: one extra request (a count) at the end of a read.
 ## ADR-012 — Role-agnostic connector
 
 - **Status:** Accepted (2026-11-04, user-directed)

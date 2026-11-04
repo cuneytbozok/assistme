@@ -341,6 +341,15 @@ Optimize *how* Claude retrieves information, not *how much* it may investigate. 
 ```
 `omitted[].kind` is one of `rows`, `field`, `relation`, `table`, `source` (for example, ACL denied on one history source) or `groups`.
 
+**Implementation (T-023, `server/src/mcp/{cursor,paginate,compact,response}.ts`):**
+
+- `page`: `returned` (this result), `returned_total` (all calls with this cursor chain), `has_more`, `next_cursor` (null when done), `total` (only with `include_total`). Every list result also carries `requests_used` and `untrusted_content`.
+- `complete` is true only when `has_more` is false **and** `omitted` is empty. A `rows` entry carries `reason` (`limit`, `response_budget`, `error`), a note and `next: {tool, args:{scope_id, cursor}}`. Each `field` entry carries `reason` (`preview`, `response_budget`, `too_large`), `sys_id`, `field`, `shown_chars`, `total_chars` (null if unknown) and the `get_field_content` call (the tool arrives in T-027). Stripped credential fields appear as `{kind:"fields", reason:"sensitive", fields}`.
+- Values: `{value, display_value}` becomes the plain value when they're equal, else `{v, d}`. Explicit projections always include `sys_id` (links and next calls need it). `links` holds classic-UI record links for the user; they are never fetched.
+- Budget: rows are added while `max_chars` − 2,500 characters (envelope reserve) allows. The first record is shrunk (largest fields first, each listed in `omitted`) rather than dropped. `max_chars` is clamped to 4,000…`SN_MCP_MAX_RESPONSE_CHARS`, with a hint when clamped.
+- **ACL-hidden rows:** ServiceNow removes rows the user can't read **after** windowing, so a page can be short, or even empty, while more matching rows follow. Neither proves the end. After one, the next request asks for the total count (which includes hidden rows); when matching rows exist past the current offset, a fully hidden window is skipped. A small read costs one data request plus at most one count check. When `include_total` shows more rows than were readable, a hint explains the difference.
+- Cursors: HMAC-SHA256 over the state with a random per-process key (restarting the server invalidates cursors → `INVALID_INPUT`). The state is instance, table, final query, fields, display mode, offset, limit and rows seen. A cursor can't be combined with `table`, `fields` or `include_total`; `limit` and `max_chars` may change per call.
+
 Errors: `isError: true`, `{"ok":false,"error":{"code","message","hint","candidates?"}}`.
 
 **Error codes:** `SCOPE_REQUIRED, SCOPE_UNKNOWN, SCOPE_EXPIRED, SCOPE_NOT_APPROVED, REQUEST_DENIED, INSTANCE_NOT_REGISTERED, INSTANCE_NOT_IN_SCOPE, BRIDGE_UNAVAILABLE, BROKER_CONFLICT, NO_INSTANCE_TAB, SESSION_EXPIRED, ACL_DENIED, NOT_FOUND, AMBIGUOUS_MATCH, INVALID_INPUT, INVALID_FIELD, UNSAFE_QUERY, FORBIDDEN_OPERATION, TABLE_DENIED, RATE_LIMITED, RESPONSE_TOO_LARGE, TIMEOUT, SN_API_ERROR`.

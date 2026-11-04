@@ -61,6 +61,9 @@ function realAuthzExtension(ext: MockExtension) {
     execute: async (host: string, op: unknown) => {
       const m = answerMetadata(op);
       if (m) return m;
+      // Like ServiceNow: rows only in the first window; later windows are empty (end of data).
+      if (((op as { offset?: number }).offset ?? 0) > 0)
+        return { ok: true as const, status: 200, body: [], bytes: 2 };
       fetched.push(host);
       const table = (op as { table?: string }).table;
       return {
@@ -398,9 +401,9 @@ describe('T-012 scope enforcement end to end (real authz.ts)', () => {
     // Only metadata reads and the one data read on alpha happened: no scope request, no other
     // instance, no denied table, no release.
     expect(sent.every((k) => k.startsWith('sn.op:') && k.endsWith('@alpha'))).toBe(true);
-    expect(sent.filter((k) => !/sys_db_object|sys_dictionary|sys_choice/.test(k))).toEqual([
-      'sn.op:incident_task@alpha',
-    ]);
+    const dataReads = sent.filter((k) => !/sys_db_object|sys_dictionary|sys_choice/.test(k));
+    expect(dataReads.length).toBeGreaterThan(0);
+    expect(new Set(dataReads)).toEqual(new Set(['sn.op:incident_task@alpha']));
     // The scope still works and still covers only alpha; the "scope id" in the text is not a key.
     expect((await call('query_records', { scope_id: alpha, table: 'incident' })).body.ok).toBe(
       true,
