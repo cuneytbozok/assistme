@@ -125,6 +125,25 @@ Security-relevant codes: `TABLE_DENIED` (credential table, also via dot-walk),
 - Live checks against a real instance are recorded in `docs/evidence/` and `docs/POC_RESULTS.md`. Mocks are never treated as evidence of live behavior.
 - Read-only verification across the whole system: T-022 (Milestone M3).
 
+## 5a. ServiceNow `snc_read_only` role (T-022)
+
+ServiceNow's `snc_read_only` role makes a session read-only at the platform level (writes are
+refused, except for a few exempt system updates). Combined with this connector's own GET-only
+design it would give defense in depth.
+
+**Status: not yet evaluated (2026-11-04).** It needs a dedicated `admin + snc_read_only` user on
+the DEV instance. Creating that user is a write to the instance, which the connector can't do and
+Claude shouldn't do for the user. The connector's own read-only guarantees don't depend on it:
+GET-only templates, the tool surface snapshot, and fuzz tests (30,000 tool calls and 10,000
+builder cases).
+
+Procedure for the user:
+
+1. On DEV, create a user (e.g. `sn_mcp_ro`) with roles `admin` and `snc_read_only`, and set a password.
+2. Log in to DEV as that user in Chrome, and run the connector (list, request, claim, query) as usual.
+3. Expected: every read works. Review the exempt properties (`glide.security.snc_read_only_role.exempt_tables` / related system properties) and note which tables stay writable for that role.
+4. Record the results here (date, instance build, what worked, the exempt list).
+
 ## 6. Residual risks
 
 | Risk | Why it remains | Mitigation |

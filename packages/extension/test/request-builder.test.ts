@@ -164,7 +164,7 @@ describe('AC1: only GET, two templates, allowlisted params, granted host', () =>
     ).not.toThrow();
   });
 
-  it('fuzz: random and hostile operations never yield an unsafe request', () => {
+  it('fuzz (10,000 cases): random and hostile operations never yield an unsafe request', () => {
     let seed = 42;
     const rnd = () => {
       seed = (seed * 1103515245 + 12345) & 0x7fffffff;
@@ -197,7 +197,7 @@ describe('AC1: only GET, two templates, allowlisted params, granted host', () =>
         pick([...junk, 'incident', 'a', 'sys_id', 'number']),
       ).join('');
     let built = 0;
-    for (let i = 0; i < 3000; i++) {
+    for (let i = 0; i < 10_000; i++) {
       const kind = pick([
         'table.list',
         'table.get',

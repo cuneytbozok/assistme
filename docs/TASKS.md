@@ -31,7 +31,7 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 | T-019 | Per-request safeguards & settings               | 016      | DONE        |
 | T-020 | Sensitive data protection                       | 017      | DONE        |
 | T-021 | Untrusted content, error catalog, SECURITY.md   | 018, 019 | DONE        |
-| T-022 | Read-only verification (M3)                     | 021      | TODO        |
+| T-022 | Read-only verification (M3)                     | 021      | DONE        |
 | T-023 | Response shaping, pagination, completeness      | 018      | TODO        |
 | T-024 | `query_records` full                            | 023      | TODO        |
 | T-025 | `get_record`                                    | 024      | TODO        |
@@ -905,7 +905,7 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 
 ### T-022 — Read-only verification (Milestone M3)
 
-- **Status:** TODO
+- **Status:** DONE
 - **Purpose:** Prove AC-9 and evaluate `snc_read_only`.
 - **Dependencies:** T-021
 - **Deliverables:**
@@ -919,7 +919,17 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
   3. The snc_read_only results are documented, or marked untested with the reason.
 - **Verification:** `npm test`; manual DEV session.
 - **DoD:** M3 marked achieved.
-- **Evidence:** —
+- **Evidence (2026-11-04):**
+  - Implemented:
+    - `server/test/tool-surface.test.ts` (new). The snapshot test and a 30,000-call tool-input fuzz run through the real MCP server; every emitted operation goes through the **extension's real** `buildRequest`.
+    - `extension/test/request-builder.test.ts`: builder fuzz raised to 10,000 cases. It lives there rather than in a separate `builder-fuzz.test.ts`.
+    - `docs/SECURITY.md` §5a: the `snc_read_only` status and procedure.
+  - Root build → exit 0. `npm test` → shared 240, server 153, extension 295 passed. Lint → exit 0.
+  - **Acceptance criteria:**
+    - AC1 ✔ `tools/list` is exactly `claim_scope, list_instances, query_records, release_scope, request_scope`: all `readOnlyHint: true`, `destructiveHint: false`, strict (`additionalProperties: false`), with exact input-name snapshots and no url/method/header/path/body/script inputs.
+    - AC2 ✔ 30,000 random tool calls: 28,923 refused, including unknown tools (`http_request`, `run_script`, `update_record`), smuggled `url`/`method`/`headers` keys, bad types, unknown fields and other instances. All 904 emitted data operations built to GET on a template path with allowlisted parameters on the granted host. Plus 10,000 direct builder cases.
+    - AC3 ✔ (marked untested with the reason) `snc_read_only` isn't evaluated yet: it needs a dedicated user created on the PDI, which is a write the connector can't make and Claude shouldn't make for the user. The procedure is in SECURITY.md §5a.
+  - **Milestone M3 (read-only and query hardening): ACHIEVED 2026-11-04**, with the `snc_read_only` live evaluation outstanding (user action, optional defense in depth).
 
 ## Phase 4 — General-purpose tools (Milestone M4)
 

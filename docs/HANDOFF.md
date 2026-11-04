@@ -1,6 +1,6 @@
 # Handoff
 
-_Last updated: 2026-11-04 (after T-021)_
+_Last updated: 2026-11-04 (after T-022, M3)_
 
 ## Current project state
 
@@ -40,6 +40,8 @@ _Last updated: 2026-11-04 (after T-021)_
 
 ## Milestones
 
+- **M3 — Read-only and query hardening: ACHIEVED (2026-11-04, T-022)**, with the `snc_read_only` evaluation outstanding (needs a user created on the PDI; SECURITY.md §5a).
+- **M2 — Live scope acceptance: BLOCKED** (T-015: needs a second instance).
 - **M1 — PoC end to end: ACHIEVED (2026-11-04, T-009).**
   - Claude Desktop chat and a Claude Code session each read INC0000060 from `dev469966` through MCP → broker → extension → Table API, after user approval.
   - The capture check, including the exact-token check, passed.
@@ -49,8 +51,9 @@ _Last updated: 2026-11-04 (after T-021)_
 - **Current task:** none (nothing IN_PROGRESS).
 - **Last completed task:** T-016 — Extension request builder hardening (commit `T-016: request builder hardening`).
 - **Blocked:** T-015 (live scope acceptance, M2) has no second instance for PROD checks (see TASKS T-015).
-- **Last completed task:** T-021 — Untrusted content, error catalog, SECURITY.md.
-- **Next tasks:** T-022 (read-only verification, M3; depends on T-021 ✔) and T-023 (response shaping; depends on T-018 ✔).
+- **Last completed task:** T-022 — Read-only verification (M3).
+- **Next task:** T-023 (response shaping, automatic pagination, completeness contract; depends on T-018 ✔), then T-024 (`query_records` full).
+- **Waiting on the user:** T-015 live run (second instance); `snc_read_only` evaluation (optional); `REQUEST_DENIED` vs `status: denied` (T-015 AC6); fail-closed dictionary validation (ADR-005 addendum).
 - **Open decision for the user:** dictionary validation fails closed when the user can't read `sys_dictionary` (ADR-005 addendum).
 - **T-015 must include:** logout in the user's own profile → `SESSION_EXPIRED` with no sign-in dialog (T-013 AC4). Fallback if a dialog appears: the DNR rule in the ADR-002 addendum.
 - **Claude Desktop runs the old server build** until it's restarted (`npm run build` done). Restart it before live checks (T-015).
