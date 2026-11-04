@@ -28,6 +28,13 @@ Format: Status · Context · Decision · Alternatives considered · Consequences
   - A one-time install step for the host manifest.
   - System Node is required for the host (Desktop's bundled Node isn't visible to Chrome). Future: a Node SEA binary.
   - One Chrome profile at a time (`BROKER_CONFLICT`).
+- *Addendum (T-006, 2026-11-04):*
+  - **Framing:** client↔broker uses the same 4-byte LE length-prefixed JSON framing as native messaging.
+  - **HMAC inputs** are joined with `\n`.
+  - **Broker limits:** per-client in-flight cap of 64, with no request quota (ADR-011). Duplicate in-flight IDs are rejected. Requests unanswered after 330 s get `TIMEOUT`.
+  - **Auth failures:** after 5 failed authentications in 60 s (including 2 s timeouts), new connections are refused until the window clears.
+  - **Installer group rule:** group-writable directories are accepted only for root-equivalent groups (`admin` 80, `wheel` 0), so Homebrew Node installs work. World-writable directories and other groups are refused.
+  - **File locations:** the installer lives in `src/install/installer.ts` + `src/bin/install-native-host.ts` (compiled), not `scripts/`, so it runs without a TS runtime. Client handshake: `src/bridge/handshake.ts` (reused by T-008).
 
 ## ADR-002 — Session access path
 

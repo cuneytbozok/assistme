@@ -15,7 +15,7 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 | T-003 | Shared query module + attack corpus             | 002      | DONE        |
 | T-004 | MV3 extension skeleton + minimal registry       | 001      | DONE        |
 | T-005 | Live session hypothesis spike (H1–H8)           | 004      | DONE        |
-| T-006 | Native host / authenticated broker              | 002      | TODO        |
+| T-006 | Native host / authenticated broker              | 002      | DONE        |
 | T-007 | Extension ↔ host port, executor, minimal grants | 005, 006 | TODO        |
 | T-008 | Minimal MCP server                              | 006, 003 | TODO        |
 | T-009 | PoC end-to-end in Claude Code + Desktop (M1)    | 007, 008 | TODO        |
@@ -249,14 +249,14 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 
 ### T-006 — Native host / authenticated broker
 
-- **Status:** TODO
+- **Status:** DONE
 - **Purpose:** A secure relay between MCP processes and the extension (ADR-001).
 - **Dependencies:** T-002
 - **Deliverables:**
   - `framing.ts`: native-messaging 4-byte LE length prefix, max sizes.
   - `socket-guard.ts`: directory 0700, umask, lstat checks, pid lock, stale/conflict detection.
   - `auth.ts`: key generation, atomic write 0600, HMAC mutual challenge-response, 2 s auth timeout, failure rate limit.
-  - `broker.ts`: client registry, ID rewriting, per-client rate and in-flight limits, routing, `BROKER_CONFLICT`.
+  - `broker.ts`: client registry, ID rewriting, per-client in-flight limit (64; no request quota, per ADR-011), routing, `BROKER_CONFLICT`.
   - `main.ts`: argv origin check; exits and cleans up on stdin close.
   - `scripts/install-native-host.ts`: wrapper + manifest with a single allowed origin, refusing writable parent directories; `--uninstall`.
 - **Files:** `packages/server/src/native-host/*`, `packages/server/src/bin/native-host.ts`, `packages/server/scripts/install-native-host.ts`, tests
@@ -272,7 +272,41 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
   9. The installer writes a manifest with exactly one origin.
 - **Verification:** `npm test -w packages/server` (integration tests spawn the host with a fake extension over stdio, labelled mock); manual `npm run install-native-host -- --dry-run`.
 - **DoD:** no log line contains message bodies (asserted in a test).
-- **Evidence:** —
+- **Evidence (2026-11-04):**
+  - **Implemented:**
+    - `packages/server/src/native-host/{framing,auth,socket-guard,logger,broker,main}.ts`.
+    - `src/bin/{native-host,install-native-host}.ts`, `src/install/installer.ts`, and `src/bridge/handshake.ts` (client side, for T-008).
+    - Shared `EXTENSION_ID`, `EXTENSION_ORIGIN` and `NATIVE_HOST_NAME` (`packages/shared/src/extension-id.ts`). An extension test asserts the ID matches `packages/extension/EXTENSION_ID`.
+  - **Tests:** `npm test -w @sn-mcp/server` (build + vitest) → 38 passed in 4 files. All of them use a MOCK extension (in-memory, or stdio of the spawned host); none is evidence of ServiceNow connectivity.
+  - **Acceptance criteria:**
+    - AC1 ✔ A silent client, and a client that receives a challenge but can't prove the key, are both disconnected in ≤2.3 s (test bound; the timer is 2 s).
+    - AC2 ✔ A wrong `clientProof` → disconnected, no `auth_ok`. After 3 failures (test limiter), even a correct client is refused, logged as `auth_rate_limited`.
+    - AC3 ✔ An impostor socket server that doesn't know the key but accepts anything is rejected with `BROKER_AUTH_FAILED` ("broker proof mismatch"). It only ever received `hello`, so the client never sent its proof. A real broker with a rotated key is also rejected.
+    - AC4 ✔ Startup is refused (`UNSAFE_PATH`; host exit 78) for:
+      - runtime dir: symlink, mode 755, foreign uid, or not a directory;
+      - socket path: symlink, regular file, mode 666, or foreign uid;
+      - key: mode 644, symlink, or foreign uid.
+    - AC5 ✔ A stale socket (left by a SIGKILLed listener) is removed and rebound. A second host on a live socket sends `broker.status: conflict` and exits 75. After a host crash (SIGKILL), a new host recovers the stale socket and lock and serves clients. A pid lock held by a live process → `BROKER_CONFLICT`; held by a dead one → replaced.
+    - AC6 ✔ Two clients both send request id `1`. Forwarded ids are distinct broker ids, neither is `1`, and the client keyIds differ. Answering in reverse order, each client gets only its own result.
+    - AC7 ✔ Wrong extension origin, a web origin, and a missing origin each exit 64, before the runtime directory is created.
+    - AC8 ✔ On stdin close, the spawned host exits 0 and removes `broker.sock`, `broker.key` and `broker.pid`. Pending requests get `BRIDGE_UNAVAILABLE` (in-process test).
+    - AC9 ✔ The manifest is `{name: com.snmcp.bridge, path: <wrapper>, type: stdio, allowed_origins: [chrome-extension://clipfeocpiljpcngmjpdbegciimchbol/]}`, with wrapper 0755 and manifest 0644. Uninstall removes both.
+  - **Also tested:**
+    - in-flight cap → `RATE_LIMITED`; duplicate in-flight id → `INVALID_INPUT`; unanswered request → `TIMEOUT`;
+    - request before auth, malformed frames, oversized frames (>256 KB announced in the header) and hello-after-auth all close the client;
+    - responses for disconnected clients are dropped and never replayed;
+    - registry updates are broadcast; pings answered;
+    - installer: wrapper quoting of spaces and single quotes; refusal of world-writable and staff-group-writable ancestors; acceptance of admin-group-writable ones.
+  - **DoD ✔:** markers placed in a request `purpose` and a response body never appear in the in-memory log or in the spawned host's `broker.log` (0600). Client key IDs are logged as 8-char prefixes only.
+  - **Mutation checks** (each reverted afterwards): skipping the client-proof check, no id rewriting, no origin check, the client skipping the broker-proof check, socket mode 666, and no auth timeout each fail at least one test.
+  - **Bugs found and fixed during testing:**
+    - A shutdown race: two `stop()` callers made the process exit before the key was removed. `stop()` is now idempotent and every caller awaits it.
+    - The installer refused Homebrew's group-`admin` 775 Cellar; the group rule is now documented in the ADR-001 addendum.
+  - **Manual:** `npm run install-native-host -- --dry-run` printed the wrapper (`exec '/opt/homebrew/Cellar/node@24/24.21.0/bin/node' '…/packages/server/dist/bin/native-host.js' "$@"`) and the manifest with exactly one origin. Nothing was written; no `com.snmcp.bridge` manifest exists.
+  - Root `npm run build`, `npm test` (shared 240, server 38, extension 50) and `npm run lint` → exit 0.
+  - **Unverified:**
+    - Launch by real Chrome via `connectNative`. The host isn't installed yet, and the extension side is T-007; this is covered by T-007/T-009.
+
 
 ### T-007 — Extension ↔ host port, executor, minimal grants
 

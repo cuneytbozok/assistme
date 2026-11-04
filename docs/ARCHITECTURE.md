@@ -65,7 +65,16 @@ Out of scope: malware running as the same macOS user (it can read Chrome's profi
 
 - The manifest (`~/Library/Application Support/Google/Chrome/NativeMessagingHosts/<name>.json`) lists exactly one `allowed_origins` entry: the extension's stable ID, which comes from a fixed `key` in `manifest.json`.
 - The host checks that `argv[1]` equals `chrome-extension://<ID>/` and exits otherwise.
-- The wrapper script uses an absolute Node path. The installer refuses group- or world-writable directories in the path. Modes: wrapper 0755, manifest 0644, user-owned.
+- The host name is `com.snmcp.bridge`. The wrapper is `~/Library/Application Support/sn-mcp/host/native-host`, and the manifest is `~/Library/Application Support/Google/Chrome/NativeMessagingHosts/com.snmcp.bridge.json`.
+- The wrapper script runs an absolute (resolved) Node path. Re-run the installer after upgrading Node.
+- The installer refuses any directory in the Node, host-script, wrapper or manifest paths that is:
+  - a symlink,
+  - owned by another user (other than root),
+  - world-writable,
+  - or group-writable by a group other than `admin`/`wheel`. Members of those groups can already become root; Homebrew's `/opt/homebrew/Cellar` is 775 group `admin`.
+- Modes: wrapper 0755, manifest 0644, user-owned.
+- Host exit codes: 64 wrong origin, 78 unsafe runtime path, 75 `BROKER_CONFLICT` (after sending `broker.status: conflict`), 0 normal shutdown.
+- `SN_MCP_RUNTIME_DIR` overrides the runtime directory (used by tests). The same checks apply.
 
 ### 4.2 Socket guard
 

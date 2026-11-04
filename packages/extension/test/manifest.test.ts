@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { EXTENSION_ID } from '@sn-mcp/shared';
 import { describe, expect, it } from 'vitest';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -67,6 +68,9 @@ describe('manifest.json', () => {
     expect(typeof manifest.key).toBe('string');
     expect(extensionId).toMatch(/^[a-p]{32}$/);
     expect(idFromKey(manifest.key as string)).toBe(extensionId);
+    expect(EXTENSION_ID, 'shared EXTENSION_ID must match packages/extension/EXTENSION_ID').toBe(
+      extensionId,
+    );
   });
 
   it('contains a public key only (SPKI DER), never a private key', () => {

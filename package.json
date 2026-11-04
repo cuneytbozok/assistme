@@ -17,7 +17,8 @@
     "typecheck": "npm run typecheck --workspaces",
     "test": "npm run test --workspaces",
     "lint": "biome check .",
-    "format": "biome check --write ."
+    "format": "biome check --write .",
+    "install-native-host": "npm run install-native-host -w @sn-mcp/server --"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.6.5",

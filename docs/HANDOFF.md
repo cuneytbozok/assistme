@@ -1,6 +1,6 @@
 # Handoff
 
-_Last updated: 2026-11-04 (after T-005)_
+_Last updated: 2026-11-04 (after T-006)_
 
 ## Current project state
 
@@ -39,24 +39,30 @@ _Last updated: 2026-11-04 (after T-005)_
 ## Tasks
 
 - **Current task:** none (nothing IN_PROGRESS).
-- **Last completed task:** T-005 — Live session hypothesis spike.
-  - Commits: `T-005: session diagnostics spike` (`08aa721`, spike code kept for history) and `T-005: live session results, ADR-002 accepted (Path A)`.
-- **Outcome:**
-  - **ADR-002 Accepted: Path A.** The service worker sends `fetch(credentials:'include')` with `X-UserToken` = `g_ck`, read via MAIN-world `executeScript` from an open tab of the granted host. See `docs/POC_RESULTS.md`.
-  - **New T-013 requirement:** suppress Chrome's native HTTP-auth dialog, which appeared on logged-out requests and blocked them until cancelled.
-- **Next task:** **T-006 — Native host / authenticated broker** (depends on T-002 ✔). No live instance is needed.
-- **T-007** needs T-005 ✔ and T-006.
+- **Last completed task:** T-006 — Native host / authenticated broker (commit `T-006: native host and authenticated broker`).
+- **Next task:** **T-007 — Extension ↔ host port, executor, minimal grants.** It depends on T-005 ✔ and T-006 ✔.
+  - It needs the native host installed for real: `npm run build && npm run install-native-host`. That writes the wrapper to `~/Library/Application Support/sn-mcp/host/` and the manifest to Chrome's `NativeMessagingHosts/com.snmcp.bridge.json`.
+  - Live checks need the user to reload the extension in their Chrome.
+- **Also eligible:** T-008 (minimal MCP server), which depends on T-006 ✔ and T-003 ✔. It can reuse `src/bridge/handshake.ts` (`connectToBroker`).
 
 ## Files changed in last task
 
-- New: `docs/POC_RESULTS.md`.
-- Spike (added, then removed; see `08aa721`): `packages/extension/src/background/{session,diagnostics-handler}.ts`, `src/diagnostics/*`, `src/globals.d.ts`, `test/session-spike.test.ts`, `build:diag` script.
-- Docs: DECISIONS (ADR-002 Accepted), ARCHITECTURE §7, TASKS (T-003 note, T-004 user confirmation, T-005 evidence, T-013 requirement), HANDOFF.
+- New:
+  - `packages/server/src/native-host/{framing,auth,socket-guard,logger,broker,main}.ts`
+  - `src/bin/{native-host,install-native-host}.ts`, `src/install/installer.ts`, `src/bridge/handshake.ts`
+  - `test/{helpers,units,broker,native-host.integration,installer}.test.ts` (helpers is not a test file)
+  - `packages/shared/src/extension-id.ts`
+- Removed: `packages/server/test/index.test.ts` (placeholder).
+- Modified:
+  - server `package.json` (`test` = build + vitest, `install-native-host`, `bin`)
+  - root `package.json` (`install-native-host`), shared `index.ts`, the extension manifest test (shared-ID sync)
+- Docs: TASKS (T-006 evidence, broker-limit wording per ADR-011), ARCHITECTURE §4.1, DECISIONS (ADR-001 addendum), HANDOFF.
 
 ## Tests performed
 
-- Live: three diagnostic sessions on `dev469966.service-now.com` (Chrome 156), run by the user.
-- After removing the spike: root build, tests (shared 240, server 1, extension 50) and lint all exit 0.
+- Root build, tests (shared 240, server 38, extension 50) and lint all exit 0.
+- Mutation checks on six security checks.
+- Installer dry run on this Mac.
 
 ## Open blockers
 
@@ -75,6 +81,7 @@ _Last updated: 2026-11-04 (after T-005)_
 - **Dependencies:** `zod@4.6.7` is in shared. `@modelcontextprotocol/server` isn't installed yet (comes in T-008; re-check the version with `npm view`).
 - **Query module usage:** use `compileFilter(input, {allowTextSearch})` for structured input. Use `parseEncodedQuery(q, {profile:'strict'})` for raw model input in the server, and `{profile:'enforce'}` in the extension. `referencedFields` feeds dictionary validation (T-018). To verify live in T-005: `RELATIVEGE@unit@ago@n` and plain-date `BETWEEN`.
 - **Loading the extension headlessly for checks:** branded Chrome ignores `--load-extension`. Use `--headless=new --enable-unsafe-extension-debugging --remote-debugging-port=N` with a throwaway `--user-data-dir`, then the CDP `Extensions.loadUnpacked`. `chrome.developerPrivate.getExtensionInfo(id)` on `chrome://extensions` gives the errors and warnings.
+- **Native host runtime files:** `~/Library/Application Support/sn-mcp/` (0700) holds `broker.sock` (0600), `broker.key` (0600, rotates per start), `broker.pid` and `broker.log` (0600, metadata only). Host exit codes: 64 bad origin, 78 unsafe path, 75 conflict.
 - **Docs editing:** Biome formatted the markdown once, so headings are followed by a blank line (`### T-00N — …\n\n- **Status:** …`). Match that when scripting status edits.
 - **Workspace build order** is the `workspaces` array order (shared → server → extension). The server resolves `@sn-mcp/shared` via `dist/`, so build shared before running server type-checks.
 - **Paths:**
