@@ -9,6 +9,7 @@
 import type { Grants } from './grants.js';
 import type { BridgeState } from './port.js';
 import { type InstanceEntry, originPattern, type Registry } from './registry.js';
+import type { ConnectionState } from './session.js';
 
 export type PopupMessage =
   | { type: 'popup.state' }
@@ -26,6 +27,7 @@ export type PopupMessage =
       ttlMinutes?: number;
     }
   | { type: 'popup.revokeAll' }
+  | { type: 'popup.checkStatus' }
   | { type: 'popup.deny'; requestId: string }
   | { type: 'popup.revoke'; grantId: string };
 
@@ -47,6 +49,8 @@ export interface PopupApiDeps {
   removePermission?: (origin: string) => Promise<boolean>;
   bridgeState: () => BridgeState;
   onChanged: () => void;
+  /** Connection states by alias (T-013). `probe` is set when the user opens the popup. */
+  connections?: (opts: { probe: boolean }) => Promise<Record<string, ConnectionState>>;
 }
 
 export async function handlePopupMessage(raw: unknown, d: PopupApiDeps): Promise<unknown> {
@@ -60,7 +64,11 @@ export async function handlePopupMessage(raw: unknown, d: PopupApiDeps): Promise
         pending: snap.pending,
         grants: snap.grants,
         registry: await d.registry(),
+        connections: d.connections ? await d.connections({ probe: false }) : {},
       };
+    }
+    case 'popup.checkStatus': {
+      return { ok: true, connections: d.connections ? await d.connections({ probe: true }) : {} };
     }
     case 'popup.approve': {
       if (typeof m.requestId !== 'string') return { ok: false, message: 'invalid request' };

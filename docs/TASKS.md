@@ -22,7 +22,7 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 | T-010 | Full instance registry                          | 007      | DONE        |
 | T-011 | Full grant model                                | 010      | DONE        |
 | T-012 | MCP scope enforcement                           | 008, 011 | DONE        |
-| T-013 | Session lifecycle & status                      | 011      | TODO        |
+| T-013 | Session lifecycle & status                      | 011      | DONE        |
 | T-014 | Bridge resilience                               | 012      | TODO        |
 | T-015 | Live scope acceptance (M2)                      | 013, 014 | TODO        |
 | T-016 | Extension request builder hardening             | 007, 003 | TODO        |
@@ -607,7 +607,7 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 
 ### T-013 — Session lifecycle & status
 
-- **Status:** TODO
+- **Status:** DONE
 - **Purpose:** Detect and report session state safely (FR-1.5, AC-2, AC-15).
 - **Dependencies:** T-011
 - **Deliverables:**
@@ -623,7 +623,22 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
   4. On a logged-out instance, connector requests return `SESSION_EXPIRED` without any browser sign-in dialog (live check in T-015).
 - **Verification:** unit tests with stubbed responses; live check deferred to T-015.
 - **DoD:** —
-- **Evidence:** —
+- **Evidence (2026-11-04):**
+  - Implemented:
+    - `session.ts` (`SessionTracker`, `describeState`).
+    - `index.ts`: executor outcomes feed the tracker; 30 s refresh plus tab/permission events; `registry.update` pushed on state changes.
+    - `authz.ts`: `registry.get` reports `connection`. `popup-api.ts`: `connections` in `popup.state`; `popup.checkStatus` (probes when the popup opens).
+    - Popup: a status line per instance.
+    - Token acquisition, refresh and 401 handling stay in `executor.ts` (one re-read and retry, then `SESSION_EXPIRED` and clear).
+    - Tests: `test/session.test.ts` (new).
+  - **No credential prompts** (deliverable): measured and decided in ADR-002 addendum and `docs/evidence/T-013/README.md`. `X-UserToken` makes ServiceNow send `WWW-Authenticate: none`; `X-Requested-With` doesn't help. No manifest change.
+  - Root build → exit 0. `npm test` → shared 240, server 66, extension 131 passed. Lint → exit 0.
+  - **Acceptance criteria:**
+    - AC1 ✔ Two hosts. A's session ends → A's request gets `SESSION_EXPIRED` after exactly two attempts (initial + one retry with a re-read token), both to A only. Only A's token is cleared; B keeps working with its cached token.
+    - AC2 ✔ Through the real `authz.ts` with a granted scope: success → logout → `SESSION_EXPIRED` (tracker: `session_expired`) → re-login with a new tab token → the next `sn.op` succeeds with the **same** grant (still one grant), and the tracker shows `connected`.
+    - AC3 ✔ Requests update state immediately. Local changes (tab closed, permission removed) show up on the next 30 s refresh or tab/permission event. Expired hosts are re-probed at most every 30 s and recover after re-login; unknown hosts are probed only on popup open. Concurrent checks share one probe.
+    - AC4 ◐ Live against the logged-out PDI in a **throwaway** headed profile, running the real extension code: `session_expired`, correct popup text, no dialog, no hang. Raw service-worker fetches gave 401 in 0.3–1.7 s in every variant. The check in the user's own profile remains for T-015, as the task plans.
+  - **Mutation checks** (each reverted): token not cleared on expiry (2 failures), no reset when all tabs close (1), no re-probe throttle (1), probing unknown hosts without the popup (1).
 
 ### T-014 — Bridge resilience
 

@@ -591,3 +591,33 @@ section,
 .field {
   grid-template-columns: minmax(0, 1fr);
 }
+
+.status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 3px;
+  font-size: 11.5px;
+  color: var(--muted);
+}
+.status .dot {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--faint);
+}
+.status.connected {
+  color: var(--ok);
+}
+.status.connected .dot {
+  background: var(--ok);
+}
+.status.session_expired,
+.status.no_permission {
+  color: var(--warn);
+}
+.status.session_expired .dot,
+.status.no_permission .dot {
+  background: var(--warn);
+}

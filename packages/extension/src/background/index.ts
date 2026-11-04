@@ -9,13 +9,46 @@ import { ChromeTokenProvider, Executor } from './executor.js';
 import { badgeFor, browserGrantDeps, chromeGrantStorage, Grants } from './grants.js';
 import { handlePopupMessage, isPopupSender } from './popup-api.js';
 import { BridgePort, type BridgeState, chromeConnect } from './port.js';
-import { chromeRegistryStorage, REGISTRY_STORAGE_KEY, Registry } from './registry.js';
+import {
+  chromeRegistryStorage,
+  originPattern,
+  REGISTRY_STORAGE_KEY,
+  Registry,
+} from './registry.js';
+import { type ConnectionState, SessionTracker, STATUS_REFRESH_MS } from './session.js';
 
 const registry = new Registry(chromeRegistryStorage());
 const grants = new Grants(chromeGrantStorage(), browserGrantDeps);
 const tokens = new ChromeTokenProvider();
 const executor = new Executor({ fetch: (...a) => fetch(...a), tokens });
 let bridgeState: BridgeState = { state: 'connecting' };
+const PROBE_OP = { kind: 'probe' } as const;
+const session = new SessionTracker({
+  hasPermission: (host) => chrome.permissions.contains({ origins: [originPattern(host)] }),
+  hasTab: async (host) => (await chrome.tabs.query({ url: `https://${host}/*` })).length > 0,
+  probe: (host) => executor.run(host, PROBE_OP),
+  now: () => Date.now(),
+});
+let connectionStates = new Map<string, ConnectionState>();
+
+/** Runs an operation and lets the session tracker learn from its outcome. */
+async function execute(host: string, op: unknown) {
+  const r = await executor.run(host, op);
+  session.record(host, r);
+  void refreshConnections();
+  return r;
+}
+
+/** Re-evaluates every instance's state; pushes registry.update when anything changed. */
+async function refreshConnections(probe = false): Promise<Map<string, ConnectionState>> {
+  const hosts = (await registry.list()).map((e) => e.host);
+  const { states, changed } = await session.refresh(hosts, connectionStates, {
+    probeUnknown: probe,
+  });
+  connectionStates = states;
+  if (changed) void sendRegistryUpdate();
+  return states;
+}
 
 async function updateBadge(): Promise<void> {
   const { pending, grants: active } = await grants.snapshot();
@@ -51,7 +84,7 @@ async function sendRegistryUpdate(): Promise<void> {
     host: e.host,
     env: e.env,
     ...(e.envName ? { envName: e.envName } : {}),
-    connection: 'unknown' as const,
+    connection: connectionStates.get(e.host) ?? ('unknown' as const),
   }));
   port.send({ v: PROTOCOL_VERSION, kind: 'registry.update', instances });
 }
@@ -84,8 +117,9 @@ const port = new BridgePort({
       grants,
       registry: () => registry.list(),
       hasPermission: (origin) => chrome.permissions.contains({ origins: [origin] }),
-      execute: (host, op) => executor.run(host, op),
+      execute,
       onPendingChanged: () => void updateBadge(),
+      connection: (host) => session.status(host),
     }).then((response) => {
       if (response) respond(response);
       if (response?.ok && response.result.type === 'scope.request') {
@@ -105,6 +139,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     removePermission: (origin) => chrome.permissions.remove({ origins: [origin] }),
     bridgeState: () => bridgeState,
     onChanged: () => void updateBadge(),
+    connections: async ({ probe }) => {
+      const states = await refreshConnections(probe);
+      const out: Record<string, ConnectionState> = {};
+      for (const e of await registry.list()) out[e.alias] = states.get(e.host) ?? 'unknown';
+      return out;
+    },
   }).then(sendResponse);
   return true;
 });
@@ -129,3 +169,16 @@ port.start();
 void updateBadge();
 // Keeps the PROD badge honest when grants expire while the popup is closed.
 setInterval(() => void updateBadge(), 30_000);
+// Connection status: local checks every 30 s, plus on tab and permission changes (T-013).
+setInterval(() => void refreshConnections(), STATUS_REFRESH_MS);
+let tabTimer: ReturnType<typeof setTimeout> | undefined;
+const soon = () => {
+  clearTimeout(tabTimer);
+  tabTimer = setTimeout(() => void refreshConnections(), 1000);
+};
+chrome.tabs.onRemoved.addListener(soon);
+chrome.tabs.onUpdated.addListener((_id, info) => {
+  if (info.status === 'complete') soon();
+});
+chrome.permissions.onRemoved.addListener(soon);
+chrome.permissions.onAdded.addListener(soon);

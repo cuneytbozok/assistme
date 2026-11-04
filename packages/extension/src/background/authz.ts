@@ -13,6 +13,7 @@ import {
 import type { ExecResult } from './executor.js';
 import { type Grants, targetMatches } from './grants.js';
 import { type InstanceEntry, originPattern } from './registry.js';
+import type { ConnectionState } from './session.js';
 
 export interface AuthzDeps {
   grants: Grants;
@@ -20,6 +21,8 @@ export interface AuthzDeps {
   hasPermission: (origin: string) => Promise<boolean>;
   execute: (host: string, op: unknown) => Promise<ExecResult>;
   onPendingChanged?: () => void;
+  /** Connection state per host (T-013); defaults to "unknown". */
+  connection?: (host: string) => Promise<ConnectionState>;
 }
 
 const v = PROTOCOL_VERSION;
@@ -52,7 +55,7 @@ export async function handleForward(
             host: e.host,
             env: e.env,
             ...(e.envName ? { envName: e.envName } : {}),
-            connection: 'unknown' as const,
+            connection: d.connection ? await d.connection(e.host) : ('unknown' as const),
             thisClient: await d.grants.clientStatus(client.keyId, e.alias),
           });
         }

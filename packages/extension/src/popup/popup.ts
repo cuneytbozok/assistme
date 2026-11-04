@@ -22,11 +22,32 @@ import {
   suggestionFromTabUrl,
   validateNewEntry,
 } from '../background/registry.js';
+import { type ConnectionState, describeState } from '../background/session.js';
 
 type Env = InstanceEntry['env'];
 
 const registry = new Registry(chromeRegistryStorage());
 let entries: InstanceEntry[] = [];
+let connections: Record<string, ConnectionState> = {};
+
+function statusLine(state: ConnectionState, host: string): HTMLDivElement {
+  const line = make('div', { className: `status ${state}` });
+  line.append(make('span', { className: 'dot' }), describeState(state, host));
+  return line;
+}
+
+/** Updates status lines in place (the instance list is not rebuilt on every refresh). */
+function applyConnections(next: Record<string, ConnectionState>): void {
+  connections = next;
+  for (const li of document.querySelectorAll<HTMLLIElement>('#instances li[data-alias]')) {
+    const alias = li.dataset.alias ?? '';
+    const entry = entries.find((e) => e.alias === alias);
+    const old = li.querySelector('.status');
+    if (!entry || !old) continue;
+    const state = next[alias] ?? 'unknown';
+    if (!old.classList.contains(state)) old.replaceWith(statusLine(state, entry.host));
+  }
+}
 const ENV_OPTIONS: [Env, string][] = [
   ['dev', 'DEV'],
   ['test', 'TEST'],
@@ -205,14 +226,10 @@ async function renderInstance(entry: InstanceEntry): Promise<HTMLLIElement> {
     make('div', { className: 'inst-host mono', text: entry.host, title: entry.host }),
   );
   const granted = await chrome.permissions.contains({ origins: [originPattern(entry.host)] });
-  if (!granted) {
-    main.append(
-      make('div', {
-        className: 'warn-line',
-        text: 'No Chrome access to this site. Remove and add it again.',
-      }),
-    );
-  }
+  const state: ConnectionState = granted
+    ? (connections[entry.alias] ?? 'unknown')
+    : 'no_permission';
+  main.append(statusLine(state, entry.host));
   const actions = make(
     'div',
     { className: 'inst-actions' },
@@ -451,6 +468,10 @@ void render().then(() => {
   if (entries.length === 0) setFormOpen(true);
 });
 void renderAccess();
+// The user opened the popup: check instances with an open tab once (one read-only request each).
+void ask({ type: 'popup.checkStatus' }).then((r) => {
+  if (r?.connections) applyConnections(r.connections);
+});
 setInterval(() => void renderAccess(), 2000);
 
 // --- access requests and grants (served by the service worker) ---------------------------
@@ -458,6 +479,7 @@ setInterval(() => void renderAccess(), 2000);
 interface PopupState {
   ok: boolean;
   bridge: { state: string; reason?: string; retryInMs?: number };
+  connections?: Record<string, ConnectionState>;
   pending: {
     requestId: string;
     approvalCode: string;
@@ -530,6 +552,7 @@ async function renderAccess(): Promise<void> {
     return;
   }
   if (!state?.ok || !state.bridge) return;
+  if (state.connections) applyConnections(state.connections);
   const view = bridgeView(state.bridge);
   el('bridge').className = `pill ${view.cls}`;
   el('bridge-text').textContent = view.pill;

@@ -70,6 +70,12 @@ Format: Status · Context · Decision · Alternatives considered · Consequences
   - Basic auth or OAuth credentials stored locally: contradicts "use the browser session" and would add secret storage. Rejected unless the PoC fails and the user approves.
   - Browser automation: forbidden.
 
+
+- *Addendum (T-013, 2026-11-04): no credential prompts.*
+  - Measured: ServiceNow's 401 carries `WWW-Authenticate: Basic` (which triggers Chrome's sign-in dialog) unless the request has an `X-UserToken` header; then it sends `WWW-Authenticate: none`. `X-Requested-With: XMLHttpRequest` does **not** remove the Basic challenge.
+  - Decision: every ServiceNow request carries `X-UserToken` (already true for Path A), and no request is sent without one (`NO_INSTANCE_TAB`). A test enforces this. No `webRequest`, `webRequestAuthProvider` or `declarativeNetRequest` permission is added.
+  - In throwaway headed profiles, service-worker fetches to the logged-out PDI never showed a dialog in any combination (guest session, stale token). The T-005 dialog most likely came from a page-context request (H5). Fallback if T-015 shows a dialog in the user's profile: a `declarativeNetRequestWithHostAccess` session rule removing `WWW-Authenticate` for extension-initiated requests to registered hosts (tested: removes the header). It needs approval as a manifest change.
+  - Session status: local signals (host permission, open tab) every 30 s and on tab/permission events. Session expiry is learned from requests; expired hosts are re-probed (one read-only GET) at most every 30 s while a tab is open; unknown hosts are probed only when the user opens the popup. Evidence: `docs/evidence/T-013/`.
 ## ADR-003 — User-approved scope grants with approval codes, enforced in the extension
 
 - **Status:** Accepted (2026-11-04)
