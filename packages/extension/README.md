@@ -31,7 +31,9 @@ If you open the popup on a ServiceNow tab that isn't registered yet, the popup o
 **Use it** to fill in the URL. It never registers anything by itself, and the tab never
 decides which instance Claude uses.
 
-Aliases are lowercase, unique and matched exactly. Unclassified instances are treated as PROD.
+Aliases are lowercase, unique and matched exactly. Choose DEV, TEST, PROD or **Other**. Other
+takes an optional name such as UAT or SIT. Other always gets PROD rules (typed host, 15 min
+access); the name is only a label.
 
 ## Manage instances
 

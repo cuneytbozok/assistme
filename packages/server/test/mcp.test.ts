@@ -27,7 +27,7 @@ function fakeExtension(ext: MockExtension) {
     ops: [] as Record<string, unknown>[],
     instances: [
       { alias: 'dev', label: 'PDI', host: 'dev469966.service-now.com', env: 'dev' as string },
-    ],
+    ] as { alias: string; label: string; host: string; env: string; envName?: string }[],
   };
   ext.extOut.on('data', () => {
     for (;;) {
@@ -306,7 +306,7 @@ describe('registry changes (T-010)', () => {
     // The user adds an instance and reclassifies dev; the extension pushes registry.update.
     state.instances = [
       { alias: 'dev', label: 'PDI', host: 'dev469966.service-now.com', env: 'test' },
-      { alias: 'acme', label: '', host: 'itsm.acme.example', env: 'unclassified' },
+      { alias: 'acme', label: '', host: 'itsm.acme.example', env: 'unclassified', envName: 'UAT' },
     ];
     ext.send({
       v: 1,
@@ -321,6 +321,8 @@ describe('registry changes (T-010)', () => {
       'acme:unclassified',
     ]);
     expect(await aliases()).toEqual(['dev:test', 'acme:unclassified']);
+    const acme = (await call('list_instances')).body.data.instances[1];
+    expect(acme).toMatchObject({ env: 'unclassified', env_name: 'UAT', policy: 'prod' });
 
     // Removal: list_instances drops it; request_scope fails with exact-match hint.
     state.instances = [state.instances[1] as (typeof state.instances)[number]];

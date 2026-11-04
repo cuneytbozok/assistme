@@ -29,6 +29,7 @@ async function sendRegistryUpdate(): Promise<void> {
     label: e.label.slice(0, 64),
     host: e.host,
     env: e.env,
+    ...(e.envName ? { envName: e.envName } : {}),
     connection: 'unknown' as const,
   }));
   port.send({ v: PROTOCOL_VERSION, kind: 'registry.update', instances });

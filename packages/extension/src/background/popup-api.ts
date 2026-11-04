@@ -14,9 +14,9 @@ export type PopupMessage =
   | { type: 'popup.state' }
   | {
       type: 'popup.registry.add';
-      entry: { alias: string; host: string; label?: string; env: string };
+      entry: { alias: string; host: string; label?: string; env: string; envName?: string };
     }
-  | { type: 'popup.registry.edit'; alias: string; label?: string; env?: string }
+  | { type: 'popup.registry.edit'; alias: string; label?: string; env?: string; envName?: string }
   | { type: 'popup.registry.remove'; alias: string; removeHostPermission: boolean }
   | { type: 'popup.approve'; requestId: string; typedHost?: string }
   | { type: 'popup.deny'; requestId: string }
@@ -99,6 +99,7 @@ export async function handlePopupMessage(raw: unknown, d: PopupApiDeps): Promise
         host: e.host,
         env: e.env,
         ...(typeof e.label === 'string' ? { label: e.label } : {}),
+        ...(typeof e.envName === 'string' ? { envName: e.envName } : {}),
       });
       d.onChanged();
       return r.ok ? { ok: true, entry: r.value } : { ok: false, message: r.error };
@@ -110,6 +111,7 @@ export async function handlePopupMessage(raw: unknown, d: PopupApiDeps): Promise
       const r = await d.registryStore.edit(m.alias, {
         ...(typeof m.label === 'string' ? { label: m.label } : {}),
         ...(typeof m.env === 'string' ? { env: m.env } : {}),
+        ...(typeof m.envName === 'string' ? { envName: m.envName } : {}),
       });
       if (!r.ok) return { ok: false, message: r.error };
       const invalidated = await d.grants.reconcile(await d.registry());

@@ -30,7 +30,7 @@ const ENV_OPTIONS: [Env, string][] = [
   ['dev', 'DEV'],
   ['test', 'TEST'],
   ['prod', 'PROD'],
-  ['unclassified', 'Not sure'],
+  ['unclassified', 'Other'],
 ];
 
 // --- small DOM helpers ------------------------------------------------------------------
@@ -91,17 +91,36 @@ function iconButton(
   return b;
 }
 
-function envBadge(env: Env): HTMLSpanElement {
-  const text = env === 'unclassified' ? 'PROD?' : env.toUpperCase();
+function envBadge(env: Env, envName?: string): HTMLSpanElement {
+  const text = env === 'unclassified' ? (envName ?? 'Other').toUpperCase() : env.toUpperCase();
   return make('span', {
     className: `env ${effectiveEnv(env)}`,
     text,
-    title: env === 'unclassified' ? 'Unclassified — treated as PROD' : `${text} instance`,
+    title:
+      env === 'unclassified'
+        ? `${envName ?? 'Other'} — other environment, PROD rules apply`
+        : `${text} instance`,
   });
 }
 
+/** Name field for the "Other" environment; hidden unless Other is selected. */
+function envNameInput(initial = ''): HTMLLabelElement {
+  const input = make('input');
+  input.type = 'text';
+  input.maxLength = 16;
+  input.placeholder = 'e.g. UAT, SIT, Staging';
+  input.value = initial;
+  input.className = 'env-name';
+  return make(
+    'label',
+    { className: 'field env-name-field' },
+    make('span', { text: 'Environment name' }),
+    input,
+  );
+}
+
 /** Segmented env picker; `container.dataset.value` holds the selection. */
-function segmented(container: HTMLElement, value: Env, onChange?: (v: Env) => void): void {
+function segmented(container: HTMLElement, value: Env | '', onChange?: (v: Env) => void): void {
   container.replaceChildren();
   container.dataset.value = value;
   container.setAttribute('role', 'group');
@@ -122,8 +141,11 @@ function segmented(container: HTMLElement, value: Env, onChange?: (v: Env) => vo
 
 function envHint(env: Env): string {
   const ttl = GRANT_TTL_MINUTES[env].default;
+  if (env === 'unclassified') {
+    return `Other environments get PROD rules: you type the host to approve, and access lasts ${ttl} min.`;
+  }
   if (effectiveEnv(env) === 'prod') {
-    return `PROD rules${env === 'unclassified' ? ' (unclassified)' : ''}: you type the host to approve, and access lasts ${ttl} min.`;
+    return `PROD rules: you type the host to approve, and access lasts ${ttl} min.`;
   }
   return `Each approval lasts up to ${ttl / 60} h.`;
 }
@@ -196,7 +218,9 @@ async function renderInstance(entry: InstanceEntry): Promise<HTMLLIElement> {
     iconButton('edit', `Edit ${entry.alias}`, () => showEdit(li, entry)),
     iconButton('trash', `Remove ${entry.alias}`, () => showRemove(li, entry), 'danger-hover'),
   );
-  li.append(make('div', { className: 'inst-row' }, envBadge(entry.env), main, actions));
+  li.append(
+    make('div', { className: 'inst-row' }, envBadge(entry.env, entry.envName), main, actions),
+  );
   return li;
 }
 
@@ -216,8 +240,13 @@ function showEdit(li: HTMLElement, entry: InstanceEntry): void {
   const env = make('div', { className: 'segmented' });
   const warn = make('div', { className: 'warn', text: '' });
   const hint = make('small', { className: 'hint', text: envHint(entry.env) });
+  const nameField = envNameInput(entry.envName ?? '');
+  const nameInput = nameField.querySelector('input') as HTMLInputElement;
+  nameField.hidden = entry.env !== 'unclassified';
   segmented(env, entry.env, (v) => {
     hint.textContent = envHint(v);
+    nameField.hidden = v !== 'unclassified';
+    if (v === 'unclassified') nameInput.focus();
     warn.textContent = v !== entry.env ? 'Saving a new environment ends active access to it.' : '';
   });
   const save = (): void => {
@@ -226,6 +255,7 @@ function showEdit(li: HTMLElement, entry: InstanceEntry): void {
       alias: entry.alias,
       label: label.value,
       env: env.dataset.value,
+      envName: env.dataset.value === 'unclassified' ? nameInput.value : '',
     }).then(async (r) => {
       if (!r?.ok) return setMessage(r?.message ?? 'Could not save.', 'error');
       const ended = r.invalidated ? ' Active access to it was ended.' : '';
@@ -234,15 +264,18 @@ function showEdit(li: HTMLElement, entry: InstanceEntry): void {
       void renderAccess();
     });
   };
-  label.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') save();
-    if (e.key === 'Escape') closePanels(li);
-  });
+  for (const input of [label, nameInput]) {
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') save();
+      if (e.key === 'Escape') closePanels(li);
+    });
+  }
   const panel = make(
     'div',
     { className: 'panel edit' },
     make('label', { className: 'field' }, make('span', { text: 'Label' }), label),
     make('div', { className: 'field' }, make('span', { text: 'Environment' }), env, hint),
+    nameField,
     warn,
     make(
       'div',
@@ -312,10 +345,13 @@ function setFormOpen(open: boolean): void {
 function resetForm(): void {
   el<HTMLFormElement>('register').reset();
   const env = el('env');
-  segmented(env, 'unclassified', (v) => {
+  segmented(env, '', (v) => {
     el('env-hint').textContent = envHint(v);
+    el('env-name-field').hidden = v !== 'unclassified';
+    if (v === 'unclassified') el<HTMLInputElement>('env-name').focus();
   });
-  el('env-hint').textContent = envHint('unclassified');
+  el('env-hint').textContent = 'Pick one. PROD and Other get the strictest approval rules.';
+  el('env-name-field').hidden = true;
 }
 
 /** Alias proposal from the host's first label, only if it is valid and unused. */
@@ -370,6 +406,8 @@ function onSubmit(event: SubmitEvent): void {
     host: host.value,
     label: el<HTMLInputElement>('label').value,
     env: el('env').dataset.value ?? '',
+    envName:
+      el('env').dataset.value === 'unclassified' ? el<HTMLInputElement>('env-name').value : '',
   };
   const checked = validateNewEntry(entries, input);
   if (!checked.ok) {
@@ -494,7 +532,7 @@ async function renderAccess(): Promise<void> {
     const li = make(
       'li',
       { className: 'grant' },
-      ...instEntries.map((e) => (e ? envBadge(e.env) : make('span'))),
+      ...instEntries.map((e) => (e ? envBadge(e.env, e.envName) : make('span'))),
       make(
         'div',
         { className: 'inst-main' },
@@ -537,7 +575,7 @@ function renderRequest(r: PopupState['pending'][number]): HTMLLIElement {
       ? make(
           'div',
           { className: 'target' },
-          envBadge(e.env),
+          envBadge(e.env, e.envName),
           make(
             'div',
             { className: 'inst-main' },
@@ -569,7 +607,7 @@ function renderRequest(r: PopupState['pending'][number]): HTMLLIElement {
       make(
         'label',
         { className: 'field' },
-        make('span', { text: 'Production: type the host to approve' }),
+        make('span', { text: 'Strict rules apply: type the host to approve' }),
         typed,
       ),
     );

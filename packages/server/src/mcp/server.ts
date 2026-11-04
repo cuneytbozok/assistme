@@ -98,7 +98,7 @@ export function createMcpServer(bridge: BridgeClient): McpServer {
     {
       title: 'List ServiceNow instances',
       description:
-        'Lists the ServiceNow instances the user registered in the sn-mcp extension (alias, host, environment) and whether this session has a pending request or active access for each. Start here.',
+        'Lists the ServiceNow instances the user registered in the sn-mcp extension (alias, host, env, and env_name for user-named "other" environments such as UAT; policy is the rule set applied, and "other" always gets prod rules) and whether this session has a pending request or active access for each. Start here.',
       inputSchema: z.strictObject({}),
       outputSchema: ResultEnvelope,
       annotations: READ_ONLY,
@@ -119,6 +119,8 @@ export function createMcpServer(bridge: BridgeClient): McpServer {
             label: i.label,
             host: i.host,
             env: i.env,
+            ...(i.envName ? { env_name: i.envName } : {}),
+            policy: i.env === 'unclassified' ? 'prod' : i.env,
             connection: i.connection,
             this_session: {
               pending_request: i.thisClient.pendingRequest,

@@ -49,9 +49,9 @@ Claude decides on its own which records, tables, scripts, logs, and configuratio
 
 ### FR-2 Instance registry
 
-- FR-2.1 The user registers instances in the extension popup: alias, host, label, and environment (`dev | test | prod | unclassified`).
+- FR-2.1 The user registers instances in the extension popup: alias, host, label, and environment (`dev | test | prod | unclassified`). The popup shows `unclassified` as **Other**, with an optional user-chosen name (for example UAT or SIT, up to 16 chars). The name is a display label only.
 - FR-2.2 Registering requests host permission for that exact origin. Custom domains are supported.
-- FR-2.3 Unclassified instances are treated as PROD.
+- FR-2.3 Unclassified ("Other") instances are treated as PROD, whatever their name.
 - FR-2.4 The popup shows connection status per instance: connected, no tab, session expired, or permission missing.
 - FR-2.5 Aliases match exactly. There is no fuzzy matching.
 

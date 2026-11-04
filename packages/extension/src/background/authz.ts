@@ -51,6 +51,7 @@ export async function handleForward(
             label: e.label.slice(0, 64),
             host: e.host,
             env: e.env,
+            ...(e.envName ? { envName: e.envName } : {}),
             connection: 'unknown' as const,
             thisClient: await d.grants.clientStatus(client.keyId, e.alias),
           });

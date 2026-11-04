@@ -15,6 +15,8 @@ export const FIELD_PATH_RE = new RegExp(
 export const SYS_ID_RE = /^[0-9a-f]{32}$/;
 /** Instance alias chosen by the user in the extension. Matched exactly, never fuzzily. */
 export const ALIAS_RE = /^[a-z][a-z0-9-]{0,31}$/;
+/** User-chosen name for an "other" environment (e.g. UAT, SIT, Staging). Display only. */
+export const ENV_NAME_RE = /^[A-Za-z0-9][A-Za-z0-9 _-]{0,15}$/;
 /** Hostname only — no scheme, port, path or credentials. */
 export const HOST_RE =
   /^(?=.{1,253}$)([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)+$/;
@@ -36,6 +38,7 @@ export const TableNameSchema = z.string().regex(TABLE_NAME_RE, 'invalid table na
 export const FieldPathSchema = z.string().regex(FIELD_PATH_RE, 'invalid field name');
 export const SysIdSchema = z.string().regex(SYS_ID_RE, 'invalid sys_id');
 export const AliasSchema = z.string().regex(ALIAS_RE, 'invalid instance alias');
+export const EnvNameSchema = z.string().regex(ENV_NAME_RE, 'invalid environment name');
 export const HostSchema = z.string().regex(HOST_RE, 'invalid host');
 export const MessageIdSchema = z.string().regex(MESSAGE_ID_RE, 'invalid message id');
 export const NonceSchema = z.string().regex(NONCE_RE, 'invalid nonce');

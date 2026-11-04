@@ -56,9 +56,13 @@
           </div>
           <div class="field">
             <span>Environment</span>
-            <div id="env" class="segmented" data-value="unclassified"></div>
+            <div id="env" class="segmented" data-value=""></div>
             <small id="env-hint" class="hint"></small>
           </div>
+          <label id="env-name-field" class="field" hidden>
+            <span>Environment name <em>optional</em></span>
+            <input id="env-name" type="text" maxlength="16" placeholder="e.g. UAT, SIT, Staging" />
+          </label>
           <div class="buttons">
             <button id="register-cancel" type="button" class="ghost">Cancel</button>
             <button type="submit" class="primary">Add and allow access</button>

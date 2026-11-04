@@ -415,3 +415,109 @@ describe('validateEdit', () => {
     expect(validateEdit(reg, 'de', { label: 'x' }).ok).toBe(false);
   });
 });
+
+describe('"Other" environments with a custom name', () => {
+  it('stores a name for Other only, validates it, and refuses fixed-class names', async () => {
+    const s = setup();
+    s.granted.add('https://uat.service-now.com/*');
+    const add = (env: string, envName: string, alias = 'uat') =>
+      handlePopupMessage(
+        { type: 'popup.registry.add', entry: { alias, host: 'uat.service-now.com', env, envName } },
+        s.popup,
+      );
+    expect(await add('unclassified', 'bad\u0007')).toMatchObject({ ok: false });
+    expect(await add('unclassified', 'x'.repeat(17))).toMatchObject({ ok: false });
+    expect(await add('unclassified', 'Prod')).toMatchObject({
+      ok: false,
+      message: expect.stringMatching(/PROD above/),
+    });
+    expect(await add('unclassified', '  UAT  ')).toMatchObject({
+      ok: true,
+      entry: { env: 'unclassified', envName: 'UAT' },
+    });
+    // A name given with a fixed class is dropped.
+    s.granted.add('https://d.service-now.com/*');
+    const dev = await handlePopupMessage(
+      {
+        type: 'popup.registry.add',
+        entry: { alias: 'd', host: 'd.service-now.com', env: 'dev', envName: 'UAT' },
+      },
+      s.popup,
+    );
+    expect((dev as { entry: InstanceEntry }).entry.envName).toBeUndefined();
+  });
+
+  it('renaming keeps grants (display only); Other always gets PROD rules', async () => {
+    const s = setup();
+    s.granted.add('https://uat.service-now.com/*');
+    await handlePopupMessage(
+      {
+        type: 'popup.registry.add',
+        entry: { alias: 'uat', host: 'uat.service-now.com', env: 'unclassified', envName: 'UAT' },
+      },
+      s.popup,
+    );
+    const requestId = await s.requestScope('uat');
+    expect(await s.grants.approve(requestId, await s.registry.list())).toMatchObject({ ok: false });
+    expect(
+      await s.grants.approve(requestId, await s.registry.list(), 'uat.service-now.com'),
+    ).toMatchObject({ ok: true });
+    const claim = (await s.claim(requestId)) as { result: { scopeId: string; expiresAt: string } };
+    expect(Date.parse(claim.result.expiresAt) - s.clock.t).toBe(
+      GRANT_TTL_MINUTES.unclassified.default * 60_000,
+    );
+
+    expect(
+      await handlePopupMessage(
+        { type: 'popup.registry.edit', alias: 'uat', env: 'unclassified', envName: 'SIT' },
+        s.popup,
+      ),
+    ).toMatchObject({ ok: true, invalidated: 0, entry: { envName: 'SIT' } });
+    expect(await s.read(claim.result.scopeId, 'uat')).toMatchObject({ ok: true });
+
+    // Switching to a fixed class drops the name and ends access.
+    expect(
+      await handlePopupMessage({ type: 'popup.registry.edit', alias: 'uat', env: 'test' }, s.popup),
+    ).toMatchObject({ ok: true, invalidated: 1 });
+    expect((await s.registry.list())[0]?.envName).toBeUndefined();
+  });
+
+  it('registry.get carries the name; stored names are re-validated', async () => {
+    const s = setup();
+    await s.regStorage.save([
+      {
+        alias: 'a',
+        host: 'a.service-now.com',
+        label: '',
+        env: 'unclassified',
+        envName: 'UAT',
+        addedAt: 'x',
+      },
+      {
+        alias: 'b',
+        host: 'b.service-now.com',
+        label: '',
+        env: 'unclassified',
+        envName: 'evil\u0000',
+        addedAt: 'x',
+      },
+      {
+        alias: 'c',
+        host: 'c.service-now.com',
+        label: '',
+        env: 'dev',
+        envName: 'UAT',
+        addedAt: 'x',
+      },
+    ]);
+    const r = (await handleForward(
+      { v: 1, kind: 'forward', client: A, request: { v: 1, kind: 'registry.get', id: 'g' } },
+      s.authz,
+    )) as { result: { instances: { alias: string; envName?: string }[] } };
+    expect(r.result.instances.map((i) => [i.alias, i.envName])).toEqual([
+      ['a', 'UAT'],
+      ['b', undefined],
+      ['c', undefined],
+    ]);
+  });
+});

@@ -1,4 +1,4 @@
-import { ALIAS_RE, type Env, EnvSchema, HOST_RE } from '@sn-mcp/shared';
+import { ALIAS_RE, ENV_NAME_RE, type Env, EnvSchema, HOST_RE } from '@sn-mcp/shared';
 
 /**
  * Instance registry (T-004, completed in T-010; PRODUCT_SPEC FR-2, ARCHITECTURE §5.1).
@@ -19,6 +19,8 @@ export interface InstanceEntry {
   host: string;
   label: string;
   env: Env;
+  /** Only for env "unclassified" (shown as "Other"): the user's name, e.g. "UAT". Display only. */
+  envName?: string;
   addedAt: string;
 }
 
@@ -84,6 +86,7 @@ export interface RegisterInput {
   host: string;
   label?: string;
   env: string;
+  envName?: string;
 }
 
 function validateLabel(raw: string | undefined): RegistryResult<string> {
@@ -93,6 +96,26 @@ function validateLabel(raw: string | undefined): RegistryResult<string> {
   // biome-ignore lint/suspicious/noControlCharactersInRegex: rejecting control characters
   if (/[\u0000-\u001f\u007f-\u009f]/.test(label)) return fail('Label contains control characters.');
   return { ok: true, value: label };
+}
+
+/**
+ * "Other" environments may carry a display name. It never changes policy (always PROD rules),
+ * and names that collide with the fixed classes are refused so the badge can't mislead.
+ */
+export function validateEnvName(
+  env: Env,
+  raw: string | undefined,
+): RegistryResult<string | undefined> {
+  if (env !== 'unclassified') return { ok: true, value: undefined };
+  const name = (raw ?? '').trim().replace(/\s+/g, ' ');
+  if (name === '') return { ok: true, value: undefined };
+  if (!ENV_NAME_RE.test(name)) {
+    return fail('Environment name: up to 16 letters, digits, spaces, "-" or "_".');
+  }
+  if (/^(dev|test|prod|production|development)$/i.test(name)) {
+    return fail(`Choose ${name.toUpperCase().slice(0, 4)} above instead of naming it under Other.`);
+  }
+  return { ok: true, value: name };
 }
 
 /** Validates a new entry against the current registry. Pure; does not touch storage. */
@@ -112,6 +135,8 @@ export function validateNewEntry(
   if (!env.success) return fail('Choose an environment.');
   const label = validateLabel(input.label);
   if (!label.ok) return label;
+  const envName = validateEnvName(env.data, input.envName);
+  if (!envName.ok) return envName;
   if (entries.some((e) => e.alias === alias)) return fail(`Alias "${alias}" is already used.`);
   if (entries.some((e) => e.host === input.host)) {
     return fail(`${input.host} is already registered.`);
@@ -124,6 +149,7 @@ export function validateNewEntry(
       host: input.host,
       label: label.value,
       env: env.data,
+      ...(envName.value ? { envName: envName.value } : {}),
       addedAt: now.toISOString(),
     },
   };
@@ -132,6 +158,7 @@ export function validateNewEntry(
 export interface EditInput {
   label?: string;
   env?: string;
+  envName?: string;
 }
 
 /** Validates an edit of label and/or env. Alias and host cannot be edited. Pure. */
@@ -152,6 +179,15 @@ export function validateEdit(
     const env = EnvSchema.safeParse(input.env);
     if (!env.success) return fail('Choose an environment.');
     after.env = env.data;
+  }
+  if (input.env !== undefined || input.envName !== undefined) {
+    const name = validateEnvName(
+      after.env,
+      input.envName ?? (after.env === before.env ? before.envName : undefined),
+    );
+    if (!name.ok) return name;
+    if (name.value) after.envName = name.value;
+    else delete after.envName;
   }
   return { ok: true, value: { before, after } };
 }
@@ -201,11 +237,14 @@ export function sanitizeStored(raw: unknown): InstanceEntry[] {
       typeof e.addedAt === 'string' &&
       !out.some((x) => x.alias === e.alias || x.host === e.host)
     ) {
+      const env = e.env as Env;
+      const name = typeof e.envName === 'string' ? validateEnvName(env, e.envName) : undefined;
       out.push({
         alias: e.alias,
         host: e.host,
         label: e.label,
-        env: e.env as Env,
+        env,
+        ...(name?.ok && name.value ? { envName: name.value } : {}),
         addedAt: e.addedAt,
       });
     }

@@ -12,6 +12,7 @@ import {
 import {
   AliasSchema,
   ApprovalCodeSchema,
+  EnvNameSchema,
   FieldPathSchema,
   Hex256Schema,
   HostSchema,
@@ -108,6 +109,10 @@ export type OperationKind = Operation['kind'];
 // Shared value types
 // ---------------------------------------------------------------------------
 
+/**
+ * `unclassified` is the "Other" environment in the UI. It always gets PROD rules; an optional
+ * user-chosen `envName` (e.g. "UAT") is a display label only and never changes policy.
+ */
 export const EnvSchema = z.enum(['dev', 'test', 'prod', 'unclassified']);
 export type Env = z.infer<typeof EnvSchema>;
 
@@ -139,6 +144,8 @@ export const InstanceInfoSchema = z.strictObject({
   label: z.string().max(64).regex(NO_CONTROL_CHARS_RE),
   host: HostSchema,
   env: EnvSchema,
+  /** Only with env "unclassified" (Other): the user's name for it. Display only. */
+  envName: EnvNameSchema.optional(),
   connection: ConnectionStateSchema,
 });
 export type InstanceInfo = z.infer<typeof InstanceInfoSchema>;
