@@ -48,7 +48,8 @@ _Last updated: 2026-11-04 (after T-016)_
 
 - **Current task:** none (nothing IN_PROGRESS).
 - **Last completed task:** T-016 — Extension request builder hardening (commit `T-016: request builder hardening`).
-- **Next tasks:** **T-015 (live scope acceptance, M2) needs the user** in their own Chrome and Claude Desktop. Also eligible: T-019 (per-request safeguards and settings; depends on T-016 ✔). T-017 waits on T-012 ✔ and T-016 ✔, so it is eligible too.
+- **Blocked:** T-015 (live scope acceptance, M2) has no second instance for PROD checks (see TASKS T-015).
+- **Next tasks:** T-017 (metadata service), then T-018 and T-019.
 - **T-015 must include:** logout in the user's own profile → `SESSION_EXPIRED` with no sign-in dialog (T-013 AC4). Fallback if a dialog appears: the DNR rule in the ADR-002 addendum.
 - **Claude Desktop runs the old server build** until it's restarted (`npm run build` done). Restart it before live checks (T-015).
 - **"Other" environment (after T-010, user request):** the popup shows `unclassified` as **Other** with an optional name (UAT, SIT, …). It always gets PROD rules and the name is display only. `list_instances` returns `env_name` and `policy`.

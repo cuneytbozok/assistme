@@ -24,7 +24,7 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 | T-012 | MCP scope enforcement                           | 008, 011 | DONE        |
 | T-013 | Session lifecycle & status                      | 011      | DONE        |
 | T-014 | Bridge resilience                               | 012      | DONE        |
-| T-015 | Live scope acceptance (M2)                      | 013, 014 | TODO        |
+| T-015 | Live scope acceptance (M2)                      | 013, 014 | BLOCKED     |
 | T-016 | Extension request builder hardening             | 007, 003 | DONE        |
 | T-017 | Metadata service                                | 012, 016 | TODO        |
 | T-018 | Dictionary-aware query validation & guards      | 017      | TODO        |
@@ -675,7 +675,7 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 
 ### T-015 — Live scope acceptance (Milestone M2)
 
-- **Status:** TODO
+- **Status:** BLOCKED
 - **Purpose:** Prove AC-5, AC-6, AC-7, AC-15 on real instances.
 - **Dependencies:** T-013, T-014
 - **Deliverables:** `test/e2e/scope-checklist.md` with results, and an opt-in script `test/e2e/live-scope.ts`.
@@ -690,6 +690,10 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 - **Verification:** manual and scripted live run; evidence in `docs/evidence/T-015/`.
 - **DoD:** M2 marked achieved.
 - **Blocker:** requires a DEV instance.
+- **Blocked (2026-11-04):** the user has no second instance to register as PROD, and the registry refuses the same host twice, so the PDI can't also be registered under a PROD alias. Resume when a second instance exists, or if the user approves a test-only duplicate-host exception.
+  - Before the run: reload the extension and restart Claude Desktop (both run older builds).
+  - Must include T-013 AC4: log out in the user's own profile → `SESSION_EXPIRED` with no sign-in dialog. Fallback: the DNR rule in the ADR-002 addendum.
+  - Open question for AC6: `claim_scope` returns status `denied` as a normal result, not a `REQUEST_DENIED` error. Decide whether to change it.
 - **Evidence:** —
 
 ## Phase 3 — Read-only & query hardening (Milestone M3)
