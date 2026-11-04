@@ -1,0 +1,23 @@
+{
+  "name": "@sn-mcp/shared",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Shared protocol schemas and validation used by the MCP server and the Chrome extension",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
+  }
+}

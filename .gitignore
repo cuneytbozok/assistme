@@ -1,0 +1,31 @@
+# dependencies & build output
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+*.mcpb
+*.zip
+
+# secrets & local config — never commit
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+*.p12
+broker.key
+.mcp.json
+claude_desktop_config.json
+
+# logs & captures
+*.log
+logs/
+captures/
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+
+# Claude Code local settings
+.claude/settings.local.json

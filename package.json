@@ -1,0 +1,28 @@
+{
+  "name": "sn-mcp",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Read-only ServiceNow MCP connector: local MCP server + Chrome session bridge",
+  "type": "module",
+  "workspaces": [
+    "packages/shared",
+    "packages/server",
+    "packages/extension"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "npm run build --workspaces",
+    "typecheck": "npm run typecheck --workspaces",
+    "test": "npm run test --workspaces",
+    "lint": "biome check .",
+    "format": "biome check --write ."
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.6.5",
+    "@types/node": "^24.19.2",
+    "typescript": "^7.0.2",
+    "vitest": "^5.1.0"
+  }
+}

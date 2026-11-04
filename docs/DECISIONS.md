@@ -1,0 +1,159 @@
+# Architecture Decision Records
+
+Format: Status · Context · Decision · Alternatives considered · Consequences. Statuses: Proposed, Accepted, Superseded.
+
+---
+
+## ADR-001 — Native Messaging + authenticated Unix-socket broker
+
+- **Status:** Accepted (2026-11-04)
+- **Context:**
+  - The MCP server is launched by Claude (Desktop or Code) and the extension lives in Chrome, so they need an IPC channel.
+  - Several MCP processes may run at once (Desktop + Code).
+  - Web pages must not be able to reach the channel.
+  - Chrome's `allowed_origins` only controls who can _launch_ the native host. It is not end-to-end security.
+- **Decision:**
+  - Chrome launches a Node native host via Native Messaging. That host acts as a broker on a Unix domain socket in `~/Library/Application Support/sn-mcp/`.
+  - The host verifies the launch origin from argv.
+  - The socket directory is 0700 and the socket 0600, with `lstat` owner/mode/symlink checks.
+  - Clients and broker authenticate each other with HMAC challenge-response, using a key that rotates on every broker start (`broker.key`, 0600).
+  - The broker rewrites request IDs per client and enforces size and rate limits.
+  - Request descriptors are never replayed after a disconnect.
+  - The extension treats the broker as untrusted and re-validates every operation and grant.
+- **Alternatives considered:**
+  - **Localhost WebSocket/HTTP:** reachable by any web page (needs Origin checks plus pairing), and there are port conflicts between MCP processes. Rejected.
+  - **MCP server as socket server, host as client:** a single host would need to discover N servers. Rejected.
+  - **Peer-credential checks (`getpeereid`):** needs a native addon, and adds little over HMAC + 0700 for the same-user threat model. Deferred.
+- **Consequences:**
+  - A one-time install step for the host manifest.
+  - System Node is required for the host (Desktop's bundled Node isn't visible to Chrome). Future: a Node SEA binary.
+  - One Chrome profile at a time (`BROKER_CONFLICT`).
+
+## ADR-002 — Session access path
+
+- **Status:** **Proposed.** Finalized by T-005 using live results in `POC_RESULTS.md`.
+- **Context:** Only community sources describe how ServiceNow REST behaves under browser-session auth and how MV3 service-worker fetch handles cookies. None of it is authoritative, so it must be tested on a live instance.
+- **Hypotheses:**
+
+| ID  | Hypothesis                                                                                                                        |
+| --- | --------------------------------------------------------------------------------------------------------------------------------- |
+| H1  | SW `fetch(credentials:'include')` to a host in `host_permissions` sends ServiceNow session cookies                                |
+| H2  | Table API GET with cookies but without `X-UserToken` returns 401                                                                  |
+| H3  | `g_ck` is readable via MAIN-world `executeScript` in UI16 (`/nav_to.do`), Next Experience (`/now/nav/ui`), and `gsft_main` frames |
+| H4  | `g_ck` stays valid for the session, changes after re-login, and an invalid token gives 401                                        |
+| H5  | Fallback: MAIN-world `fetch` inside a tab of the granted host works                                                               |
+| H6  | SSO/MFA sessions behave like local login (untested if no SSO instance is available)                                               |
+| H7  | Session timeout shows up as 401 or as a redirect/HTML login page                                                                  |
+| H8  | Read requests cause no visible side effects (`last_login_time`, `sys_user_session`)                                               |
+
+- **Decision rule:**
+  - H1 ∧ (H2 → H3) → **Path A**: the service worker owns fetch. The token is read on demand from a granted-host tab and cached in memory only.
+  - ¬H1 ∧ H5 → **Path B**: MAIN-world fetch in a granted-host tab, with limits inside the injected function.
+  - Both fail → stop and escalate under change management.
+- **Invariants:** no `cookies` permission; no credential values outside the extension; no UI navigation.
+- **Alternatives considered:**
+  - Basic auth or OAuth credentials stored locally: contradicts "use the browser session" and would add secret storage. Rejected unless the PoC fails and the user approves.
+  - Browser automation: forbidden.
+
+## ADR-003 — User-approved scope grants with approval codes, enforced in the extension
+
+- **Status:** Accepted (2026-11-04)
+- **Context:**
+  - Claude must not be able to authorize or switch instances.
+  - Claude Desktop shares one MCP process across conversations and provides no conversation ID.
+  - MCP elicitation support in Desktop is undocumented.
+- **Decision:**
+  - Device-flow style. `request_scope` returns a request ID and a 6-character approval code. The user approves in the extension popup after checking the code matches the one in the conversation. `claim_scope` returns an opaque 128-bit `scope_id`, once, and only to the requesting `client_key_id`.
+  - Grants are immutable (one instance, or one compare pair) and stored in `chrome.storage.session`. They're checked on every request.
+  - Scope IDs are never listed.
+  - PROD (and unclassified): typed host confirmation, TTL 15/60 min, no renewal, stricter budgets, red badge.
+  - DEV/TEST: TTL 4/12 h.
+  - Revoke and revoke-all in the popup.
+- **Alternatives considered:**
+  - `select_instance` chosen by Claude plus a global "enabled" toggle: Claude would choose the instance. Rejected.
+  - Required `instance` parameter only: no user binding. Rejected.
+  - Blocking tool call waiting for approval: client timeouts are unknown. Rejected in favor of request/claim.
+  - Auto-approve for DEV: deferred, since it weakens "user authorizes".
+- **Consequences:**
+  - One approval step per conversation per instance.
+  - Residual risk: within a Desktop process, the `scope_id` is a bearer secret known only to the claiming conversation.
+
+## ADR-004 — Operation descriptors, never URLs
+
+- **Status:** Accepted (2026-11-04)
+- **Decision:**
+  - The MCP server sends a closed union of operations (`table.list`, `table.get`, `stats.aggregate`, `probe`).
+  - Only the extension's request builder creates URLs, from fixed templates, with GET only and allowlisted params.
+- **Alternatives considered:** a URL/path allowlist on forwarded URLs. More brittle and easier to bypass. Rejected.
+- **Consequences:** a new ServiceNow capability needs a reviewed new operation kind.
+
+## ADR-005 — Structured filters + validated encoded queries + dictionary validation
+
+- **Status:** Accepted (2026-11-04)
+- **Context:**
+  - Encoded queries can contain server-side script (`javascript:`), dynamic filters, and related-list subqueries.
+  - ServiceNow can ignore invalid fields, which broadens results.
+  - Blocking `javascript:` alone isn't enough.
+- **Decision:**
+  - Structured `where`/`any_of` filters are the primary input, compiled by the server.
+  - Raw `encoded_query` is tokenized and fully parsed against an operator allowlist.
+  - Dangerous operators (`DYNAMIC`, `RLQUERY`, `SUBQUERY`, `JOIN`, `123TEXTQUERY321`, `GOTO`) are rejected, as are script-like values after normalization.
+  - Size and term limits apply.
+  - All fields and dot-walks are validated against `sys_dictionary` before execution.
+  - Internal conditions are never combined with raw queries.
+  - High-volume tables need a time window or an indexed-key condition. Counts are opt-in.
+  - The same validation runs in the server and the extension.
+- **Alternatives considered:**
+  - Blocklist only: insufficient.
+  - Structured filters only: too limiting for experts. Raw queries are kept but validated.
+- **Consequences:** some valid but exotic queries are refused, with an `UNSAFE_QUERY`/`QUERY_TOO_BROAD` hint.
+
+## ADR-006 — Response budgets, signed cursors, ambiguity errors
+
+- **Status:** Accepted (2026-11-04)
+- **Decision:**
+  - Default projection; limits of 20 default, 100 max, 50 on PROD; long fields truncated at 1,000 chars, with `get_field_content` for chunks.
+  - Response budget of about 24k chars with truncation indicators.
+  - HMAC-signed cursors bound to query + scope; stable ordering.
+  - Per-scope rate and concurrency budgets, fan-out caps, 30 s dedup, metadata-only cache.
+  - Non-unique matches return `AMBIGUOUS_MATCH` with ≤5 candidates and are never auto-picked. Unknown tables get suggestions and are never auto-selected.
+- **Consequences:** Claude sometimes needs follow-up calls. That's intentional, because it keeps context small and correct.
+
+## ADR-007 — Repository and tooling
+
+- **Status:** Accepted (2026-11-04)
+- **Decision:**
+  - npm workspaces with three packages (`shared`, `server`, `extension`); the shared package holds the protocol and validation code used by both sides.
+  - TypeScript strict, esbuild (server bundle, extension, .mcpb single file), vitest, Biome (lint + format).
+  - The extension is plain TS + HTML (no UI framework).
+  - *Addendum (T-001, 2026-11-04):* TypeScript 7.0.2 (native compiler) is used, since it was the current release. If a TS 7 incompatibility blocks a later task, pin `typescript@5.9` and record it here. Biome excludes `*.md`, so doc formatting stays hand-controlled.
+- **Alternatives considered:**
+  - pnpm: not needed for distribution.
+  - WXT/CRXJS: more abstraction than needed.
+  - ESLint + Prettier: two tools where Biome is one.
+
+## ADR-008 — MCP TypeScript SDK v2
+
+- **Status:** Accepted (2026-11-04). Compatibility is verified in T-009.
+- **Decision:** `@modelcontextprotocol/server` v2 (2.4.0 at planning time, spec 2026-07-28, zod v4), using stdio transport.
+- **Fallback:** if Claude Desktop protocol negotiation fails, use `@modelcontextprotocol/sdk` v1.x (1.32.2), which is still maintained, and record the change here.
+
+## ADR-009 — Skills strategy
+
+- **Status:** Accepted (2026-11-04)
+- **Decision:**
+  - A custom `servicenow-troubleshooting` skill: guidance only, references loaded on demand, packaged as a Claude Code plugin and a Claude Desktop zip.
+  - The official `ServiceNow/sdk` `now-sdk` skill is optional, Claude Code only, and limited to `explain` (offline, read-only docs). No `now-sdk auth`; `query` isn't used because it needs SDK credentials.
+  - Deny rules block SDK `auth|init|build|install|deploy|transform|dependencies|download`.
+  - Skills never become mandatory workflows.
+- **Consequences:** Desktop users get only the custom skill, because the official skill needs a local CLI.
+
+## ADR-010 — No persistent knowledge or memory subsystem
+
+- **Status:** Accepted (2026-11-04, user decision)
+- **Context:** Rev. 1 proposed PostgreSQL + pgvector + local embeddings for saved troubleshooting cases. The user removed it.
+- **Decision:**
+  - No knowledge database, schemas, embeddings, Docker Compose, or knowledge tools (`search_knowledge`, `save_knowledge_case`, `get_knowledge_case`, `update_knowledge_validation`).
+  - No replacement either (no SQLite, JSON memory, or other persistence).
+  - Continuity comes from native Claude conversation history and Projects.
+- **Consequences:** reintroducing any persistent memory needs explicit user approval and a new ADR.
