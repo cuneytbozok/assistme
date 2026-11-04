@@ -58,7 +58,7 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 
 ### T-001 — Repository scaffold
 
-- **Status:** IN_PROGRESS
+- **Status:** DONE
 - **Purpose:** A reproducible TypeScript workspace for all three packages.
 - **Dependencies:** none
 - **Deliverables:**
