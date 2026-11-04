@@ -1,0 +1,632 @@
+[
+  {
+    "name": "js in IN list",
+    "query": "sys_idINjavascript:gs.getUser().getID()",
+    "expect": "UNSAFE_QUERY",
+    "profile": "enforce",
+    "allowTextSearch": false
+  },
+  {
+    "name": "js deleteMultiple",
+    "query": "sys_id=javascript:new GlideRecord('incident').deleteMultiple()",
+    "expect": "UNSAFE_QUERY",
+    "profile": "enforce",
+    "allowTextSearch": false
+  },
+  {
+    "name": "js mixed case in LIKE",
+    "query": "short_descriptionLIKEJavaScript:alert(1)",
+    "expect": "UNSAFE_QUERY",
+    "profile": "enforce",
+    "allowTextSearch": false
+  },
+  {
+    "name": "js upper",
+    "query": "assigned_to=JAVASCRIPT:gs.getUserID()",
+    "expect": "UNSAFE_QUERY",
+    "profile": "enforce",
+    "allowTextSearch": false
+  },
+  {
+    "name": "js alternating case",
+    "query": "assigned_to=JaVaScRiPt:gs.getUserID()",
+    "expect": "UNSAFE_QUERY",
+    "profile": "enforce",
+    "allowTextSearch": false
+  },
+  {
+    "name": "js with space",
+    "query": "sys_id=java script:gs.getUserID()",
+    "expect": "UNSAFE_QUERY",
+    "profile": "enforce",
+    "allowTextSearch": false
+  },
+  {
+    "name": "js with tab (control char)",
+    "query": "sys_id=java\tscript:gs.getUserID()",
+    "expect": "INVALID_INPUT",
+    "profile": "enforce",
+    "allowTextSearch": false
+  },
+  {
+    "name": "js url-encoded",
+    "query": "sys_id=%6Aavascript:gs.getUserID()",
+    "expect": "UNSAFE_QUERY",
+    "profile": "enforce",
+    "allowTextSearch": false
+  },
+  {
+    "name": "js double url-encoded",
+    "query": "sys_id=%256Aavascript:gs.getUserID()",
+    "expect": "UNSAFE_QUERY",
+    "profile": "enforce",
+    "allowTextSearch": false
+  },
+  {
+    "name": "js fully url-encoded colon",
+    "query": "sys_id=javascript%3Ags.getUserID()",
+    "expect": "UNSAFE_QUERY",
+    "profile": "enforce",
+    "allowTextSearch": false
+  },
+  {
+    "name": "js decimal html entity",
+    "query": "sys_id=&#106;avascript:gs.getUserID()",
+    "expect": "UNSAFE_QUERY",
+    "profile": "enforce",
+    "allowTextSearch": false
+  },
+  {
+    "name": "js hex html entity",
+    "query": "sys_id=&#x6A;avascript:gs.getUserID()",
+    "expect": "UNSAFE_QUERY",
+    "profile": "enforce",
+    "allowTextSearch": false
+  },
+  {
+    "name": "js &colon; entity",
+    "query": "sys_id=javascript&colon;gs.getUserID()",
+    "expect": "UNSAFE_QUERY",
+    "profile": "enforce",
+    "allowTextSearch": false
+  },
+  {
+    "name": "js fullwidth (NFKC)",
+    "query": "sys_id=\uff4a\uff41\uff56\uff41\uff53\uff43\uff52\uff49\uff50\uff54:gs.getUserID()",
+    "expect": "UNSAFE_QUERY",
+    "profile": "enforce",
+    "allowTextSearch": false
+  },
+  {
+    "name": "js zero-width space",
+    "query": "sys_id=java\u200bscript:gs.getUserID()",
+    "expect": "UNSAFE_QUERY",
+    "profile": "enforce",
+    "allowTextSearch": false
+  },
+  {
+    "name": "js soft hyphen",
+    "query": "sys_id=java\u00adscript:gs.getUserID()",
+    "expect": "UNSAFE_QUERY",
+    "profile": "enforce",
+    "allowTextSearch": false
+  },
+  {
+    "name": "js bidi override",
+    "query": "sys_id=java\u202escript:gs.getUserID()",
+    "expect": "UNSAFE_QUERY",
+    "profile": "enforce",
+    "allowTextSearch": false
+  },
+  {
+    "name": "js BOM inside",
+    "query": "sys_id=java\ufeffscript:gs.getUserID()",
+    "expect": "UNSAFE_QUERY",
+    "profile": "enforce",
+    "allowTextSearch": false
+  },
+  {
+    "name": "js \\u escape",
+    "query": "sys_id=\\u006aavascript:gs.getUserID()",
+    "expect": "UNSAFE_QUERY",
+    "profile": "enforce",
+    "allowTextSearch": false
+  },
+  {
+    "name": "js \\u{} escape",
+    "query": "sys_id=\\u{6a}avascript:gs.getUserID()",
+    "expect": "UNSAFE_QUERY",
+    "profile": "enforce",
+    "allowTextSearch": false
+  },
+  {
+    "name": "js \\x escape",
+    "query": "sys_id=\\x6aavascript:gs.getUserID()",
+    "expect": "UNSAFE_QUERY",
+    "profile": "enforce",
+    "allowTextSearch": false
+  },
+  {
+    "name": "js dotted letters",
+    "query": "sys_id=j.a.v.a.s.c.r.i.p.t:gs.getUserID()",
+    "expect": "UNSAFE_QUERY",
+    "profile": "enforce",
+    "allowTextSearch": false
+  },
+  {
+    "name": "js in BETWEEN",
+    "query": "sys_created_onBETWEENjavascript:gs.dateGenerate('2026-01-01','00:00:00')@javascript:gs.endOfToday()",
+    "expect": "UNSAFE_QUERY",
+    "profile": "enforce",
+    "allowTextSearch": false
+  },
+  {
+    "name": "js after ^NQ",
+    "query": "active=true^NQsys_id=javascript:gs.getUserID()",
+    "expect": "UNSAFE_QUERY",
+    "profile": "enforce",
+    "allowTextSearch": false
+  },
+  {
+    "name": "js after ^OR",
+    "query": "active=true^ORsys_id=javascript:gs.getUserID()",
+    "expect": "UNSAFE_QUERY",
+    "profile": "enforce",
+    "allowTextSearch": false
+  },
+  {
+    "name": "js in STARTSWITH",
+    "query": "nameSTARTSWITHjavascript:gs.getUserID()",
+    "expect": "UNSAFE_QUERY",
+    "profile": "enforce",
+    "allowTextSearch": false
+  },
+  {
+    "name": "js in NOT IN",
+    "query": "stateNOT IN1,javascript:gs.getUserID()",
+    "expect": "UNSAFE_QUERY",
+    "profile": "enforce",
+    "allowTextSearch": false
+  },
+  {
+    "name": "js in text search",
+    "query": "123TEXTQUERY321=javascript:gs.getUserID()",
+    "expect": "UNSAFE_QUERY",
+    "profile": "enforce",
+    "allowTextSearch": true
+  },
+  {
+    "name": "DYNAMIC filter",
+    "query": "assigned_toDYNAMIC90d1921e5f510100a9ad2572f2b477fe",
+    "expect": "UNSAFE_QUERY",
+    "profile": "enforce",
+    "allowTextSearch": false
+  },
+  {
+    "name": "ON with js",
+    "query": "sys_created_onONToday@javascript:gs.beginningOfToday()@javascript:gs.endOfToday()",
+    "expect": "UNSAFE_QUERY",
+    "profile": "enforce",
+    "allowTextSearch": false
+  },
+  {
+    "name": "ON plain",
+    "query": "sys_created_onONToday",
+    "expect": "UNSAFE_QUERY",
+    "profile": "enforce",
+    "allowTextSearch": false
+  },
+  {
+    "name": "NOTON",
+    "query": "sys_created_onNOTONToday@x@y",
+    "expect": "UNSAFE_QUERY",
+    "profile": "enforce",
+    "allowTextSearch": false
+  },
+  {
+    "name": "DATEPART",
+    "query": "sys_created_onDATEPARTMonday@javascript:gs.datePart('dayofweek','monday','EE')",
+    "expect": "UNSAFE_QUERY",
+    "profile": "enforce",
+    "allowTextSearch": false
+  },
+  {
+    "name": "MORETHAN",
+    "query": "sys_updated_onMORETHANsys_created_on@hour@after@1",
+    "expect": "UNSAFE_QUERY",
+    "profile": "enforce",
+    "allowTextSearch": false
+  },
+  {
+    "name": "LESSTHAN",
+    "query": "sys_updated_onLESSTHANsys_created_on@hour@after@1",
+    "expect": "UNSAFE_QUERY",
+    "profile": "enforce",
+    "allowTextSearch": false
+  },
+  {
+    "name": "VALCHANGES",
+    "query": "stateVALCHANGES",
+    "expect": "UNSAFE_QUERY",
+    "profile": "enforce",
+    "allowTextSearch": false
+  },
+  {
+    "name": "CHANGESFROM",
+    "query": "stateCHANGESFROM1",
+    "expect": "UNSAFE_QUERY",
+    "profile": "enforce",
+    "allowTextSearch": false
+  },
+  {
+    "name": "CHANGESTO",
+    "query": "stateCHANGESTO2",
+    "expect": "UNSAFE_QUERY",
+    "profile": "enforce",
+    "allowTextSearch": false
+  },
+  {
+    "name": "RELATIVEEE",
+    "query": "sys_created_onRELATIVEEE@day@ago@1",
+    "expect": "UNSAFE_QUERY",
+    "profile": "enforce",
+    "allowTextSearch": false
+  },
+  {
+    "name": "RLQUERY at start",
+    "query": "RLQUERYtask_sla.task,>=1^ENDRLQUERY",
+    "expect": "UNSAFE_QUERY",
+    "profile": "enforce",
+    "allowTextSearch": false
+  },
+  {
+    "name": "RLQUERY after AND",
+    "query": "active=true^RLQUERYtask_sla.task,>=1^ENDRLQUERY",
+    "expect": "UNSAFE_QUERY",
+    "profile": "enforce",
+    "allowTextSearch": false
+  },
+  {
+    "name": "SUBQUERY",
+    "query": "SUBQUERYsys_id,task,incident^ENDSUBQUERY",
+    "expect": "UNSAFE_QUERY",
+    "profile": "enforce",
+    "allowTextSearch": false
+  },
+  {
+    "name": "JOIN",
+    "query": "JOINincident.sys_id=task_sla.task!active=true",
+    "expect": "UNSAFE_QUERY",
+    "profile": "enforce",
+    "allowTextSearch": false
+  },
+  {
+    "name": "text search not allowed",
+    "query": "123TEXTQUERY321=password",
+    "expect": "UNSAFE_QUERY",
+    "profile": "enforce",
+    "allowTextSearch": false
+  },
+  {
+    "name": "IR_AND_OR_QUERY",
+    "query": "IR_AND_OR_QUERY=foo",
+    "expect": "UNSAFE_QUERY",
+    "profile": "enforce",
+    "allowTextSearch": false
+  },
+  {
+    "name": "GOTO",
+    "query": "GOTOnumber=INC0010001",
+    "expect": "UNSAFE_QUERY",
+    "profile": "enforce",
+    "allowTextSearch": false
+  },
+  {
+    "name": "trailing ^EQ",
+    "query": "active=true^EQ",
+    "expect": "UNSAFE_QUERY",
+    "profile": "enforce",
+    "allowTextSearch": false
+  },
+  {
+    "name": "ENDRLQUERY alone",
+    "query": "active=true^ENDRLQUERY",
+    "expect": "UNSAFE_QUERY",
+    "profile": "enforce",
+    "allowTextSearch": false
+  },
+  {
+    "name": "empty NQ term",
+    "query": "active=true^NQ",
+    "expect": "INVALID_INPUT",
+    "profile": "enforce",
+    "allowTextSearch": false
+  },
+  {
+    "name": "NQ at start",
+    "query": "NQactive=true",
+    "expect": "UNSAFE_QUERY",
+    "profile": "enforce",
+    "allowTextSearch": false
+  },
+  {
+    "name": "double caret",
+    "query": "active=true^^priority=1",
+    "expect": "INVALID_INPUT",
+    "profile": "enforce",
+    "allowTextSearch": false
+  },
+  {
+    "name": "leading caret",
+    "query": "^active=true",
+    "expect": "INVALID_INPUT",
+    "profile": "enforce",
+    "allowTextSearch": false
+  },
+  {
+    "name": "trailing caret",
+    "query": "active=true^",
+    "expect": "INVALID_INPUT",
+    "profile": "enforce",
+    "allowTextSearch": false
+  },
+  {
+    "name": "OR as first term",
+    "query": "ORactive=true",
+    "expect": "UNSAFE_QUERY",
+    "profile": "enforce",
+    "allowTextSearch": false
+  },
+  {
+    "name": "OR right after NQ",
+    "query": "active=true^NQORpriority=1",
+    "expect": "UNSAFE_QUERY",
+    "profile": "enforce",
+    "allowTextSearch": false
+  },
+  {
+    "name": "too many NQ groups",
+    "query": "a=1^NQb=1^NQc=1^NQd=1",
+    "expect": "INVALID_INPUT",
+    "profile": "enforce",
+    "allowTextSearch": false
+  },
+  {
+    "name": "too many terms",
+    "query": "f0=1^f1=1^f2=1^f3=1^f4=1^f5=1^f6=1^f7=1^f8=1^f9=1^f10=1^f11=1^f12=1^f13=1^f14=1^f15=1^f16=1^f17=1^f18=1^f19=1^f20=1",
+    "expect": "INVALID_INPUT",
+    "profile": "enforce",
+    "allowTextSearch": false
+  },
+  {
+    "name": "oversize query",
+    "query": "short_descriptionLIKExxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    "expect": "INVALID_INPUT",
+    "profile": "enforce",
+    "allowTextSearch": false
+  },
+  {
+    "name": "too many ORDERBY",
+    "query": "active=true^ORDERBYa^ORDERBYb^ORDERBYc^ORDERBYd",
+    "expect": "INVALID_INPUT",
+    "profile": "enforce",
+    "allowTextSearch": false
+  },
+  {
+    "name": "ORDERBY invalid field",
+    "query": "active=true^ORDERBY../x",
+    "expect": "INVALID_INPUT",
+    "profile": "enforce",
+    "allowTextSearch": false
+  },
+  {
+    "name": "unknown operator ~",
+    "query": "priority~1",
+    "expect": "UNSAFE_QUERY",
+    "profile": "enforce",
+    "allowTextSearch": false
+  },
+  {
+    "name": "unknown operator MATCHES",
+    "query": "nameMATCHES.*",
+    "expect": "UNSAFE_QUERY",
+    "profile": "enforce",
+    "allowTextSearch": false
+  },
+  {
+    "name": "uppercase field",
+    "query": "Priority=1",
+    "expect": "UNSAFE_QUERY",
+    "profile": "enforce",
+    "allowTextSearch": false
+  },
+  {
+    "name": "path traversal field",
+    "query": "../sys_user=1",
+    "expect": "UNSAFE_QUERY",
+    "profile": "enforce",
+    "allowTextSearch": false
+  },
+  {
+    "name": "too deep dot-walk",
+    "query": "a.b.c.d.e=1",
+    "expect": "INVALID_INPUT",
+    "profile": "enforce",
+    "allowTextSearch": false
+  },
+  {
+    "name": "missing operator",
+    "query": "priority",
+    "expect": "UNSAFE_QUERY",
+    "profile": "enforce",
+    "allowTextSearch": false
+  },
+  {
+    "name": "space before operator",
+    "query": "priority LIKE x",
+    "expect": "UNSAFE_QUERY",
+    "profile": "enforce",
+    "allowTextSearch": false
+  },
+  {
+    "name": "ISEMPTY with value",
+    "query": "descriptionISEMPTYfoo",
+    "expect": "INVALID_INPUT",
+    "profile": "enforce",
+    "allowTextSearch": false
+  },
+  {
+    "name": "= with empty value",
+    "query": "priority=",
+    "expect": "INVALID_INPUT",
+    "profile": "enforce",
+    "allowTextSearch": false
+  },
+  {
+    "name": "IN empty item",
+    "query": "stateIN1,,2",
+    "expect": "INVALID_INPUT",
+    "profile": "enforce",
+    "allowTextSearch": false
+  },
+  {
+    "name": "IN too many items",
+    "query": "stateIN0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67,68,69,70,71,72,73,74,75,76,77,78,79,80,81,82,83,84,85,86,87,88,89,90,91,92,93,94,95,96,97,98,99,100",
+    "expect": "INVALID_INPUT",
+    "profile": "enforce",
+    "allowTextSearch": false
+  },
+  {
+    "name": "BETWEEN one part",
+    "query": "sys_created_onBETWEEN2026-01-01",
+    "expect": "INVALID_INPUT",
+    "profile": "enforce",
+    "allowTextSearch": false
+  },
+  {
+    "name": "BETWEEN three parts",
+    "query": "sys_created_onBETWEEN1@2@3",
+    "expect": "INVALID_INPUT",
+    "profile": "enforce",
+    "allowTextSearch": false
+  },
+  {
+    "name": "RELATIVE zero",
+    "query": "sys_created_onRELATIVEGE@day@ago@0",
+    "expect": "INVALID_INPUT",
+    "profile": "enforce",
+    "allowTextSearch": false
+  },
+  {
+    "name": "RELATIVE bad unit",
+    "query": "sys_created_onRELATIVEGE@fortnight@ago@1",
+    "expect": "INVALID_INPUT",
+    "profile": "enforce",
+    "allowTextSearch": false
+  },
+  {
+    "name": "RELATIVE too large",
+    "query": "sys_created_onRELATIVEGE@day@ago@99999",
+    "expect": "INVALID_INPUT",
+    "profile": "enforce",
+    "allowTextSearch": false
+  },
+  {
+    "name": "RELATIVE js",
+    "query": "sys_created_onRELATIVEGE@javascript:gs.getUserID()",
+    "expect": "UNSAFE_QUERY",
+    "profile": "enforce",
+    "allowTextSearch": false
+  },
+  {
+    "name": "SAMEAS non-field",
+    "query": "assigned_toSAMEASopened_by;drop",
+    "expect": "INVALID_INPUT",
+    "profile": "enforce",
+    "allowTextSearch": false
+  },
+  {
+    "name": "INSTANCEOF bad table",
+    "query": "sys_class_nameINSTANCEOFtask;cmdb",
+    "expect": "INVALID_INPUT",
+    "profile": "enforce",
+    "allowTextSearch": false
+  },
+  {
+    "name": "newline injection",
+    "query": "active=true\n^NQsys_id!=x",
+    "expect": "INVALID_INPUT",
+    "profile": "enforce",
+    "allowTextSearch": false
+  },
+  {
+    "name": "null byte",
+    "query": "active=true\u0000",
+    "expect": "INVALID_INPUT",
+    "profile": "enforce",
+    "allowTextSearch": false
+  },
+  {
+    "name": "value too long",
+    "query": "short_descriptionLIKExxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    "expect": "INVALID_INPUT",
+    "profile": "enforce",
+    "allowTextSearch": false
+  },
+  {
+    "name": "text search not first",
+    "query": "active=true^123TEXTQUERY321=foo",
+    "expect": "INVALID_INPUT",
+    "profile": "enforce",
+    "allowTextSearch": true
+  },
+  {
+    "name": "text search twice",
+    "query": "123TEXTQUERY321=a^123TEXTQUERY321=b",
+    "expect": "INVALID_INPUT",
+    "profile": "enforce",
+    "allowTextSearch": true
+  },
+  {
+    "name": "text search wrong operator",
+    "query": "123TEXTQUERY321LIKEfoo",
+    "expect": "INVALID_INPUT",
+    "profile": "enforce",
+    "allowTextSearch": true
+  },
+  {
+    "name": "strict: gs. call",
+    "query": "scriptLIKEgs.addErrorMessage",
+    "expect": "UNSAFE_QUERY",
+    "profile": "strict",
+    "allowTextSearch": false
+  },
+  {
+    "name": "strict: spaced gs .",
+    "query": "scriptLIKEgs .log",
+    "expect": "UNSAFE_QUERY",
+    "profile": "strict",
+    "allowTextSearch": false
+  },
+  {
+    "name": "strict: ${} template",
+    "query": "messageLIKE${number}",
+    "expect": "UNSAFE_QUERY",
+    "profile": "strict",
+    "allowTextSearch": false
+  },
+  {
+    "name": "strict: eval(",
+    "query": "scriptLIKEeval(",
+    "expect": "UNSAFE_QUERY",
+    "profile": "strict",
+    "allowTextSearch": false
+  },
+  {
+    "name": "strict: new Constructor",
+    "query": "scriptLIKEnew GlideRecord",
+    "expect": "UNSAFE_QUERY",
+    "profile": "strict",
+    "allowTextSearch": false
+  }
+]

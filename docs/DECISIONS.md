@@ -107,6 +107,16 @@ Format: Status · Context · Decision · Alternatives considered · Consequences
   - Blocklist only: insufficient.
   - Structured filters only: too limiting for experts. Raw queries are kept but validated.
 - **Consequences:** some valid but exotic queries are refused, with an `UNSAFE_QUERY`/`QUERY_TOO_BROAD` hint.
+- *Addendum (T-003, 2026-11-04) — implementation refinements:*
+  - **Validation profiles.**
+    - `enforce` is authoritative and runs in the server and the extension. It covers the operator allowlist, full term parsing, and structure/size limits. It rejects `javascript` in any disguise after normalization, plus control characters and `^` in values.
+    - `strict` is used for raw `encoded_query` typed by the model. It is `enforce` plus a rejection of script-like patterns (`gs.`, `${`, `eval(`, `new X`).
+    - **Why split:** those patterns are legitimate literal searches (e.g. `search_code` looking for `gs.addErrorMessage` or `new GlideRecord`). ServiceNow evaluates only `javascript:`-prefixed values, which `enforce` always blocks. The extension only sees compiled queries, so it can't tell which path produced them and therefore applies `enforce`.
+  - **Known false positive:** any value containing the word "javascript" (e.g. searching KB for "JavaScript") is refused. This is accepted for safety.
+  - **Excluded operators:** `ON`, `NOTON`, `DATEPART`, `MORETHAN`, `LESSTHAN` (their values are normally `javascript:` expressions), `VALCHANGES`/`CHANGESFROM`/`CHANGESTO`, and `RELATIVEEE`. Date filtering uses `>=`/`<`/`BETWEEN` and `RELATIVEGE`/`RELATIVEGT`/`RELATIVELT`/`RELATIVELE`.
+  - **Field-to-field operators:** `SAMEAS`, `NSAMEAS`, `GT_FIELD`, `LT_FIELD`, `GT_OR_EQUALS_FIELD`, `LT_OR_EQUALS_FIELD` are allowed. Their value fields are added to `referencedFields`, so dictionary validation covers them.
+  - **Structured relative dates:** `within_last` (→ `RELATIVEGE@unit@ago@n`) and `older_than` (→ `RELATIVELT@unit@ago@n`).
+  - **Text search:** `123TEXTQUERY321` is only accepted when `allowTextSearch` is set (server `text` parameter) and only as the first term.
 
 ## ADR-006 — Response budgets, signed cursors, ambiguity errors
 

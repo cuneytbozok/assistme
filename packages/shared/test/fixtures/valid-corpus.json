@@ -1,0 +1,215 @@
+[
+  {
+    "query": "",
+    "profiles": ["enforce", "strict"],
+    "allowTextSearch": false,
+    "referencedFields": []
+  },
+  {
+    "query": "active=true",
+    "profiles": ["enforce", "strict"],
+    "allowTextSearch": false,
+    "referencedFields": ["active"]
+  },
+  {
+    "query": "active=true^priority=1",
+    "profiles": ["enforce", "strict"],
+    "allowTextSearch": false,
+    "referencedFields": ["active", "priority"]
+  },
+  {
+    "query": "active=true^priority=1^ORpriority=2",
+    "profiles": ["enforce", "strict"],
+    "allowTextSearch": false,
+    "referencedFields": ["active", "priority"]
+  },
+  {
+    "query": "number=INC0012345",
+    "profiles": ["enforce", "strict"],
+    "allowTextSearch": false
+  },
+  {
+    "query": "sys_id=0123456789abcdef0123456789abcdef",
+    "profiles": ["enforce", "strict"],
+    "allowTextSearch": false
+  },
+  {
+    "query": "short_descriptionLIKEemail",
+    "profiles": ["enforce", "strict"],
+    "allowTextSearch": false
+  },
+  {
+    "query": "short_descriptionNOT LIKEtest",
+    "profiles": ["enforce", "strict"],
+    "allowTextSearch": false
+  },
+  {
+    "query": "nameSTARTSWITHDiscovery",
+    "profiles": ["enforce", "strict"],
+    "allowTextSearch": false
+  },
+  {
+    "query": "nameENDSWITH.js",
+    "profiles": ["enforce", "strict"],
+    "allowTextSearch": false
+  },
+  {
+    "query": "stateIN1,2,3",
+    "profiles": ["enforce", "strict"],
+    "allowTextSearch": false
+  },
+  {
+    "query": "stateNOT IN6,7",
+    "profiles": ["enforce", "strict"],
+    "allowTextSearch": false
+  },
+  {
+    "query": "assigned_toISEMPTY",
+    "profiles": ["enforce", "strict"],
+    "allowTextSearch": false
+  },
+  {
+    "query": "assigned_toISNOTEMPTY",
+    "profiles": ["enforce", "strict"],
+    "allowTextSearch": false
+  },
+  {
+    "query": "descriptionANYTHING",
+    "profiles": ["enforce", "strict"],
+    "allowTextSearch": false
+  },
+  {
+    "query": "descriptionEMPTYSTRING",
+    "profiles": ["enforce", "strict"],
+    "allowTextSearch": false
+  },
+  {
+    "query": "caller_id.department.name=IT",
+    "profiles": ["enforce", "strict"],
+    "allowTextSearch": false,
+    "referencedFields": ["caller_id.department.name"]
+  },
+  {
+    "query": "sys_created_on>=2026-11-01 00:00:00",
+    "profiles": ["enforce", "strict"],
+    "allowTextSearch": false
+  },
+  {
+    "query": "sys_created_onRELATIVEGE@hour@ago@24",
+    "profiles": ["enforce", "strict"],
+    "allowTextSearch": false
+  },
+  {
+    "query": "sys_created_onRELATIVELT@day@ago@30",
+    "profiles": ["enforce", "strict"],
+    "allowTextSearch": false
+  },
+  {
+    "query": "due_dateRELATIVELE@week@ahead@2",
+    "profiles": ["enforce", "strict"],
+    "allowTextSearch": false
+  },
+  {
+    "query": "sys_created_onBETWEEN2026-11-01 00:00:00@2026-11-02 00:00:00",
+    "profiles": ["enforce", "strict"],
+    "allowTextSearch": false
+  },
+  {
+    "query": "priority<3",
+    "profiles": ["enforce", "strict"],
+    "allowTextSearch": false
+  },
+  {
+    "query": "priority<=3^priority!=1",
+    "profiles": ["enforce", "strict"],
+    "allowTextSearch": false
+  },
+  {
+    "query": "priority>1^priority>=2",
+    "profiles": ["enforce", "strict"],
+    "allowTextSearch": false
+  },
+  {
+    "query": "opened_bySAMEASassigned_to",
+    "profiles": ["enforce", "strict"],
+    "allowTextSearch": false,
+    "referencedFields": ["opened_by", "assigned_to"]
+  },
+  {
+    "query": "sys_updated_onGT_FIELDsys_created_on",
+    "profiles": ["enforce", "strict"],
+    "allowTextSearch": false,
+    "referencedFields": ["sys_updated_on", "sys_created_on"]
+  },
+  {
+    "query": "sys_class_nameINSTANCEOFcmdb_ci_server",
+    "profiles": ["enforce", "strict"],
+    "allowTextSearch": false,
+    "referencedFields": ["sys_class_name"]
+  },
+  {
+    "query": "active=true^ORDERBYDESCsys_updated_on",
+    "profiles": ["enforce", "strict"],
+    "allowTextSearch": false,
+    "referencedFields": ["active", "sys_updated_on"]
+  },
+  {
+    "query": "ORDERBYnumber",
+    "profiles": ["enforce", "strict"],
+    "allowTextSearch": false,
+    "referencedFields": ["number"]
+  },
+  {
+    "query": "active=true^NQactive=false^priority=1",
+    "profiles": ["enforce", "strict"],
+    "allowTextSearch": false,
+    "referencedFields": ["active", "priority"]
+  },
+  {
+    "query": "level=2^sourceSTARTSWITHDiscovery^sys_created_onRELATIVEGE@hour@ago@6^ORDERBYDESCsys_created_on",
+    "profiles": ["enforce", "strict"],
+    "allowTextSearch": false,
+    "referencedFields": ["level", "source", "sys_created_on"]
+  },
+  {
+    "query": "name=incident^element=state^ORDERBYDESCsys_created_on",
+    "profiles": ["enforce", "strict"],
+    "allowTextSearch": false
+  },
+  {
+    "query": "documentkey=0123456789abcdef0123456789abcdef^ORDERBYsys_created_on",
+    "profiles": ["enforce", "strict"],
+    "allowTextSearch": false
+  },
+  {
+    "query": "u_custom_field=x^x_acme_app_flag=true",
+    "profiles": ["enforce", "strict"],
+    "allowTextSearch": false
+  },
+  {
+    "query": "emailLIKE@example.com",
+    "profiles": ["enforce", "strict"],
+    "allowTextSearch": false
+  },
+  {
+    "query": "short_descriptionLIKEjava runtime",
+    "profiles": ["enforce", "strict"],
+    "allowTextSearch": false
+  },
+  {
+    "query": "short_descriptionLIKEnew laptop",
+    "profiles": ["enforce"],
+    "allowTextSearch": false
+  },
+  {
+    "query": "scriptLIKEgs.addErrorMessage",
+    "profiles": ["enforce"],
+    "allowTextSearch": false
+  },
+  {
+    "query": "123TEXTQUERY321=disk full^active=true",
+    "profiles": ["enforce", "strict"],
+    "allowTextSearch": true,
+    "referencedFields": ["active"]
+  }
+]

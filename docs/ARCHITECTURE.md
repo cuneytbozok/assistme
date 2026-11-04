@@ -153,8 +153,9 @@ where:  [ cond | {or: [cond, ...]} , ... ]          // AND of terms; or-groups c
 any_of: [ where, where, where ]  (optional, ≤3)      // compiles to ^NQ
 cond:   {field, op, value}
 op ∈ = != > >= < <= contains not_contains starts_with ends_with in not_in
-     is_empty is_not_empty between relative
-relative: {amount, unit: minute|hour|day|week|month} → RELATIVEGE@unit@ago@n  (verified in PoC)
+     is_empty is_not_empty between within_last older_than
+within_last / older_than: {amount, unit: minute|hour|day|week|month|year}
+     → RELATIVEGE@unit@ago@n / RELATIVELT@unit@ago@n   (accepted by ServiceNow: verify in T-005)
 ```
 Values containing `^`, control characters, or newlines are rejected, as are `,` inside `in` items.
 
@@ -176,6 +177,9 @@ Values containing `^`, control characters, or newlines are rejected, as are `,` 
 - No conditions → limit ≤20.
 - **High-volume tables** (configurable: `syslog*`, `sys_audit`, `sys_journal_field`, `ecc_queue`, `sys_email`, `sys_history_line`, `discovery_device_history`, `sys_poll`, `*_log`) require a `sys_created_on` window (≤7 days by default) **or** an equality/IN on an indexed key (`sys_id`, `number`, `documentkey`, `element_id`, `source`, `agent_correlator`, …). `contains` on these tables also needs the time window.
 - Counts are opt-in (`include_total`). The default sends `sysparm_no_count=true`.
+
+### 6.4a Profiles (T-003)
+`enforce` (authoritative; server + extension) vs `strict` (raw `encoded_query` from the model; additionally rejects `gs.`, `${`, `eval(`, `new X`). See the ADR-005 addendum.
 
 ### 6.5 Placement
 

@@ -12,7 +12,7 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 | ----- | ----------------------------------------------- | -------- | ----------- |
 | T-001 | Repository scaffold                             | —        | DONE        |
 | T-002 | Shared protocol schemas                         | 001      | DONE        |
-| T-003 | Shared query module + attack corpus             | 002      | TODO        |
+| T-003 | Shared query module + attack corpus             | 002      | DONE        |
 | T-004 | MV3 extension skeleton + minimal registry       | 001      | TODO        |
 | T-005 | Live session hypothesis spike (H1–H8)           | 004      | TODO        |
 | T-006 | Native host / authenticated broker              | 002      | TODO        |
@@ -130,7 +130,7 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 
 ### T-003 — Shared query module + attack corpus
 
-- **Status:** TODO
+- **Status:** DONE
 - **Purpose:** Safe query construction and validation shared by server and extension (ADR-005, syntactic part).
 - **Dependencies:** T-002
 - **Deliverables:**
@@ -147,7 +147,25 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
   3. `referencedFields` is correct for dot-walks.
 - **Verification:** `npm test -w packages/shared`; coverage ≥90% for `query/`.
 - **DoD:** operator list and rejection rules documented in module headers.
-- **Evidence:** —
+- **Evidence (2026-11-04):**
+  - Implemented `packages/shared/src/query/{operators,normalize,encoded-query,filter-compiler,index}.ts`:
+    - Operator allowlist with longest-first matching.
+    - Inspection normalization: ≤2 URL-decode passes, HTML entity and `\u`/`\u{}`/`\x` decoding, NFKC, invisible/bidi stripping, lowercase.
+    - Encoded-query tokenizer/parser/validator/serializer with `referencedFields`.
+    - Structured filter compiler (zod input schemas reusable as MCP tool schemas) that re-validates its own output.
+  - Corpora:
+    - `test/fixtures/attack-corpus.json`: **90** cases, all rejected with the expected code. They cover javascript variants (case, space, tab, single/double URL-encoding, decimal/hex entities, `&colon;`, fullwidth, zero-width, soft hyphen, bidi, BOM, `\u`/`\u{}`/`\x` escapes, dotted letters, inside IN/BETWEEN/NQ/OR/text search), DYNAMIC/ON/NOTON/DATEPART/MORETHAN/LESSTHAN/VALCHANGES/CHANGESFROM/CHANGESTO/RELATIVEEE, RLQUERY/SUBQUERY/JOIN/123TEXTQUERY321/IR_AND_OR_QUERY/GOTO/EQ, NQ/OR/caret structure injection, size/term/group/ORDERBY limits, bad fields/operators/values, control chars, and 5 strict-profile script-like cases.
+    - `test/fixtures/valid-corpus.json`: **40** realistic queries, all accepted. Canonical round-trip `serializeQuery(parse(q)) === q`, and `referencedFields` checked for dot-walks, field-valued operators and ORDERBY.
+  - Results: `npm test -w @sn-mcp/shared` → **238 passed**. `npm run coverage -w @sn-mcp/shared` (thresholds lines/branches 90%) → statements 97.44%, branches 95.83%, functions 100%, lines 99.16% for `src/query/**`. Root `npm run build`, `npm test`, `npm run lint` → exit 0.
+  - AC1 ✔ AC2 ✔ AC3 ✔ (see corpora and tests).
+  - The first test run found 3 normalizer bugs: greedy `\u` decoding, the `\u{6a}` form not recognised, and truncated long numeric entities. Fixed in the decoder, not the tests.
+  - Design refinements, recorded in the ADR-005 addendum:
+    - Two profiles: `enforce` (authoritative, everywhere) and `strict` (raw model-typed `encoded_query`).
+    - The `gs.`/`${`/`eval(`/`new X` patterns apply only in `strict`, so literal code searches in structured filters still work.
+    - Structured relative-date ops are `within_last`/`older_than` instead of a single `relative`.
+    - `123TEXTQUERY321` is accepted only with `allowTextSearch` and only as the first term.
+  - Added dev dependency `@vitest/coverage-v8@5.1.0` and the shared script `coverage`.
+  - Unverified (live): that ServiceNow accepts `RELATIVEGE@unit@ago@n` and plain-date `BETWEEN a@b`. Both are checked in T-005, as planned.
 
 ## Phase 1 — Live PoC (Milestone M1)
 
