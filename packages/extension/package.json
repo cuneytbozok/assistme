@@ -8,7 +8,8 @@
     "build": "tsc -p tsconfig.json --noEmit && node build.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
-    "gen-key": "node scripts/gen-extension-key.mjs"
+    "gen-key": "node scripts/gen-extension-key.mjs",
+    "build:diag": "tsc -p tsconfig.json --noEmit && DEV_DIAGNOSTICS=1 node build.mjs"
   },
   "dependencies": {
     "@sn-mcp/shared": "0.0.0",

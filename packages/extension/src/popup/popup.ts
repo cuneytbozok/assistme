@@ -117,4 +117,5 @@ function onSubmit(event: SubmitEvent): void {
 }
 
 el<HTMLFormElement>('register').addEventListener('submit', onSubmit);
+if (__DEV_DIAGNOSTICS__) el('diagnostics-link').hidden = false;
 void render();

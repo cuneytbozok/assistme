@@ -14,7 +14,7 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 | T-002 | Shared protocol schemas                         | 001      | DONE        |
 | T-003 | Shared query module + attack corpus             | 002      | DONE        |
 | T-004 | MV3 extension skeleton + minimal registry       | 001      | DONE        |
-| T-005 | Live session hypothesis spike (H1–H8)           | 004      | TODO        |
+| T-005 | Live session hypothesis spike (H1–H8)           | 004      | IN_PROGRESS |
 | T-006 | Native host / authenticated broker              | 002      | TODO        |
 | T-007 | Extension ↔ host port, executor, minimal grants | 005, 006 | TODO        |
 | T-008 | Minimal MCP server                              | 006, 003 | TODO        |
@@ -206,11 +206,11 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
   - Deviation (recorded in the ADR-007 addendum): tab suggestions are deferred to T-010, to avoid adding `tabs`/`activeTab` here; users paste the instance URL.
   - Unverified:
     - The look of Chrome's permission dialog itself (headless Chrome has no prompt UI).
-    - The granted → saved path, which needs a person to click Allow. It will be exercised when the DEV instance is registered at the start of T-005.
+    - ~~The granted → saved path~~ — confirmed 2026-11-04 by the user in their own Chrome: the extension loaded with ID `clipfeocpiljpcngmjpdbegciimchbol`, and `dev469966.service-now.com` was registered (permission granted, entry saved).
 
 ### T-005 — Live session hypothesis spike (H1–H8)
 
-- **Status:** TODO
+- **Status:** IN_PROGRESS
 - **Purpose:** Empirically decide the session access path (ADR-002).
 - **Dependencies:** T-004
 - **Deliverables:**
