@@ -262,6 +262,20 @@ describe('routing', () => {
     expect(JSON.stringify(rb)).toContain('beta');
   });
 
+  it('accepts an answer that arrives before the forward write returns (synchronous extension)', async () => {
+    const { dir, ext } = await startBroker();
+    // Reply from inside the broker's own write to the extension.
+    ext.extOut.on('data', () => {
+      const idx = ext.reader.received.findIndex((m) => m.kind === 'forward');
+      if (idx < 0) return;
+      const f = ext.reader.received.splice(idx, 1)[0] as { request: { id: string } };
+      ext.send(registryResult(f.request.id, 'sync'));
+    });
+    const a = await client(dir);
+    a.conn.send(registryGet('1'));
+    expect(JSON.stringify(await a.next())).toContain('sync');
+  });
+
   it('enforces the in-flight cap and rejects duplicate in-flight ids', async () => {
     const { dir } = await startBroker({ maxInFlightPerClient: 2 });
     const a = await client(dir);

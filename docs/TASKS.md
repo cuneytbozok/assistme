@@ -17,7 +17,7 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 | T-005 | Live session hypothesis spike (H1–H8)           | 004      | DONE        |
 | T-006 | Native host / authenticated broker              | 002      | DONE        |
 | T-007 | Extension ↔ host port, executor, minimal grants | 005, 006 | DONE        |
-| T-008 | Minimal MCP server                              | 006, 003 | TODO        |
+| T-008 | Minimal MCP server                              | 006, 003 | DONE        |
 | T-009 | PoC end-to-end in Claude Code + Desktop (M1)    | 007, 008 | TODO        |
 | T-010 | Full instance registry                          | 007      | TODO        |
 | T-011 | Full grant model                                | 010      | TODO        |
@@ -361,7 +361,7 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 
 ### T-008 — Minimal MCP server
 
-- **Status:** TODO
+- **Status:** DONE
 - **Purpose:** An MCP stdio server exposing the PoC tool path.
 - **Dependencies:** T-006, T-003
 - **Deliverables:**
@@ -383,7 +383,32 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
   5. No tool accepts a URL, method, or header.
 - **Verification:** `npm test -w packages/server`.
 - **DoD:** README section for running the server locally.
-- **Evidence:** —
+- **Evidence (2026-11-04):**
+  - **Implemented:**
+    - `packages/server/src/bridge/client.ts`: lazy connect; one client key per process; re-authenticates on reconnect; client-side timeout; no replay. In-flight requests fail with `BRIDGE_UNAVAILABLE` only for their own connection.
+    - `src/mcp/{server,results,scope-store}.ts` and `src/bin/mcp-server.ts`.
+    - Uses `@modelcontextprotocol/server` 2.4.0 (SDK v2; dev dependency `@modelcontextprotocol/client` 2.4.0) and `zod` 4.6.7.
+  - **Tests:** `npm test -w @sn-mcp/server` → 48 passed (10 new in `test/mcp.test.ts`, 1 new broker regression). The MCP tests run an MCP SDK client → in-memory transport → server → real broker (in-process) → MOCK extension.
+  - **Acceptance criteria:**
+    - AC1 ✔ `tools/list` = `claim_scope, list_instances, query_records, request_scope`. Each has `readOnlyHint: true`, `destructiveHint: false`, a description and an `outputSchema`.
+    - AC2 ✔ `query_records` without `scope_id` → `isError`, `SCOPE_REQUIRED`, with no bridge traffic. An unknown `scope_id` → `SCOPE_UNKNOWN`.
+    - AC3 ✔ With no broker, `list_instances` → `BRIDGE_UNAVAILABLE` (with a hint) in under 3 s.
+    - AC4 ✔ (mock) The flow goes list → request (code shown as `K7QF-2M`) → claim pending → user approves → claim approved (`scope_id`) → claim again `claimed` → `query_records` with provenance `{instance, env, host, scope:'…SSSS', retrieved_at, source}`, `page{returned,total}`, `complete:false` and `omitted`. What crossed the bridge was an operation descriptor with no URL.
+    - AC5 ✔ Every tool's `inputSchema` has `additionalProperties:false`, and no property name matches url/uri/method/header/cookie/token/host/path/endpoint. Extra arguments (e.g. `url`) are rejected.
+  - **Also tested:**
+    - the server instructions include the untrusted-content notice and the scope flow;
+    - invalid identifiers and `limit > 5` are rejected;
+    - in-flight calls get `BRIDGE_UNAVAILABLE` when the broker stops, and the next call re-authenticates to a new broker (new key) and succeeds.
+  - **Live smoke** (not acceptance; that is T-009): `dist/bin/mcp-server.js` spawned over stdio by an MCP SDK `StdioClientTransport`, using the real broker in the user's Chrome. `tools/list` returned the 4 tools; `list_instances` returned `dev (dev469966.service-now.com)`; `query_records` without scope → `SCOPE_REQUIRED`.
+  - **Bugs found and fixed:**
+    1. **Broker (T-006 code):** a reply that arrived before `forward()` registered the pending entry was dropped. The broker now registers before sending. A regression test uses a synchronous extension; the mutation that restores the old order fails 3 tests.
+    2. **Bridge client:** the late close event of an old connection rejected requests already sent on a new one. Pending requests are now per connection; `broker.status: shutting_down` drops the connection at once; connections are checked with `isOpen()` before reuse.
+  - **Mutation check:** removing the `SCOPE_REQUIRED` check fails the type check (build step).
+  - Root `npm run build`, `npm test` (shared 240, server 48, extension 74) and `npm run lint` → exit 0.
+  - **Notes:**
+    - `query_records` is the PoC version (no filters, limit ≤ 5, `omitted` note); T-024 replaces it under ADR-011.
+    - Output schemas are a minimal `{ok}` envelope (full schemas in T-033). The SDK v2 `registerTool` overload needs an `outputSchema` to infer types.
+
 
 ### T-009 — PoC end-to-end in Claude Code + Desktop (Milestone M1)
 

@@ -46,6 +46,8 @@ export interface AuthenticatedConnection {
   send(message: unknown): void;
   onMessage(listener: (m: BrokerToClient) => void): void;
   onClose(listener: () => void): void;
+  /** False once the socket is closed or no longer writable. */
+  isOpen(): boolean;
   close(): void;
 }
 
@@ -168,6 +170,7 @@ export async function connectToBroker(
     onClose: (l) => {
       closeListeners.push(l);
     },
+    isOpen: () => !socket.destroyed && socket.writable,
     close: () => socket.destroy(),
   };
 }

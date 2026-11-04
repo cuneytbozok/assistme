@@ -1,6 +1,6 @@
 # Handoff
 
-_Last updated: 2026-11-04 (after T-007)_
+_Last updated: 2026-11-04 (after T-008)_
 
 ## Current project state
 
@@ -39,27 +39,25 @@ _Last updated: 2026-11-04 (after T-007)_
 ## Tasks
 
 - **Current task:** none (nothing IN_PROGRESS).
-- **Last completed task:** T-007 — Extension ↔ host port, executor, minimal grants (commit `T-007: extension bridge port, executor and minimal grants`).
-- **Live chain proven:** dev client → broker → extension → `dev469966` Table API.
-- **Next task:** **T-008 — Minimal MCP server.** It depends on T-006 ✔ and T-003 ✔. Reuse `src/bridge/handshake.ts`; the dev client (`src/bin/dev-client.ts`) shows the request/claim/op sequence. Then T-009 (PoC E2E in Claude Code + Desktop) needs T-007 ✔ and T-008.
-- **Installed on the user's Mac:** the native host (wrapper `~/Library/Application Support/sn-mcp/host/native-host`, manifest `…/NativeMessagingHosts/com.snmcp.bridge.json`). Uninstall with `npm run install-native-host -- --uninstall`. Re-run the install after a Node upgrade.
+- **Last completed task:** T-008 — Minimal MCP server (commit `T-008: minimal MCP server`). Tools: `list_instances`, `request_scope`, `claim_scope`, `query_records` (PoC). Entry point: `packages/server/dist/bin/mcp-server.js`.
+- **Next task:** **T-009 — PoC end-to-end in Claude Code + Desktop (Milestone M1).** It depends on T-007 ✔ and T-008 ✔. It needs:
+  - registering the server with Claude Code (`claude mcp add`) and with Claude Desktop (`claude_desktop_config.json`);
+  - the user's Chrome with the extension, and a logged-in `dev469966` tab;
+  - a broker traffic capture showing no cookie or token;
+  - confirming the SDK v2 protocol works with Desktop.
+- **Installed on the user's Mac:** the native host (see T-007).
 
 ## Files changed in last task
 
-- Extension:
-  - New: `src/background/{port,executor,grants,authz,popup-api}.ts`, `test/{grants,bridge}.test.ts`.
-  - Rewritten: `src/background/index.ts`.
-  - Popup: html/css/ts sections for access requests and active access.
-- Server: `src/bin/dev-client.ts`, `README.md`, and a `dev-client` script in `package.json`.
-- Docs: TASKS (T-007 evidence), DECISIONS (ADR-005 note on text search in the extension), HANDOFF.
+- Server:
+  - New: `src/bridge/client.ts`, `src/mcp/{server,results,scope-store}.ts`, `src/bin/mcp-server.ts`, `test/mcp.test.ts`.
+  - Modified: `src/bridge/handshake.ts` (`isOpen`), `src/native-host/broker.ts` (register-before-send fix), `test/broker.test.ts` (regression), `package.json` (deps, `bin`, `start`), `README.md`.
+- Docs: TASKS (T-008 evidence), DECISIONS (ADR-008 addendum), HANDOFF.
 
 ## Tests performed
 
-- Root build, tests (shared 240, server 38, extension 74) and lint all exit 0. 9 mutation checks.
-- Live:
-  - dev client request → approve (code `7QAT-QC`) → claim → `table.list incident` (HTTP 200, INC0000060).
-  - Negative checks with an unknown or released scope.
-  - Host `kill -9` → automatic relaunch and key rotation.
+- Root build, tests (shared 240, server 48, extension 74) and lint all exit 0.
+- Live stdio smoke: 4 tools; `list_instances` → `dev`; `SCOPE_REQUIRED` without a scope.
 
 ## Open blockers
 

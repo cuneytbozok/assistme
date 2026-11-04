@@ -9,12 +9,19 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "tsc -p tsconfig.json && vitest run",
     "install-native-host": "node dist/bin/install-native-host.js",
-    "dev-client": "node dist/bin/dev-client.js"
+    "dev-client": "node dist/bin/dev-client.js",
+    "start": "node dist/bin/mcp-server.js"
   },
   "dependencies": {
-    "@sn-mcp/shared": "0.0.0"
+    "@modelcontextprotocol/server": "^2.4.0",
+    "@sn-mcp/shared": "0.0.0",
+    "zod": "^4.6.7"
   },
   "bin": {
-    "sn-mcp-native-host": "dist/bin/native-host.js"
+    "sn-mcp-native-host": "dist/bin/native-host.js",
+    "sn-mcp-server": "dist/bin/mcp-server.js"
+  },
+  "devDependencies": {
+    "@modelcontextprotocol/client": "^2.4.0"
   }
 }

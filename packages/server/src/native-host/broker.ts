@@ -382,16 +382,7 @@ export class Broker {
     }
     if (!c.keyId || !c.label) return;
     const brokerId = `b${++this.seq}`;
-    const sent = this.sendToExtension({
-      v,
-      kind: 'forward',
-      client: { keyId: c.keyId, label: c.label },
-      request: { ...request, id: brokerId },
-    });
-    if (!sent) {
-      this.sendError(c, request.id, 'BRIDGE_UNAVAILABLE', 'Could not forward the request.');
-      return;
-    }
+    // Register before sending: the answer may arrive before sendToExtension returns.
     const timer = setTimeout(() => {
       if (!this.pending.delete(brokerId)) return;
       c.inFlight.delete(request.id);
@@ -405,6 +396,19 @@ export class Broker {
       timer,
     });
     c.inFlight.set(request.id, brokerId);
+    const sent = this.sendToExtension({
+      v,
+      kind: 'forward',
+      client: { keyId: c.keyId, label: c.label },
+      request: { ...request, id: brokerId },
+    });
+    if (!sent) {
+      clearTimeout(timer);
+      this.pending.delete(brokerId);
+      c.inFlight.delete(request.id);
+      this.sendError(c, request.id, 'BRIDGE_UNAVAILABLE', 'Could not forward the request.');
+      return;
+    }
     this.o.logger.log('request.forwarded', {
       kind: request.kind,
       client: c.keyId.slice(0, 8),

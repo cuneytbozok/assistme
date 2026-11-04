@@ -172,6 +172,11 @@ Format: Status · Context · Decision · Alternatives considered · Consequences
 - **Decision:** `@modelcontextprotocol/server` v2 (2.4.0 at planning time, spec 2026-07-28, zod v4), using stdio transport.
 - **Fallback:** if Claude Desktop protocol negotiation fails, use `@modelcontextprotocol/sdk` v1.x (1.32.2), which is still maintained, and record the change here.
 
+- *Addendum (T-008, 2026-11-04):*
+  - `@modelcontextprotocol/server@2.4.0` is used with `McpServer.registerTool(name, {inputSchema: z.strictObject(...), outputSchema, annotations}, cb)` and `StdioServerTransport` from `@modelcontextprotocol/server/stdio`.
+  - Tests use `@modelcontextprotocol/client@2.4.0` (`InMemoryTransport.createLinkedPair`, `StdioClientTransport`).
+  - Desktop protocol compatibility is still to be confirmed in T-009 (v1 fallback stays available).
+
 ## ADR-009 — Skills strategy
 
 - **Status:** Accepted (2026-11-04)
