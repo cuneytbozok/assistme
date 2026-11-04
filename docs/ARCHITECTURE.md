@@ -106,6 +106,20 @@ Out of scope: malware running as the same macOS user (it can read Chrome's profi
 - **Grants:** survive broker or extension reconnects while the MCP process lives. Cleared when Chrome restarts.
 - **Limitation:** one Chrome profile at a time.
 
+**Failure scenarios (T-014).** Each one has a test. "Executed" counts ServiceNow requests made by the extension.
+
+| Scenario | Expected outcome | Test |
+| --- | --- | --- |
+| Broker killed or restarted (Chrome starts a new host; key rotates) | In-flight call → `BRIDGE_UNAVAILABLE`, never replayed (executed once). The next call re-authenticates to the new broker, and the **same scope works** (grants live in the extension). | `server/test/resilience.test.ts`, `mcp.test.ts` |
+| Late answer from an operation forwarded by a previous broker | Dropped: the extension sends a response only on the port the request came in on (generation check), and broker ids carry a random per-process prefix, so a stale id can't match a new request. | `extension/test/resilience.test.ts`, `server/test/resilience.test.ts` |
+| Extension reload (new service worker) | Port reconnects with backoff; grants in `storage.session` survive, and the scope keeps working. | `extension/test/resilience.test.ts`, `bridge.test.ts` |
+| Chrome restart | `storage.session` cleared → `SCOPE_UNKNOWN`; a new approval is needed. | `extension/test/resilience.test.ts` |
+| MCP server restart | New client key → the old scope is `SCOPE_UNKNOWN` for the new process. | `server/test/resilience.test.ts`, `scope-e2e.test.ts` |
+| Client disconnects mid-request | Broker drops the answer (`ext.unknown_response`), nothing replayed to a later client. | `broker.test.ts` |
+| Host alive but silent (hung) | No inbound message for 60 s (3 × 20 s heartbeat) → the extension drops the port and reconnects; messages arriving later on the dropped port are ignored. | `extension/test/resilience.test.ts` |
+| Extension never answers a forward | Broker answers `TIMEOUT` after its pending timeout. | `broker.test.ts` |
+| Error response containing a session token | Credential guard withholds it and sends a generic error instead; broker logs carry metadata only (code, kind, duration). | `extension/test/resilience.test.ts`, `server/test/resilience.test.ts` |
+
 ### 4.6 Logging
 
 Metadata only: kind, instance alias, table, status, duration, byte sizes. Log files are 0600 and rotated. Never bodies, headers, cookies, or tokens.

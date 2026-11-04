@@ -58,6 +58,8 @@ export const MAX_UPSTREAM_MESSAGE_BYTES = 256 * 1024;
 export const BROKER_MAX_IN_FLIGHT_PER_CLIENT = 64;
 export const AUTH_TIMEOUT_MS = 2_000;
 export const HEARTBEAT_INTERVAL_MS = 20_000;
+/** No inbound message for this long → the extension drops the port and reconnects (T-014). */
+export const HEARTBEAT_TIMEOUT_MS = 3 * HEARTBEAT_INTERVAL_MS;
 
 // --- scope requests / grants ---
 export const MAX_PURPOSE_LENGTH = 200;

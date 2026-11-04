@@ -89,20 +89,6 @@ async function sendRegistryUpdate(): Promise<void> {
   port.send({ v: PROTOCOL_VERSION, kind: 'registry.update', instances });
 }
 
-function respond(message: ExtensionToBroker): void {
-  if (port.send(message)) return;
-  if (message.kind === 'response') {
-    // Withheld by the credential guard (or invalid): answer with an error instead.
-    port.send({
-      v: PROTOCOL_VERSION,
-      kind: 'response',
-      id: message.id,
-      ok: false,
-      error: protocolError('SN_API_ERROR', 'The response was withheld by the extension.'),
-    });
-  }
-}
-
 const port = new BridgePort({
   connect: chromeConnect,
   lastError: () => chrome.runtime.lastError?.message,
@@ -111,7 +97,7 @@ const port = new BridgePort({
   },
   onReady: () => void sendRegistryUpdate(),
   secrets: () => tokens.knownSecrets(),
-  onMessage: (m) => {
+  onMessage: (m, generation) => {
     if (m.kind !== 'forward') return;
     void handleForward(m, {
       grants,
@@ -121,7 +107,7 @@ const port = new BridgePort({
       onPendingChanged: () => void updateBadge(),
       connection: (host) => session.status(host),
     }).then((response) => {
-      if (response) respond(response);
+      if (response) port.respond(response, generation);
       if (response?.ok && response.result.type === 'scope.request') {
         void notifyRequest(response.result.requestId);
       }

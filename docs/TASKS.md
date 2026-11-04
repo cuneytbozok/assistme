@@ -23,7 +23,7 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 | T-011 | Full grant model                                | 010      | DONE        |
 | T-012 | MCP scope enforcement                           | 008, 011 | DONE        |
 | T-013 | Session lifecycle & status                      | 011      | DONE        |
-| T-014 | Bridge resilience                               | 012      | TODO        |
+| T-014 | Bridge resilience                               | 012      | DONE        |
 | T-015 | Live scope acceptance (M2)                      | 013, 014 | TODO        |
 | T-016 | Extension request builder hardening             | 007, 003 | TODO        |
 | T-017 | Metadata service                                | 012, 016 | TODO        |
@@ -642,7 +642,7 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 
 ### T-014 — Bridge resilience
 
-- **Status:** TODO
+- **Status:** DONE
 - **Purpose:** Predictable behavior across restarts (ARCHITECTURE §4.5).
 - **Dependencies:** T-012
 - **Deliverables:** fault-injection tests and fixes for:
@@ -659,7 +659,19 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
   3. The redaction test also passes on error paths.
 - **Verification:** `npm test`.
 - **DoD:** scenario table added to ARCHITECTURE §4.5.
-- **Evidence:** —
+- **Evidence (2026-11-04):**
+  - **Bug found and fixed:** a late answer could be misdelivered after a broker restart. It could reach another client's request with the same broker-local id (ADR-001 addendum). Fixes:
+    - `broker.ts`: per-process random id prefix.
+    - `port.ts`: connection generation, and `respond()` sends only on the originating connection, with the credential-guard fallback moved here from `index.ts`.
+  - Added: a heartbeat timeout in `port.ts` (`HEARTBEAT_TIMEOUT_MS` = 60 s in shared `limits.ts`).
+  - Tests: `extension/test/resilience.test.ts` and `server/test/resilience.test.ts` (new; the server one runs the real extension `authz.ts`/`grants.ts` behind real brokers).
+  - Root build → exit 0. `npm test` → shared 240, server 71, extension 136 passed. Lint → exit 0.
+  - **Acceptance criteria:**
+    - AC1 ✔ All nine scenarios (the deliverable's six plus a stale late answer, client disconnect and silent extension) have a test and an expected outcome in ARCHITECTURE §4.5.
+    - AC2 ✔ Broker restart mid-request: the extension executed it once; the client got `BRIDGE_UNAVAILABLE`; nothing was replayed (the count only rises with the next explicit call); the old answer never reached the new broker. MCP restart: the old scope is refused without executing.
+    - AC3 ✔ An error response embedding a session token is withheld and replaced, and the token never appears in posted messages. Broker logs on error paths (error response, unknown id, invalid message) contain neither the secret nor the message text.
+  - **Mutation checks** (each reverted): no id prefix (2 failures), `respond` ignoring the generation (1), no heartbeat timeout (1).
+  - DoD ✔ Scenario table in ARCHITECTURE §4.5.
 
 ### T-015 — Live scope acceptance (Milestone M2)
 

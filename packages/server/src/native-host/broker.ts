@@ -6,6 +6,7 @@
  * client authentication, request-ID rewriting (no cross-delivery), a per-client in-flight cap,
  * size limits and lifecycle. It never replays a request.
  */
+import { randomBytes } from 'node:crypto';
 import { chmodSync, lstatSync, unlinkSync } from 'node:fs';
 import { createServer, type Server, type Socket } from 'node:net';
 import type { Readable, Writable } from 'node:stream';
@@ -98,6 +99,11 @@ export class Broker {
   private readonly clients = new Set<ClientConn>();
   private readonly pending = new Map<string, Pending>();
   private seq = 0;
+  /**
+   * Per-process id prefix (T-014). Chrome starts a new broker on every reconnect; a late answer
+   * from an operation forwarded by a previous broker must never match a request of this one.
+   */
+  private readonly idPrefix = `b${randomBytes(6).toString('base64url')}`;
   private clientSeq = 0;
   private stopped = false;
   private stopping?: Promise<void>;
@@ -387,7 +393,7 @@ export class Broker {
       return;
     }
     if (!c.keyId || !c.label) return;
-    const brokerId = `b${++this.seq}`;
+    const brokerId = `${this.idPrefix}_${++this.seq}`;
     // Register before sending: the answer may arrive before sendToExtension returns.
     const timer = setTimeout(() => {
       if (!this.pending.delete(brokerId)) return;

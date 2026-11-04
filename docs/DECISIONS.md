@@ -36,6 +36,8 @@ Format: Status · Context · Decision · Alternatives considered · Consequences
   - **Installer group rule:** group-writable directories are accepted only for root-equivalent groups (`admin` 80, `wheel` 0), so Homebrew Node installs work. World-writable directories and other groups are refused.
   - **File locations:** the installer lives in `src/install/installer.ts` + `src/bin/install-native-host.ts` (compiled), not `scripts/`, so it runs without a TS runtime. Client handshake: `src/bridge/handshake.ts` (reused by T-008).
 
+
+- *Addendum (T-014, 2026-11-04): stale-answer bug fixed.* Chrome starts a new host process on every reconnect, and each broker numbered forwards `b1, b2, …` from scratch. An operation still running in the extension when its broker died would send its late answer on the **new** port, where it could match another client's pending request with the same id. Fix: (1) broker ids are `b<random 8 chars>_<n>` per process; (2) the extension tags each forward with its connection generation and sends the response only on that connection (`BridgePort.respond`). Also added: an extension-side heartbeat timeout (60 s without inbound → reconnect).
 ## ADR-002 — Session access path
 
 - **Status:** **Accepted (2026-11-04, T-005): Path A.** Live results are in `docs/POC_RESULTS.md` (H1–H5, H7, H8 confirmed; H6 untested; no SSO instance).
