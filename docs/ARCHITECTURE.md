@@ -141,6 +141,7 @@ Claude ──claim_scope({request_id})──▶ {scope_id, instances, env, expir
 - There is no default scope and no fallback. Unknown or expired scopes return an error that tells Claude to request a new scope.
 - Scope IDs are never listed by any tool. `list_instances` reports only whether _this client_ has a pending request or active grant per instance.
 - `release_scope` revokes immediately.
+- Server side (T-012): `scope-store.ts` remembers only the scopes this process claimed. It resolves the target for single scopes, requires `instance` for compare scopes, and fails fast on local expiry or on an instance not covered. It only narrows; unknown scope ids are still forwarded when an instance is given, and the extension decides. Scope errors from the extension drop the local entry (`errors.ts`).
 - Tabs never select the target. They are used only for token access to the already-granted host, if ADR-002 requires it.
 
 ### 5.4 Environment policies
@@ -230,8 +231,8 @@ Hypotheses H1–H8 were tested live (`docs/POC_RESULTS.md`). **Path A was chosen
 
 | Tool                  | Inputs (abridged)                                                                                    | Notes                                                                                 |
 | --------------------- | ---------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
-| `list_instances`      | —                                                                                                    | alias, env, label, connection state, this client's pending/active state; no scope IDs |
-| `request_scope`       | instances[1–2], mode, purpose                                                                        | returns request_id + approval_code                                                    |
+| `list_instances`      | —                                                                                                    | alias, env, env_name, policy, label, connection state, `connector_access` (per MCP process, shared by Desktop conversations); no scope IDs |
+| `request_scope`       | instance, or instances[1–2] (two → compare), purpose                                                 | returns request_id + approval_code                                                    |
 | `claim_scope`         | request_id                                                                                           | once; returns scope_id                                                                |
 | `release_scope`       | scope_id                                                                                             | narrows only                                                                          |
 | `discover_tables`     | scope_id, search, limit                                                                              | `sys_db_object`                                                                       |

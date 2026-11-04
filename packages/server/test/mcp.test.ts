@@ -148,13 +148,14 @@ async function setup(withBroker = true) {
 }
 
 describe('tool surface', () => {
-  it('AC1: tools/list has exactly the four PoC tools, all readOnlyHint', async () => {
+  it('tools/list has exactly the five tools, all readOnlyHint', async () => {
     const { client } = await setup(false);
     const { tools } = await client.listTools();
     expect(tools.map((t) => t.name).sort()).toEqual([
       'claim_scope',
       'list_instances',
       'query_records',
+      'release_scope',
       'request_scope',
     ]);
     for (const t of tools) {
@@ -240,7 +241,9 @@ describe('AC4: request → approve → claim → query (mock extension)', () => 
     expect(list.body).toMatchObject({
       ok: true,
       provenance: { source: 'extension registry' },
-      data: { instances: [{ alias: 'dev', env: 'dev', this_session: { active_access: false } }] },
+      data: {
+        instances: [{ alias: 'dev', env: 'dev', connector_access: { active_access: false } }],
+      },
     });
 
     const req = await call('request_scope', { instance: 'dev', purpose: 'Investigate INC0000060' });

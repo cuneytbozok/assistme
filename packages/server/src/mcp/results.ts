@@ -33,3 +33,21 @@ export function toolError(code: ErrorCode, message: string, hint?: string): Call
     structuredContent: body,
   };
 }
+
+/** Provenance for a result (FR-3.11): instance, env, host, scope suffix, retrieval time. */
+export function provenance(p: {
+  source: string;
+  instance?: string;
+  env?: string;
+  host?: string;
+  scopeId?: string;
+}): Provenance {
+  return {
+    ...(p.instance ? { instance: p.instance } : {}),
+    ...(p.env ? { env: p.env } : {}),
+    ...(p.host ? { host: p.host } : {}),
+    ...(p.scopeId ? { scope: scopeSuffix(p.scopeId) } : {}),
+    retrieved_at: new Date().toISOString(),
+    source: p.source,
+  };
+}

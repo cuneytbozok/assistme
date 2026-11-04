@@ -1,11 +1,11 @@
 # Handoff
 
-_Last updated: 2026-11-04 (after T-011)_
+_Last updated: 2026-11-04 (after T-012)_
 
 ## Current project state
 
 - **Phase 0 (Foundation):** complete (T-001, T-002, T-003).
-- **Phase 2:** T-011 (full grant model) is DONE: compare grants, TTL choice, revoke-all, red PROD badge, request notifications, purpose and approval time on active access. T-010 (full instance registry) is DONE: add, edit and remove in the popup; grants bound to `{alias, host, env}` and invalidated on removal or env change; `activeTab` suggestions; server-side `registry.update` cache.
+- **Phase 2:** T-012 (MCP scope enforcement) is DONE: `release_scope`, no default scope, compare requests through `request_scope`, `connector_access` in `list_instances`, and an e2e test against the real extension authz. T-011 (full grant model) is DONE: compare grants, TTL choice, revoke-all, red PROD badge, request notifications, purpose and approval time on active access. T-010 (full instance registry) is DONE: add, edit and remove in the popup; grants bound to `{alias, host, env}` and invalidated on removal or env change; `activeTab` suggestions; server-side `registry.update` cache.
 - **Phase 1:** T-004 is DONE. The MV3 extension builds to `packages/extension/dist/` with stable ID `clipfeocpiljpcngmjpdbegciimchbol` (`packages/extension/EXTENSION_ID`). It has a minimal popup registry: paste the URL, pick alias and env, and it requests the exact host permission and saves to `chrome.storage.local`.
 - **Packages:**
   - `packages/shared`: protocol schemas, errors, limits, identifier validation, query module.
@@ -46,8 +46,9 @@ _Last updated: 2026-11-04 (after T-011)_
 ## Tasks
 
 - **Current task:** none (nothing IN_PROGRESS).
-- **Last completed task:** T-011 — Full grant model (commit `T-011: full grant model`). Evidence: TASKS T-011 and `docs/evidence/T-011/`.
-- **Next task:** **T-012 — MCP scope enforcement** (depends on T-008 ✔ and T-011 ✔). Note: the extension supports compare scopes, but `request_scope` only sends `mode: single`. Decide in T-012 whether to expose `instances[]`/`mode` there or leave it to T-032.
+- **Last completed task:** T-012 — MCP scope enforcement (commit `T-012: MCP scope enforcement`).
+- **Next tasks:** T-013 (session lifecycle; depends on T-011 ✔), T-014 (bridge resilience; depends on T-012 ✔), T-016 (request builder hardening).
+- **Claude Desktop runs the old server build** until it's restarted (`npm run build` done). Restart it before live checks (T-015).
 - **"Other" environment (after T-010, user request):** the popup shows `unclassified` as **Other** with an optional name (UAT, SIT, …). It always gets PROD rules and the name is display only. `list_instances` returns `env_name` and `policy`.
 - **Popup redesign (after T-010, user request, 2026-11-04):** card layout, status pill, icon edit/remove, segmented env picker, collapsible add form, alias proposal from a tab suggestion, toasts. Same logic and permission calls. Screenshots (seeded data, stubbed `popup.state`): `docs/evidence/T-010/popup-*.png`.
 - **Also eligible:** T-016 (request builder hardening; depends on T-007 ✔ and T-003 ✔).

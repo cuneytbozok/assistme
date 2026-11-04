@@ -21,7 +21,7 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 | T-009 | PoC end-to-end in Claude Code + Desktop (M1)    | 007, 008 | DONE        |
 | T-010 | Full instance registry                          | 007      | DONE        |
 | T-011 | Full grant model                                | 010      | DONE        |
-| T-012 | MCP scope enforcement                           | 008, 011 | TODO        |
+| T-012 | MCP scope enforcement                           | 008, 011 | DONE        |
 | T-013 | Session lifecycle & status                      | 011      | TODO        |
 | T-014 | Bridge resilience                               | 012      | TODO        |
 | T-015 | Live scope acceptance (M2)                      | 013, 014 | TODO        |
@@ -567,7 +567,7 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 
 ### T-012 — MCP scope enforcement
 
-- **Status:** TODO
+- **Status:** DONE
 - **Purpose:** Server-side scope semantics (FR-3).
 - **Dependencies:** T-008, T-011
 - **Deliverables:**
@@ -585,7 +585,25 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
   4. `release_scope` invalidates immediately.
 - **Verification:** `npm test`.
 - **DoD:** —
-- **Evidence:** —
+- **Evidence (2026-11-04):**
+  - Implemented:
+    - `scope-store.ts`: claimed scopes only; `resolveTarget()` (narrowing only).
+    - `errors.ts`: `mapBridgeError` (hints; forgets scopes on `SCOPE_UNKNOWN`/`SCOPE_EXPIRED`); `results.ts` `provenance()` helper.
+    - `server.ts`:
+      - `release_scope` tool; `requireScope()` (missing, blank or malformed → error, never defaulted).
+      - `request_scope` accepts `instance` or `instances[1–2]` (two → compare).
+      - `list_instances.this_session` → `connector_access`, with a description and `note` saying it's per process and shared by conversations.
+      - `claim_scope` returns `mode` and a `next_step`.
+    - Tests: `test/scope-e2e.test.ts` (new; MCP client ↔ server ↔ real broker ↔ fake extension running the **real** `authz.ts` + `grants.ts`); `mcp.test.ts` updated.
+  - Root build → exit 0. `npm test` → shared 240, server 66, extension 121 passed. Lint → exit 0.
+  - **Acceptance criteria:**
+    - AC1 ✔ A full session (list, request, claim single and compare, query, cross-instance attempt, release, query after release, list) is captured. Only `claim_scope` outputs match `scp_…`; no other output contains any scope id or its body.
+    - AC2 ✔ `query_records` with missing, `''` or whitespace `scope_id` → `SCOPE_REQUIRED`, even with an active scope in the process. Malformed or forged ids → error. `release_scope` without an id → `SCOPE_REQUIRED`. Nothing is fetched.
+    - AC3 ✔ An alpha scope used for beta gets `INSTANCE_NOT_IN_SCOPE` from the server and, sent directly over the same client's bridge (bypassing the server), from the real `authz.ts`. Another MCP process presenting the same id → `SCOPE_UNKNOWN` (client binding). A compare scope reads both of its pair, needs `instance`, and refuses a third instance. Only covered hosts were ever fetched.
+    - AC4 ✔ `release_scope` → `released: true`. The next query is refused locally and, with an explicit instance, by the extension (`SCOPE_UNKNOWN`). The grant store is empty; releasing again → `released: false`.
+    - Also: a locally expired scope → `SCOPE_EXPIRED` without a request, then forgotten; `request_scope` input validation; alias hint.
+  - **Mutation checks** (each reverted): blank scope accepted (2 failures), release not forwarded to the extension (1), `list_instances` leaking ids (1).
+  - Unverified: the new tools in Claude Desktop. It runs the previous build until it's restarted; covered by T-015 (live scope acceptance).
 
 ### T-013 — Session lifecycle & status
 
