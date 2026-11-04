@@ -25,7 +25,7 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 | T-013 | Session lifecycle & status                      | 011      | DONE        |
 | T-014 | Bridge resilience                               | 012      | DONE        |
 | T-015 | Live scope acceptance (M2)                      | 013, 014 | TODO        |
-| T-016 | Extension request builder hardening             | 007, 003 | TODO        |
+| T-016 | Extension request builder hardening             | 007, 003 | DONE        |
 | T-017 | Metadata service                                | 012, 016 | TODO        |
 | T-018 | Dictionary-aware query validation & guards      | 017      | TODO        |
 | T-019 | Per-request safeguards & settings               | 016      | TODO        |
@@ -696,7 +696,7 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 
 ### T-016 — Extension request builder hardening
 
-- **Status:** TODO
+- **Status:** DONE
 - **Purpose:** The only URL constructor; GET-only (ADR-004, S-1..S-3).
 - **Dependencies:** T-007, T-003
 - **Deliverables:**
@@ -711,7 +711,23 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
   3. A redirect response is never followed.
 - **Verification:** `npm test -w packages/extension`.
 - **DoD:** —
-- **Evidence:** —
+- **Evidence (2026-11-04):**
+  - Implemented:
+    - `request-builder.ts`: `buildRequest`, `revalidate`, `assertSafeUrl`, `PATH_TEMPLATES`, `ALLOWED_PARAMS`; frozen request objects.
+    - `executor.ts`: re-validates first, then gets the token, builds and fetches only `req.url` with `req.init`. The URL code moved out; `buildPath` and `revalidate` are re-exported.
+    - Tests: `test/request-builder.test.ts` (new); `server/test/scope-e2e.test.ts` gains the two-conversation case.
+  - Root build → exit 0. `npm test` → shared 240, server 72, extension 255 passed. Lint → exit 0.
+  - **Acceptance criteria:**
+    - AC1 ✔ Every operation kind builds to its template.
+      - 16 hostile operations are refused: traversal or slashes in the table or sys_id; field-based parameter injection; smuggled `method`/`url`/`headers`; unknown, import or script kinds; out-of-range limit or offset; control characters; bad display value; bad aggregate.
+      - Values can't add parameters (URL-encoded; `sysparm_limit` stays single). 10 hostile hosts are refused.
+      - `assertSafeUrl` rejects 10 invariant-breaking URLs.
+      - A 3,000-case seeded fuzz of random and hostile operations: every request that was built satisfies GET, granted host, template path, allowlisted parameters and fixed headers.
+      - A source scan: `/api/now/` appears only in the builder, and the executor's one `fetch` uses `req.url`.
+    - AC2 ✔ The shared attack corpus (84 enforce-profile cases) is rejected by `revalidate` for both `table.list` and `stats.aggregate`, and by `buildRequest`. One case whose only fault is text search is excluded on purpose: text search is a server policy (ADR-005), computed with the shared validator.
+    - AC3 ✔ Opaque redirect, 302 with an external `Location`, and 307 → `SESSION_EXPIRED`. Only the original Table API URL was requested, always with `redirect: 'manual'` and GET.
+    - From T-009 ✔ One server process, two conversations, two scopes: each reads only its own instance, cross-use → `INSTANCE_NOT_IN_SCOPE`; releasing A leaves B working.
+  - **Mutation checks** (each reverted): following redirects (7 failures), unchecked stats query (80), no parameter allowlist (1), no host check in the self-check (1), no host validation (3).
 
 ### T-017 — Metadata service
 

@@ -272,6 +272,30 @@ describe('T-012 scope enforcement end to end (real authz.ts)', () => {
     }
   });
 
+  it('T-009/T-016: two conversations in one server process keep separate scopes', async () => {
+    const s = await setup();
+    const conv = await s.connect(); // one MCP server process (Claude Desktop), shared
+    const a = await s.scopeFor(conv, ['alpha']); // conversation A's scope
+    const b = await s.scopeFor(conv, ['beta']); // conversation B's scope
+    expect(a).not.toBe(b);
+    const read = (scope_id: string, instance?: string) =>
+      conv('query_records', { scope_id, table: 'incident', ...(instance ? { instance } : {}) });
+    expect((await read(a)).body.data.records[0].number).toBe('INC-alpha');
+    expect((await read(b)).body.data.records[0].number).toBe('INC-beta');
+    // Each scope works only for its own instance.
+    expect((await read(a, 'beta')).body.error.code).toBe('INSTANCE_NOT_IN_SCOPE');
+    expect((await read(b, 'alpha')).body.error.code).toBe('INSTANCE_NOT_IN_SCOPE');
+    // Releasing A does not affect B.
+    expect((await conv('release_scope', { scope_id: a })).body.data.released).toBe(true);
+    expect((await read(a, 'alpha')).body.error.code).toBe('SCOPE_UNKNOWN');
+    expect((await read(b)).body.data.records[0].number).toBe('INC-beta');
+    expect(s.fetched).toEqual([
+      'alpha.service-now.com',
+      'beta.service-now.com',
+      'beta.service-now.com',
+    ]);
+  });
+
   it('list_instances reports connector-level access without ids', async () => {
     const s = await setup();
     const call = await s.connect();

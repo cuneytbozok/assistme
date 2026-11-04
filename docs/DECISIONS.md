@@ -127,6 +127,12 @@ Format: Status · Context · Decision · Alternatives considered · Consequences
 - **Alternatives considered:** a URL/path allowlist on forwarded URLs. More brittle and easier to bypass. Rejected.
 - **Consequences:** a new ServiceNow capability needs a reviewed new operation kind.
 
+
+- *Addendum (T-016, 2026-11-04):* `request-builder.ts` is the single URL constructor.
+  - Templates: `/api/now/table/{table}[/{sys_id}]` and `/api/now/stats/{table}`. Each has a parameter allowlist and fixed headers (`Accept`, `X-UserToken`), with `redirect: 'manual'`, `credentials: 'include'` and `cache: 'no-store'`.
+  - Every built URL is parsed back and checked before use.
+  - `stats.aggregate` is now buildable in the extension (it was refused until now); the MCP tool comes in T-028.
+  - A source-scan test keeps `/api/now/` out of every other file and `fetch` out of everything but the executor.
 ## ADR-005 — Structured filters + validated encoded queries + dictionary validation
 
 > Partly superseded by ADR-011 (2026-11-04): the cost guards (no-condition limit ≤20, mandatory time window / indexed key on high-volume tables, `QUERY_TOO_BROAD`) are removed. Query validation and anti-broadening are unchanged.

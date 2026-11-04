@@ -2,17 +2,19 @@
  * Executes operation descriptors against a granted instance via ADR-002 Path A:
  * service-worker fetch with the user's session cookies plus `X-UserToken` (g_ck).
  *
- * The URL is built only here, from fixed templates (hardened further in T-016). Only GET to
- * /api/now/table/{table}[/{sys_id}]. The operation is re-validated with the shared schema and
- * the encoded-query validator ('enforce' profile) — the broker and MCP server are untrusted.
+ * Requests come only from `request-builder.ts` (T-016): GET to the Table/Stats API templates,
+ * allowlisted parameters, fixed headers, redirects never followed. The operation is
+ * re-validated there; the broker and MCP server are untrusted.
  */
+import { type ErrorCode, SAFEGUARD_DEFAULTS } from '@sn-mcp/shared';
 import {
-  type ErrorCode,
-  type Operation,
-  OperationSchema,
-  parseEncodedQuery,
-  SAFEGUARD_DEFAULTS,
-} from '@sn-mcp/shared';
+  type BuiltRequest,
+  buildRequest,
+  RequestBuildError,
+  revalidate,
+} from './request-builder.js';
+
+export { buildPath, revalidate } from './request-builder.js';
 
 export interface TokenProvider {
   /** Returns the session token for the host, or undefined when no tab of the host is open. */
@@ -33,56 +35,6 @@ export interface ExecutorDeps {
 
 const fail = (code: ErrorCode, message: string): ExecResult => ({ ok: false, code, message });
 
-/** Builds the URL path + query for an operation. Pure; throws on anything unexpected. */
-export function buildPath(op: Operation): string {
-  const params = new URLSearchParams();
-  let path: string;
-  switch (op.kind) {
-    case 'probe':
-      path = '/api/now/table/sys_db_object';
-      params.set('sysparm_limit', '1');
-      params.set('sysparm_fields', 'sys_id');
-      params.set('sysparm_no_count', 'true');
-      break;
-    case 'table.list':
-      path = `/api/now/table/${op.table}`;
-      if (op.query) params.set('sysparm_query', op.query);
-      if (op.fields) params.set('sysparm_fields', op.fields.join(','));
-      params.set('sysparm_limit', String(op.limit));
-      params.set('sysparm_offset', String(op.offset));
-      params.set('sysparm_display_value', op.displayValue);
-      params.set('sysparm_exclude_reference_link', 'true');
-      params.set('sysparm_no_count', String(op.noCount));
-      break;
-    case 'table.get':
-      path = `/api/now/table/${op.table}/${op.sysId}`;
-      if (op.fields) params.set('sysparm_fields', op.fields.join(','));
-      params.set('sysparm_display_value', op.displayValue);
-      params.set('sysparm_exclude_reference_link', 'true');
-      break;
-    default:
-      throw new Error(`operation ${op.kind} is not supported yet`);
-  }
-  return `${path}?${params.toString()}`;
-}
-
-/** Re-validates an operation that arrived from the (untrusted) broker. */
-export function revalidate(
-  op: unknown,
-): { ok: true; op: Operation } | { ok: false; code: ErrorCode; message: string } {
-  const parsed = OperationSchema.safeParse(op);
-  if (!parsed.success) return { ok: false, code: 'INVALID_INPUT', message: 'Invalid operation.' };
-  const o = parsed.data;
-  if (o.kind === 'stats.aggregate') {
-    return { ok: false, code: 'INVALID_INPUT', message: 'stats.aggregate is not available yet.' };
-  }
-  if (o.kind === 'table.list' && o.query) {
-    const q = parseEncodedQuery(o.query, { profile: 'enforce', allowTextSearch: true });
-    if (!q.ok) return { ok: false, code: q.error.code, message: q.error.message };
-  }
-  return { ok: true, op: o };
-}
-
 export class Executor {
   private readonly timeoutMs: number;
   private readonly maxBytes: number;
@@ -95,17 +47,28 @@ export class Executor {
   async run(host: string, rawOp: unknown): Promise<ExecResult> {
     const checked = revalidate(rawOp);
     if (!checked.ok) return checked;
-    const url = `https://${host}${buildPath(checked.op)}`;
+    const build = (token: string): BuiltRequest | ExecResult => {
+      try {
+        return buildRequest(host, checked.op, token);
+      } catch (e) {
+        if (e instanceof RequestBuildError) return fail(e.code, e.message);
+        return fail('FORBIDDEN_OPERATION', 'Refused to build the request.');
+      }
+    };
 
     let token = await this.deps.tokens.get(host);
     if (!token) {
       return fail('NO_INSTANCE_TAB', `Open ${host} in a Chrome tab and log in.`);
     }
-    let res = await this.fetchOnce(url, token);
+    let req = build(token);
+    if (!('url' in req)) return req;
+    let res = await this.fetchOnce(req);
     if (res.kind === 'http' && res.status === 401) {
       token = await this.deps.tokens.get(host, { refresh: true });
       if (!token) return fail('NO_INSTANCE_TAB', `Open ${host} in a Chrome tab and log in.`);
-      res = await this.fetchOnce(url, token);
+      req = build(token);
+      if (!('url' in req)) return req;
+      res = await this.fetchOnce(req);
       if (res.kind === 'http' && res.status === 401) {
         this.deps.tokens.clear(host);
         return fail('SESSION_EXPIRED', `The ServiceNow session for ${host} has expired.`);
@@ -115,10 +78,7 @@ export class Executor {
     return this.mapResponse(res);
   }
 
-  private async fetchOnce(
-    url: string,
-    token: string,
-  ): Promise<
+  private async fetchOnce(req: BuiltRequest): Promise<
     | {
         kind: 'http';
         status: number;
@@ -133,13 +93,10 @@ export class Executor {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort('timeout'), this.timeoutMs);
     try {
-      const res = await this.deps.fetch(url, {
-        method: 'GET',
-        credentials: 'include',
-        redirect: 'manual',
-        cache: 'no-store',
+      const res = await this.deps.fetch(req.url, {
+        ...req.init,
+        headers: { ...req.init.headers },
         signal: controller.signal,
-        headers: { Accept: 'application/json', 'X-UserToken': token },
       });
       if (res.type === 'opaqueredirect' || (res.status >= 300 && res.status < 400)) {
         return {
