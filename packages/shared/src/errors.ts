@@ -55,7 +55,8 @@ export const DEFAULT_HINTS: Readonly<Record<ErrorCode, string>> = {
     'Open and log in to the instance in a Chrome tab (needed to use the existing session).',
   SESSION_EXPIRED:
     'The ServiceNow session expired. Ask the user to log in to that instance in Chrome.',
-  ACL_DENIED: "The user's ServiceNow roles/ACLs do not allow reading this data.",
+  ACL_DENIED:
+    "The signed-in ServiceNow user's roles or ACLs don't allow reading this. Tell the user; they can ask a ServiceNow admin for access or sign in with an account that has it. Don't retry with other tables to get around it.",
   NOT_FOUND: 'Nothing matched. Check the table name or identifiers (see suggestions if provided).',
   AMBIGUOUS_MATCH:
     'More than one record matched. Choose one of the candidates explicitly (e.g. by sys_id).',

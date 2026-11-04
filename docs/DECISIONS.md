@@ -277,3 +277,18 @@ Format: Status · Context · Decision · Alternatives considered · Consequences
   - Deep offset pages on very large tables can be slow. The per-request timeout protects the instance, and the timeout hint suggests narrowing the order or range. Keyset pagination is a possible later optimization if live use shows a need.
   - Offset pagination over data that changes during the walk can skip or repeat rows. Each page reports `retrieved_at`.
 
+## ADR-012 — Role-agnostic connector
+
+- **Status:** Accepted (2026-11-04, user-directed)
+- **Context:** T-022 planned an optional evaluation of a dedicated `admin + snc_read_only` ServiceNow user as extra hardening. That ties the design to a specific ServiceNow role and adds account-management steps the connector shouldn't own.
+- **Decision:**
+  - **ServiceNow determines what the user can access. The connector determines what Claude is allowed to do.**
+  - The connector uses the currently signed-in browser session and respects that user's roles, ACLs and permissions. It never requires, assigns, validates or manages any ServiceNow role.
+  - No dedicated read-only accounts, authentication flows or impersonation features. Users may sign in with a read-only account, or use ServiceNow's native impersonation, on their own.
+  - Read-only enforcement is entirely independent of roles: closed tool set, GET-only templates, validation, denylist, and grants enforced in the extension. An admin session gives Claude no way to mutate anything.
+  - Access-denied and insufficient-permission responses become clear errors (`ACL_DENIED` with an explanatory hint).
+  - A session change is handled by the existing session lifecycle (T-013): token re-read on `401`, `SESSION_EXPIRED` and token cleared for that instance only.
+- **Consequences:**
+  - T-022's `snc_read_only` evaluation and its acceptance criterion are removed; its general read-only tests stay.
+  - PRODUCT_SPEC S-10, ARCHITECTURE §9 item 6 and SECURITY.md §5a are rewritten accordingly.
+  - Don't add replacement authentication features.

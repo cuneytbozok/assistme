@@ -125,24 +125,15 @@ Security-relevant codes: `TABLE_DENIED` (credential table, also via dot-walk),
 - Live checks against a real instance are recorded in `docs/evidence/` and `docs/POC_RESULTS.md`. Mocks are never treated as evidence of live behavior.
 - Read-only verification across the whole system: T-022 (Milestone M3).
 
-## 5a. ServiceNow `snc_read_only` role (T-022)
+## 5a. Roles and permissions (ADR-012)
 
-ServiceNow's `snc_read_only` role makes a session read-only at the platform level (writes are
-refused, except for a few exempt system updates). Combined with this connector's own GET-only
-design it would give defense in depth.
+**ServiceNow decides what the user can access. The connector decides what Claude is allowed to do.**
 
-**Status: not yet evaluated (2026-11-04).** It needs a dedicated `admin + snc_read_only` user on
-the DEV instance. Creating that user is a write to the instance, which the connector can't do and
-Claude shouldn't do for the user. The connector's own read-only guarantees don't depend on it:
-GET-only templates, the tool surface snapshot, and fuzz tests (30,000 tool calls and 10,000
-builder cases).
-
-Procedure for the user:
-
-1. On DEV, create a user (e.g. `sn_mcp_ro`) with roles `admin` and `snc_read_only`, and set a password.
-2. Log in to DEV as that user in Chrome, and run the connector (list, request, claim, query) as usual.
-3. Expected: every read works. Review the exempt properties (`glide.security.snc_read_only_role.exempt_tables` / related system properties) and note which tables stay writable for that role.
-4. Record the results here (date, instance build, what worked, the exempt list).
+- The connector is role-agnostic. It uses the signed-in browser session as it is, and the user's roles, ACLs and permissions apply unchanged. It never requires, assigns, checks or manages a ServiceNow role, and offers no dedicated accounts, sign-in flows or impersonation.
+- Users may sign in with a read-only account, or use ServiceNow's own impersonation, if they choose. The connector then simply reads as that user.
+- Read-only enforcement doesn't depend on roles: the closed tool set, GET-only templates, validation, denylist and grants (§3) are the same for an admin session as for any other. An admin session gives Claude no way to create, update, delete or run scripts through this connector (tool-surface snapshot and 30,000-call fuzz test, T-022).
+- Access denied (`403`) → `ACL_DENIED`, with a hint Claude can explain to the user. Rows hidden by ACLs are simply not returned, as in ServiceNow itself. If the user can't read the table definitions the connector needs for safe validation, queries fail with an explanation (fail closed, ADR-005 addendum).
+- A changed session (logout and login, another account) is detected on the next request. The cached token is dropped on `401` and re-read from the tab; the request is retried once, or the result is `SESSION_EXPIRED` for that instance only. Grants are unaffected (T-013).
 
 ## 6. Residual risks
 

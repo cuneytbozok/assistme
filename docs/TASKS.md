@@ -906,30 +906,28 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 ### T-022 — Read-only verification (Milestone M3)
 
 - **Status:** DONE
-- **Purpose:** Prove AC-9 and evaluate `snc_read_only`.
+- **Purpose:** Prove AC-9 (read-only, independent of ServiceNow roles).
 - **Dependencies:** T-021
 - **Deliverables:**
   - Tool-surface test: the `tools/list` snapshot contains only approved read-only tools and no URL, method, or header inputs.
   - A fuzz test feeding random tool inputs, asserting that the request builder only ever emits GET to the templates.
-  - Manual `snc_read_only` evaluation on DEV: create a dedicated `admin + snc_read_only` user, verify the connector works under that session, review the exempt properties, and record the results in `docs/SECURITY.md`.
-- **Files:** `packages/server/test/tool-surface.test.ts`, `packages/extension/test/builder-fuzz.test.ts`, `docs/SECURITY.md`
+  - *(Removed 2026-11-04, user-directed, ADR-012: the dedicated `snc_read_only` evaluation. The connector is role-agnostic.)*
+- **Files:** `packages/server/test/tool-surface.test.ts`, `packages/extension/test/request-builder.test.ts`
 - **Acceptance criteria:**
   1. The snapshot matches the approved list.
   2. Fuzzing (≥10k cases) produces no non-GET request and no off-template path.
-  3. The snc_read_only results are documented, or marked untested with the reason.
-- **Verification:** `npm test`; manual DEV session.
+- **Verification:** `npm test`.
 - **DoD:** M3 marked achieved.
 - **Evidence (2026-11-04):**
   - Implemented:
     - `server/test/tool-surface.test.ts` (new). The snapshot test and a 30,000-call tool-input fuzz run through the real MCP server; every emitted operation goes through the **extension's real** `buildRequest`.
     - `extension/test/request-builder.test.ts`: builder fuzz raised to 10,000 cases. It lives there rather than in a separate `builder-fuzz.test.ts`.
-    - `docs/SECURITY.md` §5a: the `snc_read_only` status and procedure.
   - Root build → exit 0. `npm test` → shared 240, server 153, extension 295 passed. Lint → exit 0.
   - **Acceptance criteria:**
     - AC1 ✔ `tools/list` is exactly `claim_scope, list_instances, query_records, release_scope, request_scope`: all `readOnlyHint: true`, `destructiveHint: false`, strict (`additionalProperties: false`), with exact input-name snapshots and no url/method/header/path/body/script inputs.
     - AC2 ✔ 30,000 random tool calls: 28,923 refused, including unknown tools (`http_request`, `run_script`, `update_record`), smuggled `url`/`method`/`headers` keys, bad types, unknown fields and other instances. All 904 emitted data operations built to GET on a template path with allowlisted parameters on the granted host. Plus 10,000 direct builder cases.
-    - AC3 ✔ (marked untested with the reason) `snc_read_only` isn't evaluated yet: it needs a dedicated user created on the PDI, which is a write the connector can't make and Claude shouldn't make for the user. The procedure is in SECURITY.md §5a.
-  - **Milestone M3 (read-only and query hardening): ACHIEVED 2026-11-04**, with the `snc_read_only` live evaluation outstanding (user action, optional defense in depth).
+  - **Milestone M3 (read-only and query hardening): ACHIEVED 2026-11-04.**
+  - *Change 2026-11-04 (ADR-012, user-directed):* the former AC3 (the `snc_read_only` evaluation) and its SECURITY.md procedure were removed. The read-only guarantees above don't depend on ServiceNow roles.
 
 ## Phase 4 — General-purpose tools (Milestone M4)
 

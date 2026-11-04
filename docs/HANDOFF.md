@@ -40,7 +40,7 @@ _Last updated: 2026-11-04 (after T-022, M3)_
 
 ## Milestones
 
-- **M3 — Read-only and query hardening: ACHIEVED (2026-11-04, T-022)**, with the `snc_read_only` evaluation outstanding (needs a user created on the PDI; SECURITY.md §5a).
+- **M3 — Read-only and query hardening: ACHIEVED (2026-11-04, T-022).**
 - **M2 — Live scope acceptance: BLOCKED** (T-015: needs a second instance).
 - **M1 — PoC end to end: ACHIEVED (2026-11-04, T-009).**
   - Claude Desktop chat and a Claude Code session each read INC0000060 from `dev469966` through MCP → broker → extension → Table API, after user approval.
@@ -53,7 +53,8 @@ _Last updated: 2026-11-04 (after T-022, M3)_
 - **Blocked:** T-015 (live scope acceptance, M2) has no second instance for PROD checks (see TASKS T-015).
 - **Last completed task:** T-022 — Read-only verification (M3).
 - **Next task:** T-023 (response shaping, automatic pagination, completeness contract; depends on T-018 ✔), then T-024 (`query_records` full).
-- **Waiting on the user:** T-015 live run (second instance); `snc_read_only` evaluation (optional); `REQUEST_DENIED` vs `status: denied` (T-015 AC6); fail-closed dictionary validation (ADR-005 addendum).
+- **Waiting on the user:** T-015 live run (second instance); `REQUEST_DENIED` vs `status: denied` (T-015 AC6); fail-closed dictionary validation (ADR-005 addendum).
+- **Role-agnostic (ADR-012, 2026-11-04):** no ServiceNow role handling of any kind. Don't add role checks, dedicated accounts or impersonation features.
 - **Open decision for the user:** dictionary validation fails closed when the user can't read `sys_dictionary` (ADR-005 addendum).
 - **T-015 must include:** logout in the user's own profile → `SESSION_EXPIRED` with no sign-in dialog (T-013 AC4). Fallback if a dialog appears: the DNR rule in the ADR-002 addendum.
 - **Claude Desktop runs the old server build** until it's restarted (`npm run build` done). Restart it before live checks (T-015).

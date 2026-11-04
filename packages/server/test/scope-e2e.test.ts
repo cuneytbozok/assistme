@@ -94,7 +94,7 @@ function realAuthzExtension(ext: MockExtension) {
       });
     }
   });
-  return { grants, fetched };
+  return { grants, fetched, deps };
 }
 
 async function setup() {
@@ -419,6 +419,44 @@ describe('T-012 scope enforcement end to end (real authz.ts)', () => {
       ).body.error.code,
     ).toBe('SCOPE_UNKNOWN');
     expect((await s.grants.snapshot()).grants).toHaveLength(1);
+  });
+
+  it('ADR-012: insufficient permissions give clear errors (data 403 and dictionary 403)', async () => {
+    const s = await setup();
+    const call = await s.connect();
+    const alpha = await s.scopeFor(call, ['alpha']);
+    // The extension maps a ServiceNow 403 to ACL_DENIED; simulate it for one data table.
+    const realExecute = s.deps.execute;
+    s.deps.execute = async (host: string, op: unknown) => {
+      const t = (op as { table?: string }).table;
+      if (t === 'problem')
+        return {
+          ok: false as const,
+          code: 'ACL_DENIED' as const,
+          message: 'Insufficient rights to query records',
+        };
+      if (t === 'sys_dictionary' && denyDictionary)
+        return { ok: false as const, code: 'ACL_DENIED' as const, message: 'Insufficient rights' };
+      return realExecute(host, op);
+    };
+    let denyDictionary = false;
+    const data = await call('query_records', { scope_id: alpha, table: 'problem' });
+    expect(data.body.error).toMatchObject({
+      code: 'ACL_DENIED',
+      hint: expect.stringMatching(/admin|sign in/),
+    });
+    denyDictionary = true;
+    const meta = await call('query_records', { scope_id: alpha, table: 'cmn_department' });
+    expect(meta.body.error).toMatchObject({
+      code: 'ACL_DENIED',
+      message: expect.stringContaining('table definitions'),
+      hint: expect.stringContaining('ServiceNow admin'),
+    });
+    // The scope is untouched: permission errors never revoke or widen anything.
+    denyDictionary = false;
+    expect((await call('query_records', { scope_id: alpha, table: 'incident' })).body.ok).toBe(
+      true,
+    );
   });
 
   it('list_instances reports connector-level access without ids', async () => {

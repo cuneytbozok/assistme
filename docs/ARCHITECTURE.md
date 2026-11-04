@@ -355,7 +355,7 @@ Errors: `isError: true`, `{"ok":false,"error":{"code","message","hint","candidat
    - Fixed headers, `redirect:'manual'`.
 4. **Excluded endpoints:** `*.do`, export processors, scripted REST, UI APIs, attachment download.
 5. **Sensitive data:** table denylist and password-type field stripping (T-020). The defaults live in `shared/src/sensitive.ts`. Extras are additive only: `SN_MCP_DENIED_TABLES` on the server and Settings in the extension. The extension refuses denied tables and credential-named fields and strips such keys from every response. The server also refuses denied tables reached by a dot-walk and dictionary password types, and reports stripped field names in `omitted`.
-6. **ServiceNow:** the user's ACLs always apply. Optional `admin + snc_read_only` dedicated user (T-022).
+6. **ServiceNow:** the signed-in user's roles and ACLs always apply. The connector is role-agnostic (ADR-012): it doesn't require, check or manage roles, and read-only enforcement (items 1–5) is the same for an admin session as for any other. Access-denied responses become `ACL_DENIED` with an explanation Claude can relay.
 
 ## 10. Repository layout (ADR-007)
 

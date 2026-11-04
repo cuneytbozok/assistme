@@ -136,6 +136,14 @@ export function createMcpServer(
   }
 
   function metadataError(e: unknown, scopeId: string): CallToolResult {
+    if (e instanceof MetadataError && e.code === 'ACL_DENIED') {
+      // Fail closed (ADR-005 addendum), but say why in words Claude can relay.
+      return toolError(
+        'ACL_DENIED',
+        "The signed-in ServiceNow user can't read the table definitions (sys_db_object / sys_dictionary) that the connector checks before every query, so no data was read.",
+        'Tell the user: their ServiceNow roles need read access to the table definitions. They can ask a ServiceNow admin, or sign in with an account that has it.',
+      );
+    }
     if (e instanceof MetadataError) {
       return mapBridgeError(e.code, e.message, e.hint, { scopes, scopeId });
     }

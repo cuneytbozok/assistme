@@ -133,7 +133,7 @@ Principle: optimize *how* Claude retrieves information, not *how much* it may in
   - Per-client request-ID rewriting, message-size and in-flight limits, no replay after disconnect.
 - S-8 The extension accepts grant-mutating messages only from its own popup. No `externally_connectable`.
 - S-9 Logs hold metadata only (no bodies, headers, or tokens) and are written 0600.
-- S-10 Optional hardening: a dedicated `admin + snc_read_only` ServiceNow user (evaluated in T-022). It is never the only safeguard.
+- S-10 Role-agnostic (ADR-012): the connector uses whatever ServiceNow session is signed in, and that user's roles and ACLs decide what can be read. It never requires, assigns, checks or manages a ServiceNow role, and offers no dedicated accounts, sign-in flows or impersonation. Users may sign in with a read-only account or use ServiceNow's own impersonation if they choose. Read-only enforcement never depends on roles: an admin session gives Claude no way to create, update, delete or run scripts.
 
 ## 5. Acceptance criteria (product level)
 
