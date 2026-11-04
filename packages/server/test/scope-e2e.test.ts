@@ -13,6 +13,7 @@ import { BridgeClient } from '../src/bridge/client.js';
 import { createMcpServer } from '../src/mcp/server.js';
 import { Broker } from '../src/native-host/broker.js';
 import { MemoryLogger } from '../src/native-host/logger.js';
+import { answerMetadata } from './fake-sn.js';
 import { LABEL, MockExtension, makeTempDir } from './helpers.js';
 
 const uid = process.getuid?.() as number;
@@ -46,7 +47,9 @@ function realAuthzExtension(ext: MockExtension) {
     grants,
     registry: async () => REGISTRY,
     hasPermission: async () => true,
-    execute: async (host: string) => {
+    execute: async (host: string, op: unknown) => {
+      const m = answerMetadata(op);
+      if (m) return m;
       fetched.push(host);
       return {
         ok: true as const,
@@ -294,6 +297,30 @@ describe('T-012 scope enforcement end to end (real authz.ts)', () => {
       'beta.service-now.com',
       'beta.service-now.com',
     ]);
+  });
+
+  it('T-018: an unknown field is rejected before any data read; the default projection only uses existing fields', async () => {
+    const s = await setup();
+    const call = await s.connect();
+    const alpha = await s.scopeFor(call, ['alpha']);
+    const bad = await call('query_records', {
+      scope_id: alpha,
+      table: 'incident',
+      fields: ['number', 'nmber'],
+    });
+    expect(bad.body.error).toMatchObject({
+      code: 'INVALID_FIELD',
+      hint: expect.stringContaining('number'),
+    });
+    const badTable = await call('query_records', { scope_id: alpha, table: 'incidnt' });
+    expect(badTable.body.error).toMatchObject({
+      code: 'NOT_FOUND',
+      hint: expect.stringContaining('incident'),
+    });
+    expect(s.fetched).toEqual([]); // no data read happened
+    const good = await call('query_records', { scope_id: alpha, table: 'incident' });
+    expect(good.body.ok).toBe(true);
+    expect(s.fetched).toEqual(['alpha.service-now.com']);
   });
 
   it('list_instances reports connector-level access without ids', async () => {

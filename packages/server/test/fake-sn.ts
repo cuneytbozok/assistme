@@ -204,3 +204,33 @@ export function dictionaryFixture(): FakeServiceNow {
   choice('task', 'priority', '1', 'Critical', 1);
   return sn;
 }
+
+const METADATA_TABLES = new Set(['sys_db_object', 'sys_dictionary', 'sys_choice']);
+let sharedDictionary: FakeServiceNow | undefined;
+
+/**
+ * For mock extensions: answers metadata reads (sys_db_object/sys_dictionary/sys_choice) from
+ * the dictionary fixture; returns undefined for any other operation (a "data" read).
+ */
+export function answerMetadata(
+  op: unknown,
+): { ok: true; status: 200; body: Record<string, unknown>[]; bytes: number } | undefined {
+  const o = op as {
+    kind?: string;
+    table?: string;
+    query?: string;
+    fields?: string[];
+    limit?: number;
+    offset?: number;
+  };
+  if (o?.kind !== 'table.list' || !o.table || !METADATA_TABLES.has(o.table)) return undefined;
+  sharedDictionary ??= dictionaryFixture();
+  const { rows } = sharedDictionary.list({
+    table: o.table,
+    ...(o.query ? { query: o.query } : {}),
+    ...(o.fields ? { fields: o.fields } : {}),
+    limit: o.limit ?? 1000,
+    offset: o.offset ?? 0,
+  });
+  return { ok: true, status: 200, body: rows, bytes: JSON.stringify(rows).length };
+}

@@ -167,6 +167,8 @@ Format: Status · Context · Decision · Alternatives considered · Consequences
   - **Text search:** `123TEXTQUERY321` is only accepted when `allowTextSearch` is set (server `text` parameter) and only as the first term.
   - *T-007:* the extension's re-validation (`enforce`) sets `allowTextSearch`, because it can't tell compiled `text` input from other compiled input. The gating against raw model input is the server's `strict` parse.
 
+
+- *Addendum (T-018, 2026-11-04):* dictionary validation **fails closed**. Metadata is read with the user's session; if the user can't read `sys_db_object`/`sys_dictionary`, data queries return that error instead of running unvalidated, because an unknown field can make ServiceNow return every row (T-005). Consequence: users without dictionary read access can't query until this is revisited. Possible relaxation (needs user approval): allow structured-filter queries whose fields can't be verified only on tables the user explicitly trusts. Not implemented.
 ## ADR-006 — Response budgets, signed cursors, ambiguity errors
 
 - **Status:** Superseded in part by ADR-011 (2026-11-04). Still in force: default projection, HMAC-signed cursors with stable ordering, `AMBIGUOUS_MATCH` and table suggestions. Replaced: hard row limits, PROD limits, the offset ceiling, per-scope rate budgets, fan-out caps, the 30 s dedup and "record data is never cached".

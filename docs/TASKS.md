@@ -27,7 +27,7 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 | T-015 | Live scope acceptance (M2)                      | 013, 014 | BLOCKED     |
 | T-016 | Extension request builder hardening             | 007, 003 | DONE        |
 | T-017 | Metadata service                                | 012, 016 | DONE        |
-| T-018 | Dictionary-aware query validation & guards      | 017      | TODO        |
+| T-018 | Dictionary-aware query validation & guards      | 017      | DONE        |
 | T-019 | Per-request safeguards & settings               | 016      | TODO        |
 | T-020 | Sensitive data protection                       | 017      | TODO        |
 | T-021 | Untrusted content, error catalog, SECURITY.md   | 018, 019 | TODO        |
@@ -769,7 +769,7 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 
 ### T-018 — Dictionary-aware query validation & cost-aware defaults
 
-- **Status:** TODO
+- **Status:** DONE
 - **Purpose:** Prevent broadening through invalid fields, and steer expensive queries without restricting them (ADR-005, ADR-011).
 - **Dependencies:** T-017
 - **Deliverables:**
@@ -786,7 +786,22 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
   5. A user-specified `order_by` is never overridden.
 - **Verification:** `npm test`.
 - **DoD:** high-volume list and hint rules documented in ARCHITECTURE §6.4.
-- **Evidence:** —
+- **Evidence (2026-11-04):**
+  - Implemented:
+    - `server/src/mcp/query-guard.ts` (`planQuery`) and `server/src/config.ts` (`loadConfig`, `isHighVolume`, `DEFAULT_HIGH_VOLUME_TABLES`).
+    - `server.ts`: `query_records` (PoC) validates the table and fields through metadata before reading data; the default projection uses only existing fields; `include_total` is opt-in (default `noCount: true`); `hints` in results. Metadata reads go through the same scoped `sn.op` path.
+    - Tests: `test/query-guard.test.ts` (new); `answerMetadata()` in `test/fake-sn.ts`, used by the mock extensions in `mcp`, `scope-e2e` and `resilience` tests; a tool-level case in `scope-e2e.test.ts`.
+  - Root build → exit 0. `npm test` → shared 240, server 110, extension 255 passed. Lint → exit 0.
+  - **Acceptance criteria:**
+    - AC1 ✔ `zz_no_such_field_zz=1` (the T-005 "returns all rows" case) is rejected as `INVALID_FIELD` with zero data calls. So are invalid fields in an OR term, `fields`, `order_by`, a dot-walk hop and an `any_of` group. At tool level, `query_records` with a bad field or table → error and the extension made **no** data request.
+    - AC2 ✔ `syslog` with no conditions → accepted, `ORDERBYDESCsys_created_on`, with a "No selective condition" hint. `syslog` filtered to a two-year-old window (`BETWEEN`, and `older_than 2 years`) → accepted.
+    - AC3 ✔ `contains` (and `text`) on `syslog` → accepted, with a hint.
+    - AC4 ◐ An empty query is accepted with `noCount: true`. The pagination half belongs to T-023, as the criterion says.
+    - AC5 ✔ Structured `order_by` (asc, or another field) and raw `ORDERBY…` are kept as given.
+    - Also: raw + internal conditions → `INVALID_INPUT`; internal conditions are ANDed into each `any_of` group; raw queries use the strict profile; more than 3 hops → rejected.
+  - **Mutation checks** (each reverted): no field validation (9 failures), user order overridden (1), raw+internal allowed (1), counts always on (2).
+  - DoD ✔ ARCHITECTURE §6.4 documents the list, pattern syntax, selectivity rule and hints.
+  - Decision to surface: validation **fails closed** for users who can't read the dictionary (ADR-005 addendum).
 
 ### T-019 — Per-request safeguards & settings
 

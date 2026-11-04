@@ -13,6 +13,7 @@ import { BridgeClient } from '../src/bridge/client.js';
 import { createMcpServer } from '../src/mcp/server.js';
 import { Broker } from '../src/native-host/broker.js';
 import { MemoryLogger } from '../src/native-host/logger.js';
+import { answerMetadata } from './fake-sn.js';
 import { LABEL, MockExtension, makeTempDir } from './helpers.js';
 
 const uid = process.getuid?.() as number;
@@ -53,7 +54,9 @@ function attach(ext: MockExtension, st: ReturnType<typeof extensionState>) {
     grants: st.grants,
     registry: async () => REGISTRY,
     hasPermission: async () => true,
-    execute: async () => {
+    execute: async (_host: string, op: unknown) => {
+      const m = answerMetadata(op);
+      if (m) return m;
       st.executions++;
       const gate = st.gate;
       st.gate = undefined;

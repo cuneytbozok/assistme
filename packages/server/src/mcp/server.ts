@@ -24,7 +24,10 @@ import {
 } from '@sn-mcp/shared';
 import { z } from 'zod';
 import { type BridgeClient, BridgeError, type BridgeRequest } from '../bridge/client.js';
+import { loadConfig, type ServerConfig } from '../config.js';
 import { mapBridgeError } from './errors.js';
+import { type MetaContext, MetadataError, MetadataService } from './metadata.js';
+import { planQuery } from './query-guard.js';
 import { ok, provenance, scopeSuffix, toolError } from './results.js';
 import { ScopeStore } from './scope-store.js';
 
@@ -71,8 +74,64 @@ export const ScopeIdInput = z
 
 type Ok<T extends string> = Extract<ResponseEnvelope, { ok: true }> & { result: { type: T } };
 
-export function createMcpServer(bridge: BridgeClient): McpServer {
+export function createMcpServer(
+  bridge: BridgeClient,
+  opts: { config?: ServerConfig; metadata?: MetadataService } = {},
+): McpServer {
   const scopes = new ScopeStore();
+  const config = opts.config ?? loadConfig();
+  const meta = opts.metadata ?? new MetadataService();
+
+  /**
+   * Metadata reads go through the same scoped, read-only path as data (sn.op table.list).
+   * Cached per instance alias: grants are invalidated if an alias is re-registered.
+   */
+  function metaContext(scopeId: string, instance: string): MetaContext {
+    return {
+      instanceKey: instance,
+      fetch: async (req) => {
+        try {
+          const r = await bridge.request({
+            kind: 'sn.op',
+            scopeId,
+            instance,
+            op: { kind: 'table.list', ...req, displayValue: 'false', noCount: true },
+          });
+          if (!r.ok)
+            return {
+              ok: false,
+              code: r.error.code,
+              message: r.error.message,
+              ...(r.error.hint ? { hint: r.error.hint } : {}),
+            };
+          if (r.result.type !== 'sn.op')
+            return {
+              ok: false,
+              code: 'SN_API_ERROR',
+              message: 'Unexpected response from the bridge.',
+            };
+          return {
+            ok: true,
+            rows: Array.isArray(r.result.body) ? (r.result.body as Record<string, unknown>[]) : [],
+          };
+        } catch (e) {
+          if (e instanceof BridgeError) return { ok: false, code: e.code, message: e.message };
+          return {
+            ok: false,
+            code: 'BRIDGE_UNAVAILABLE',
+            message: 'The Chrome bridge is not reachable.',
+          };
+        }
+      },
+    };
+  }
+
+  function metadataError(e: unknown, scopeId: string): CallToolResult {
+    if (e instanceof MetadataError) {
+      return mapBridgeError(e.code, e.message, e.hint, { scopes, scopeId });
+    }
+    return toolError('SN_API_ERROR', 'Could not read table metadata.');
+  }
   const server = new McpServer(
     { name: SERVER_NAME, version: SERVER_VERSION },
     { instructions: INSTRUCTIONS },
@@ -346,15 +405,34 @@ export function createMcpServer(bridge: BridgeClient): McpServer {
         table: TableNameSchema.describe('Table name, e.g. incident'),
         fields: z.array(FieldPathSchema).min(1).max(50).optional().describe('Fields to return'),
         limit: z.int().min(1).max(5).default(1),
+        include_total: z
+          .boolean()
+          .default(false)
+          .describe('Also return the total number of matching rows (costs an extra count)'),
       }),
       outputSchema: ResultEnvelope,
       annotations: READ_ONLY,
     },
-    async ({ scope_id, instance, table, fields, limit }) => {
+    async ({ scope_id, instance, table, fields, limit, include_total }) => {
       const id = requireScope(scope_id);
       if (typeof id !== 'string') return id;
       const target = scopes.resolveTarget(id, instance);
       if (!target.ok) return toolError(target.code, target.message, target.hint);
+      // Validate the table and every field against the dictionary before reading data (T-018).
+      const ctx = metaContext(id, target.instance);
+      let plan: Awaited<ReturnType<typeof planQuery>>;
+      try {
+        const known = fields ? undefined : await meta.fields(ctx, table);
+        const projection = fields ?? DEFAULT_FIELDS.filter((f) => known?.has(f));
+        plan = await planQuery(
+          meta,
+          ctx,
+          { table, ...(projection.length > 0 ? { fields: projection } : {}), include_total },
+          { highVolumeTables: config.highVolumeTables },
+        );
+      } catch (e) {
+        return metadataError(e, id);
+      }
       const r = await call(
         'sn.op',
         {
@@ -364,11 +442,12 @@ export function createMcpServer(bridge: BridgeClient): McpServer {
           op: {
             kind: 'table.list',
             table,
-            fields: fields ?? DEFAULT_FIELDS,
+            ...(plan.query ? { query: plan.query } : {}),
+            ...(plan.fields ? { fields: plan.fields } : {}),
             limit,
             offset: 0,
             displayValue: 'all',
-            noCount: false,
+            noCount: plan.noCount,
           },
         },
         id,
@@ -388,6 +467,7 @@ export function createMcpServer(bridge: BridgeClient): McpServer {
         }),
         data: { records },
         page: { returned: records.length, total: total ?? null },
+        ...(plan.hints.length > 0 ? { hints: plan.hints } : {}),
         complete,
         ...(complete
           ? {}

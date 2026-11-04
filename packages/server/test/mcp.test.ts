@@ -8,6 +8,7 @@ import { BridgeClient } from '../src/bridge/client.js';
 import { createMcpServer, INSTRUCTIONS } from '../src/mcp/server.js';
 import { Broker } from '../src/native-host/broker.js';
 import { MemoryLogger } from '../src/native-host/logger.js';
+import { answerMetadata } from './fake-sn.js';
 import { LABEL, MockExtension, makeTempDir } from './helpers.js';
 
 const uid = process.getuid?.() as number;
@@ -77,7 +78,20 @@ function fakeExtension(ext: MockExtension) {
             });
           }
           break;
-        case 'sn.op':
+        case 'sn.op': {
+          const m = answerMetadata(r.op);
+          if (m && r.scopeId === SCOPE) {
+            reply({
+              type: 'sn.op',
+              instance: 'dev',
+              host: 'dev469966.service-now.com',
+              env: 'dev',
+              status: 200,
+              body: m.body,
+              bytes: m.bytes,
+            });
+            break;
+          }
           state.ops.push(r);
           if (r.scopeId !== SCOPE) fail('SCOPE_UNKNOWN', 'Unknown scope. Request a new one.');
           else
@@ -98,6 +112,7 @@ function fakeExtension(ext: MockExtension) {
               bytes: 120,
             });
           break;
+        }
       }
     }
   });

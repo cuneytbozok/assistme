@@ -1,0 +1,80 @@
+/**
+ * MCP server settings (ARCHITECTURE §6.4, §8.3). Read once from the environment (or the .mcpb
+ * user_config, which arrives as env vars). Invalid values fall back to the default; nothing
+ * here can widen authorization, it only shapes responses.
+ */
+import { MAX_PAGE_SIZE, SERVER_DEFAULTS } from '@sn-mcp/shared';
+
+/** Tables where unordered reads default to newest-first and get selectivity hints. */
+export const DEFAULT_HIGH_VOLUME_TABLES = [
+  'syslog*',
+  'sys_audit',
+  'sys_journal_field',
+  'ecc_queue',
+  'sys_email',
+  'sys_history_line',
+  'discovery_device_history',
+  'sys_poll',
+  '*_log',
+] as const;
+
+export interface ServerConfig {
+  responseChars: number;
+  maxResponseChars: number;
+  pageSize: number;
+  fieldPreviewChars: number;
+  highVolumeTables: readonly string[];
+}
+
+function int(raw: string | undefined, fallback: number, min: number, max: number): number {
+  if (raw === undefined || raw.trim() === '') return fallback;
+  const n = Number(raw);
+  return Number.isInteger(n) && n >= min && n <= max ? n : fallback;
+}
+
+const PATTERN_RE = /^\*?[a-z0-9_]+\*?$/;
+
+export function loadConfig(env: Record<string, string | undefined> = process.env): ServerConfig {
+  const hv = env.SN_MCP_HIGH_VOLUME_TABLES;
+  const patterns =
+    hv === undefined
+      ? [...DEFAULT_HIGH_VOLUME_TABLES]
+      : hv
+          .split(',')
+          .map((p) => p.trim().toLowerCase())
+          .filter((p) => PATTERN_RE.test(p));
+  const maxResponseChars = int(
+    env.SN_MCP_MAX_RESPONSE_CHARS,
+    SERVER_DEFAULTS.maxResponseChars,
+    2_000,
+    1_000_000,
+  );
+  return {
+    responseChars: Math.min(
+      int(env.SN_MCP_RESPONSE_CHARS, SERVER_DEFAULTS.responseChars, 1_000, 1_000_000),
+      maxResponseChars,
+    ),
+    maxResponseChars,
+    pageSize: int(env.SN_MCP_PAGE_SIZE, SERVER_DEFAULTS.pageSize, 1, MAX_PAGE_SIZE),
+    fieldPreviewChars: int(
+      env.SN_MCP_FIELD_PREVIEW_CHARS,
+      SERVER_DEFAULTS.fieldPreviewChars,
+      50,
+      100_000,
+    ),
+    highVolumeTables: patterns,
+  };
+}
+
+/** `syslog*` matches syslog and syslog_transaction; `*_log` matches sys_rest_log, etc. */
+export function isHighVolume(table: string, patterns: readonly string[]): boolean {
+  return patterns.some((p) => {
+    const start = p.startsWith('*');
+    const end = p.endsWith('*');
+    const core = p.replace(/^\*|\*$/g, '');
+    if (start && end) return table.includes(core);
+    if (start) return table.endsWith(core);
+    if (end) return table.startsWith(core);
+    return table === core;
+  });
+}

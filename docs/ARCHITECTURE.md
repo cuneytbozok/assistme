@@ -219,6 +219,14 @@ Values containing `^`, control characters, or newlines are rejected, as are `,` 
   - Responses carry a hint suggesting time ranges, key conditions or `aggregate_records` when the query has no selective condition.
 - Counts are opt-in (`include_total`). The default sends `sysparm_no_count=true`, and `has_more` is detected by fetching one extra row.
 - Instance protection comes from per-request safeguards (§8.2), not from rejecting queries.
+- **Implementation (T-018, `server/src/mcp/query-guard.ts`, `server/src/config.ts`):**
+  - High-volume list: `SN_MCP_HIGH_VOLUME_TABLES` (comma-separated) **replaces** the default list above. Patterns are `name`, `prefix*`, `*suffix` or `*infix*` (lowercase `[a-z0-9_]`); invalid entries are dropped.
+  - Default order: only when the query has no ordering of its own (structured `order_by` or `ORDERBY…` in `encoded_query`) and the table has `sys_created_on`. A user order is never changed.
+  - "Selective" means at least one condition that is a time range on `sys_created_on`/`sys_updated_on` (`>`, `>=`, `<`, `<=`, `BETWEEN`, `RELATIVE…`) or an exact/prefix match (`=`, `IN`, `STARTSWITH`). Without one, a high-volume query gets the "No selective condition" hint.
+  - `contains`, `not_contains`, `ends_with` or `text` on a high-volume table → a hint suggesting `starts_with` or an exact match on an indexed field.
+  - Hints are returned in the tool result's `hints` array; nothing is rejected for breadth, age or missing conditions.
+  - Field validation covers filters, raw query terms, `fields`, `order_by` and every dot-walk hop (≤3 hops). Unknown fields are reported together with close-match suggestions, before any data request. Tool-internal conditions are structured only and ANDed into every `any_of` group; a raw `encoded_query` is refused where a tool has internal conditions.
+  - **Fails closed:** metadata is read with the user's own session. If their roles can't read `sys_db_object`/`sys_dictionary`, the data query is not sent (the metadata error, e.g. `ACL_DENIED`, is returned).
 
 ### 6.4a Profiles (T-003)
 `enforce` (authoritative; server + extension) vs `strict` (raw `encoded_query` from the model; additionally rejects `gs.`, `${`, `eval(`, `new X`). See the ADR-005 addendum.
