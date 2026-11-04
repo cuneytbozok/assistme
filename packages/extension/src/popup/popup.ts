@@ -9,6 +9,7 @@
  * in the form; it never registers anything. All rendering uses textContent.
  */
 import '../csp.js';
+import { ALIAS_RE, GRANT_TTL_MINUTES } from '@sn-mcp/shared';
 import {
   chromeRegistryStorage,
   effectiveEnv,
@@ -21,14 +22,18 @@ import {
   validateNewEntry,
 } from '../background/registry.js';
 
+type Env = InstanceEntry['env'];
+
 const registry = new Registry(chromeRegistryStorage());
 let entries: InstanceEntry[] = [];
-const ENV_OPTIONS: [InstanceEntry['env'], string][] = [
-  ['unclassified', 'Unclassified (treated as PROD)'],
+const ENV_OPTIONS: [Env, string][] = [
   ['dev', 'DEV'],
   ['test', 'TEST'],
   ['prod', 'PROD'],
+  ['unclassified', 'Not sure'],
 ];
+
+// --- small DOM helpers ------------------------------------------------------------------
 
 function el<T extends HTMLElement>(id: string): T {
   const found = document.getElementById(id);
@@ -38,25 +43,99 @@ function el<T extends HTMLElement>(id: string): T {
 
 function make<K extends keyof HTMLElementTagNameMap>(
   tag: K,
-  props: { className?: string; text?: string } = {},
+  props: { className?: string; text?: string; title?: string } = {},
+  ...children: (Node | string)[]
 ): HTMLElementTagNameMap[K] {
   const node = document.createElement(tag);
   if (props.className) node.className = props.className;
   if (props.text !== undefined) node.textContent = props.text;
+  if (props.title) node.title = props.title;
+  node.append(...children);
   return node;
 }
 
-function button(text: string, onClick: () => void, secondary = false): HTMLButtonElement {
-  const b = make('button', { text, className: secondary ? 'secondary' : '' });
+function button(text: string, className: string, onClick: () => void): HTMLButtonElement {
+  const b = make('button', { text, className });
   b.type = 'button';
   b.addEventListener('click', onClick);
   return b;
 }
 
+const ICONS = {
+  edit: 'M11.5 2.5l2 2L6 12H4v-2l7.5-7.5z',
+  trash: 'M3 4.5h10M6.5 4.5V3h3v1.5M5 4.5l.5 8.5h5l.5-8.5',
+};
+
+function iconButton(
+  icon: keyof typeof ICONS,
+  title: string,
+  onClick: () => void,
+  extra = '',
+): HTMLButtonElement {
+  const b = make('button', { className: `icon ${extra}`, title });
+  b.type = 'button';
+  b.setAttribute('aria-label', title);
+  const NS = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(NS, 'svg');
+  svg.setAttribute('viewBox', '0 0 16 16');
+  svg.setAttribute('fill', 'none');
+  svg.setAttribute('stroke', 'currentColor');
+  svg.setAttribute('stroke-width', '1.4');
+  svg.setAttribute('stroke-linecap', 'round');
+  svg.setAttribute('stroke-linejoin', 'round');
+  const path = document.createElementNS(NS, 'path');
+  path.setAttribute('d', ICONS[icon]);
+  svg.append(path);
+  b.append(svg);
+  b.addEventListener('click', onClick);
+  return b;
+}
+
+function envBadge(env: Env): HTMLSpanElement {
+  const text = env === 'unclassified' ? 'PROD?' : env.toUpperCase();
+  return make('span', {
+    className: `env ${effectiveEnv(env)}`,
+    text,
+    title: env === 'unclassified' ? 'Unclassified — treated as PROD' : `${text} instance`,
+  });
+}
+
+/** Segmented env picker; `container.dataset.value` holds the selection. */
+function segmented(container: HTMLElement, value: Env, onChange?: (v: Env) => void): void {
+  container.replaceChildren();
+  container.dataset.value = value;
+  container.setAttribute('role', 'group');
+  for (const [v, text] of ENV_OPTIONS) {
+    const b = make('button', { text });
+    b.type = 'button';
+    b.setAttribute('aria-pressed', String(v === value));
+    b.addEventListener('click', () => {
+      container.dataset.value = v;
+      for (const other of container.querySelectorAll('button')) {
+        other.setAttribute('aria-pressed', String(other === b));
+      }
+      onChange?.(v);
+    });
+    container.append(b);
+  }
+}
+
+function envHint(env: Env): string {
+  const ttl = GRANT_TTL_MINUTES[env].default;
+  if (effectiveEnv(env) === 'prod') {
+    return `PROD rules${env === 'unclassified' ? ' (unclassified)' : ''}: you type the host to approve, and access lasts ${ttl} min.`;
+  }
+  return `Each approval lasts up to ${ttl / 60} h.`;
+}
+
+let toastTimer: ReturnType<typeof setTimeout> | undefined;
 function setMessage(text: string, kind: 'ok' | 'error' | '' = ''): void {
-  const m = el<HTMLParagraphElement>('message');
+  const m = el<HTMLDivElement>('message');
   m.textContent = text;
-  m.className = kind;
+  m.className = `toast ${kind}`;
+  m.hidden = text === '';
+  clearTimeout(toastTimer);
+  if (text) toastTimer = setTimeout(() => (m.hidden = true), kind === 'error' ? 7000 : 4000);
 }
 
 function ask(message: unknown): Promise<
@@ -68,118 +147,181 @@ function ask(message: unknown): Promise<
   return chrome.runtime.sendMessage(message);
 }
 
+function remaining(ms: number): string {
+  if (ms <= 0) return 'expired';
+  const min = Math.ceil(ms / 60_000);
+  if (min < 60) return `${min} min`;
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  return m ? `${h} h ${m} min` : `${h} h`;
+}
+
+// --- instances --------------------------------------------------------------------------
+
 async function render(): Promise<void> {
   entries = await registry.list();
   const list = el<HTMLUListElement>('instances');
   list.replaceChildren();
-  el('empty').hidden = entries.length > 0;
-  for (const entry of entries) {
-    const li = make('li');
-    li.dataset.alias = entry.alias;
-    const badge = make('span', {
-      className: `env ${effectiveEnv(entry.env)}`,
-      text: entry.env === 'unclassified' ? 'UNCLASSIFIED' : entry.env.toUpperCase(),
-    });
-    const info = make('div', { className: 'info' });
-    info.append(
-      make('div', { text: entry.label ? `${entry.alias} — ${entry.label}` : entry.alias }),
-      make('div', { className: 'host', text: entry.host }),
-    );
-    const granted = await chrome.permissions.contains({ origins: [originPattern(entry.host)] });
-    if (!granted) {
-      info.append(
-        make('div', {
-          className: 'perm-missing',
-          text: 'Host permission missing — remove and register again.',
-        }),
-      );
-    }
-    const actions = make('div', { className: 'row-actions' });
-    actions.append(
-      button('Edit', () => showEdit(li, info, entry), true),
-      button('Remove', () => showRemove(li, info, entry), true),
-    );
-    li.append(badge, info, actions);
-    list.append(li);
-  }
+  el('empty').hidden = entries.length > 0 || isFormOpen();
+  for (const entry of entries) list.append(await renderInstance(entry));
   await renderSuggestion();
+}
+
+async function renderInstance(entry: InstanceEntry): Promise<HTMLLIElement> {
+  const li = make('li', { className: 'inst' });
+  li.dataset.alias = entry.alias;
+  const main = make(
+    'div',
+    { className: 'inst-main' },
+    make(
+      'div',
+      { className: 'inst-title' },
+      make('span', { text: entry.alias }),
+      ...(entry.label ? [make('span', { className: 'label', text: entry.label })] : []),
+    ),
+    make('div', { className: 'inst-host mono', text: entry.host, title: entry.host }),
+  );
+  const granted = await chrome.permissions.contains({ origins: [originPattern(entry.host)] });
+  if (!granted) {
+    main.append(
+      make('div', {
+        className: 'warn-line',
+        text: 'No Chrome access to this site. Remove and add it again.',
+      }),
+    );
+  }
+  const actions = make(
+    'div',
+    { className: 'inst-actions' },
+    iconButton('edit', `Edit ${entry.alias}`, () => showEdit(li, entry)),
+    iconButton('trash', `Remove ${entry.alias}`, () => showRemove(li, entry), 'danger-hover'),
+  );
+  li.append(make('div', { className: 'inst-row' }, envBadge(entry.env), main, actions));
+  return li;
 }
 
 function closePanels(li: HTMLElement): void {
   for (const p of li.querySelectorAll('.panel')) p.remove();
 }
 
-function showEdit(li: HTMLElement, info: HTMLElement, entry: InstanceEntry): void {
+function showEdit(li: HTMLElement, entry: InstanceEntry): void {
+  const wasOpen = li.querySelector('.panel.edit');
   closePanels(li);
-  const panel = make('div', { className: 'panel' });
+  if (wasOpen) return;
   const label = make('input');
   label.type = 'text';
   label.maxLength = 80;
   label.value = entry.label;
-  label.placeholder = 'Label';
-  const env = make('select');
-  for (const [value, text] of ENV_OPTIONS) {
-    const o = make('option', { text });
-    o.value = value;
-    o.selected = value === entry.env;
-    env.append(o);
-  }
-  const note = make('div', {
-    className: 'muted',
-    text: 'Changing the environment ends any active access to this instance.',
+  label.placeholder = 'e.g. My PDI';
+  const env = make('div', { className: 'segmented' });
+  const warn = make('div', { className: 'warn', text: '' });
+  const hint = make('small', { className: 'hint', text: envHint(entry.env) });
+  segmented(env, entry.env, (v) => {
+    hint.textContent = envHint(v);
+    warn.textContent = v !== entry.env ? 'Saving a new environment ends active access to it.' : '';
   });
-  panel.append(
-    label,
-    env,
-    note,
-    button('Save', () => {
-      void ask({
-        type: 'popup.registry.edit',
-        alias: entry.alias,
-        label: label.value,
-        env: env.value,
-      }).then(async (r) => {
-        if (!r?.ok) return setMessage(r?.message ?? 'Edit failed.', 'error');
-        const ended = r.invalidated ? ` Ended ${r.invalidated} active access item(s).` : '';
-        setMessage(`Updated ${entry.alias}.${ended}`, 'ok');
-        await render();
-        void renderAccess();
-      });
-    }),
-    button('Cancel', () => panel.remove(), true),
+  const save = (): void => {
+    void ask({
+      type: 'popup.registry.edit',
+      alias: entry.alias,
+      label: label.value,
+      env: env.dataset.value,
+    }).then(async (r) => {
+      if (!r?.ok) return setMessage(r?.message ?? 'Could not save.', 'error');
+      const ended = r.invalidated ? ' Active access to it was ended.' : '';
+      setMessage(`Saved ${entry.alias}.${ended}`, 'ok');
+      await render();
+      void renderAccess();
+    });
+  };
+  label.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') save();
+    if (e.key === 'Escape') closePanels(li);
+  });
+  const panel = make(
+    'div',
+    { className: 'panel edit' },
+    make('label', { className: 'field' }, make('span', { text: 'Label' }), label),
+    make('div', { className: 'field' }, make('span', { text: 'Environment' }), env, hint),
+    warn,
+    make(
+      'div',
+      { className: 'buttons' },
+      button('Cancel', 'ghost small', () => closePanels(li)),
+      button('Save', 'primary small', save),
+    ),
   );
-  info.append(panel);
+  li.append(panel);
+  label.focus();
 }
 
-function showRemove(li: HTMLElement, info: HTMLElement, entry: InstanceEntry): void {
+function showRemove(li: HTMLElement, entry: InstanceEntry): void {
+  const wasOpen = li.querySelector('.panel.remove');
   closePanels(li);
-  const panel = make('div', { className: 'panel' });
+  if (wasOpen) return;
   const box = make('input');
   box.type = 'checkbox';
   box.checked = true;
-  const lbl = make('label', { className: 'check' });
-  lbl.append(box, document.createTextNode(` Also remove Chrome's access to ${entry.host}`));
-  panel.append(
-    make('div', { text: `Remove ${entry.alias}? Any active access to it ends now.` }),
-    lbl,
-    button('Confirm remove', () => {
-      void ask({
-        type: 'popup.registry.remove',
-        alias: entry.alias,
-        removeHostPermission: box.checked,
-      }).then(async (r) => {
-        if (!r?.ok) return setMessage(r?.message ?? 'Remove failed.', 'error');
-        const parts = [`Removed ${entry.alias}.`];
-        if (r.invalidated) parts.push(`Ended ${r.invalidated} active access item(s).`);
-        if (r.permissionRemoved) parts.push(`Revoked access to ${entry.host}.`);
-        setMessage(parts.join(' '), 'ok');
-        await render();
-        void renderAccess();
-      });
-    }),
-    button('Cancel', () => panel.remove(), true),
+  const panel = make(
+    'div',
+    { className: 'panel remove danger-zone' },
+    make(
+      'div',
+      {},
+      make('strong', { text: `Remove ${entry.alias}?` }),
+      ' Any active access to it ends now.',
+    ),
+    make('label', { className: 'check' }, box, `Also remove Chrome's access to ${entry.host}`),
+    make(
+      'div',
+      { className: 'buttons' },
+      button('Cancel', 'ghost small', () => closePanels(li)),
+      button('Remove', 'danger small', () => {
+        void ask({
+          type: 'popup.registry.remove',
+          alias: entry.alias,
+          removeHostPermission: box.checked,
+        }).then(async (r) => {
+          if (!r?.ok) return setMessage(r?.message ?? 'Could not remove.', 'error');
+          const parts = [`Removed ${entry.alias}.`];
+          if (r.invalidated) parts.push('Active access ended.');
+          if (r.permissionRemoved) parts.push(`Chrome no longer has access to ${entry.host}.`);
+          setMessage(parts.join(' '), 'ok');
+          await render();
+          void renderAccess();
+        });
+      }),
+    ),
   );
-  info.append(panel);
+  li.append(panel);
+}
+
+// --- add form ---------------------------------------------------------------------------
+
+function isFormOpen(): boolean {
+  return !el('register').hidden;
+}
+
+function setFormOpen(open: boolean): void {
+  el('register').hidden = !open;
+  el('add-toggle').textContent = open ? 'Close' : '+ Add';
+  el('empty').hidden = open || entries.length > 0;
+  if (open) el<HTMLInputElement>('url').focus();
+}
+
+function resetForm(): void {
+  el<HTMLFormElement>('register').reset();
+  const env = el('env');
+  segmented(env, 'unclassified', (v) => {
+    el('env-hint').textContent = envHint(v);
+  });
+  el('env-hint').textContent = envHint('unclassified');
+}
+
+/** Alias proposal from the host's first label, only if it is valid and unused. */
+function proposeAlias(host: string): string {
+  const first = host.split('.')[0] ?? '';
+  return ALIAS_RE.test(first) && !entries.some((e) => e.alias === first) ? first : '';
 }
 
 /** activeTab: Chrome exposes only the URL of the tab the popup was opened on. */
@@ -197,16 +339,21 @@ async function renderSuggestion(): Promise<void> {
   const host = suggestionFromTabUrl(url, entries);
   if (!host) return;
   box.append(
-    make('span', { text: `This tab looks like a ServiceNow instance: ${host}` }),
-    button(
-      'Use it',
-      () => {
-        el<HTMLInputElement>('url').value = host;
-        el<HTMLInputElement>('alias').focus();
-        setMessage('Filled in from the current tab. Choose an alias and environment.', '');
-      },
-      true,
+    make(
+      'div',
+      { className: 'text' },
+      make('div', { text: 'This tab looks like a ServiceNow instance' }),
+      make('span', { className: 'mono', text: host }),
     ),
+    button('Add it', 'primary small', () => {
+      setFormOpen(true);
+      el<HTMLInputElement>('url').value = host;
+      const alias = el<HTMLInputElement>('alias');
+      if (!alias.value) alias.value = proposeAlias(host);
+      alias.focus();
+      alias.select();
+      box.hidden = true;
+    }),
   );
   box.hidden = false;
 }
@@ -222,7 +369,7 @@ function onSubmit(event: SubmitEvent): void {
     alias: el<HTMLInputElement>('alias').value,
     host: host.value,
     label: el<HTMLInputElement>('label').value,
-    env: el<HTMLSelectElement>('env').value,
+    env: el('env').dataset.value ?? '',
   };
   const checked = validateNewEntry(entries, input);
   if (!checked.ok) {
@@ -233,14 +380,15 @@ function onSubmit(event: SubmitEvent): void {
   // First async call — still inside the user gesture. Exactly one origin is requested.
   chrome.permissions.request({ origins: [originPattern(entry.host)] }).then(
     async (granted) => {
-      if (!granted) return setMessage(`Access to ${entry.host} was not granted.`, 'error');
+      if (!granted) return setMessage(`Chrome access to ${entry.host} was not allowed.`, 'error');
       const saved = await ask({ type: 'popup.registry.add', entry: input });
-      if (!saved?.ok) return setMessage(saved?.message ?? 'Registration failed.', 'error');
-      el<HTMLFormElement>('register').reset();
+      if (!saved?.ok) return setMessage(saved?.message ?? 'Could not add the instance.', 'error');
+      resetForm();
+      setFormOpen(false);
       const hint = looksLikeServiceNow(entry.host)
         ? ''
-        : ' (custom domain — check it is your ServiceNow instance)';
-      setMessage(`Registered ${entry.alias} → ${entry.host}${hint}.`, 'ok');
+        : ' Custom domain — make sure it is your ServiceNow instance.';
+      setMessage(`Added ${entry.alias}.${hint}`, 'ok');
       await render();
     },
     (err: unknown) => setMessage(`Permission request failed: ${String(err)}`, 'error'),
@@ -248,7 +396,15 @@ function onSubmit(event: SubmitEvent): void {
 }
 
 el<HTMLFormElement>('register').addEventListener('submit', onSubmit);
-void render();
+el('add-toggle').addEventListener('click', () => setFormOpen(!isFormOpen()));
+el('register-cancel').addEventListener('click', () => {
+  resetForm();
+  setFormOpen(false);
+});
+resetForm();
+void render().then(() => {
+  if (entries.length === 0) setFormOpen(true);
+});
 void renderAccess();
 setInterval(() => void renderAccess(), 2000);
 
@@ -273,21 +429,30 @@ interface PopupState {
   }[];
 }
 
-function bridgeText(b: PopupState['bridge']): [string, 'ok' | 'bad' | ''] {
+function bridgeView(b: PopupState['bridge']): { pill: string; cls: string; detail?: string } {
   switch (b.state) {
     case 'connected':
-      return ['Bridge: connected to the local broker', 'ok'];
+      return { pill: 'Connected', cls: 'ok' };
     case 'conflict':
-      return ['Bridge: another Chrome profile is using the broker', 'bad'];
+      return {
+        pill: 'In use',
+        cls: 'bad',
+        detail: 'Another Chrome profile is using the connector. Use one profile at a time.',
+      };
     case 'connecting':
-      return ['Bridge: connecting…', ''];
+      return { pill: 'Connecting', cls: '' };
     default:
-      return [
-        /not found/i.test(b.reason ?? '')
-          ? 'Bridge: native host not installed (npm run install-native-host)'
-          : `Bridge: disconnected — retrying in ${Math.round((b.retryInMs ?? 0) / 1000)} s`,
-        'bad',
-      ];
+      return /not found/i.test(b.reason ?? '')
+        ? {
+            pill: 'Not installed',
+            cls: 'bad',
+            detail: 'The local helper is not installed. Run: npm run install-native-host',
+          }
+        : {
+            pill: 'Offline',
+            cls: 'bad',
+            detail: `Can't reach the local helper. Retrying in ${Math.max(1, Math.round((b.retryInMs ?? 0) / 1000))} s.`,
+          };
   }
 }
 
@@ -303,10 +468,12 @@ async function renderAccess(): Promise<void> {
     return;
   }
   if (!state?.ok || !state.bridge) return;
-  const [text, cls] = bridgeText(state.bridge);
-  const b = el('bridge');
-  b.textContent = text;
-  b.className = cls || 'muted';
+  const view = bridgeView(state.bridge);
+  el('bridge').className = `pill ${view.cls}`;
+  el('bridge-text').textContent = view.pill;
+  const detail = el('bridge-detail');
+  detail.textContent = view.detail ?? '';
+  detail.hidden = !view.detail;
 
   const reqList = el<HTMLUListElement>('requests');
   const focused = document.activeElement?.closest?.('li')?.dataset.requestId;
@@ -323,75 +490,116 @@ async function renderAccess(): Promise<void> {
   const grants = state.grants ?? [];
   el('grants-section').hidden = grants.length === 0;
   for (const g of grants) {
-    const li = document.createElement('li');
-    const info = document.createElement('div');
-    info.className = 'info';
-    const t = document.createElement('div');
-    t.textContent = `${g.instances.join(', ')} — ${g.clientLabel.name} (pid ${g.clientLabel.pid})`;
-    const exp = document.createElement('div');
-    exp.className = 'host';
-    exp.textContent = `until ${new Date(g.expiresAt).toLocaleTimeString()}`;
-    info.append(t, exp);
-    const revoke = document.createElement('button');
-    revoke.type = 'button';
-    revoke.className = 'secondary';
-    revoke.textContent = 'Revoke';
-    revoke.addEventListener('click', () => {
-      void ask({ type: 'popup.revoke', grantId: g.grantId }).then(() => renderAccess());
-    });
-    li.append(info, revoke);
+    const instEntries = g.instances.map((a) => entries.find((e) => e.alias === a));
+    const li = make(
+      'li',
+      { className: 'grant' },
+      ...instEntries.map((e) => (e ? envBadge(e.env) : make('span'))),
+      make(
+        'div',
+        { className: 'inst-main' },
+        make('div', { className: 'inst-title' }, make('span', { text: g.instances.join(', ') })),
+        make('div', {
+          className: 'sub',
+          text: `${g.clientLabel.name} · ${remaining(g.expiresAt - Date.now())} left`,
+        }),
+      ),
+      button('Revoke', 'danger-text small', () => {
+        void ask({ type: 'popup.revoke', grantId: g.grantId }).then(() => {
+          setMessage(`Revoked access to ${g.instances.join(', ')}.`, 'ok');
+          void renderAccess();
+        });
+      }),
+    );
     grantList.append(li);
   }
 }
 
 function renderRequest(r: PopupState['pending'][number]): HTMLLIElement {
-  const li = document.createElement('li');
-  li.className = 'req';
-  li.dataset.requestId = r.requestId;
   const instanceEntries = r.instances.map((a) => entries.find((e) => e.alias === a));
   const isProd = instanceEntries.some((e) => !e || effectiveEnv(e.env) === 'prod');
+  const li = make('li', { className: `card req${isProd ? ' prod' : ''}` });
+  li.dataset.requestId = r.requestId;
 
-  const code = document.createElement('div');
-  code.className = 'code';
-  code.textContent = formatCode(r.approvalCode);
-  const who = document.createElement('div');
-  who.textContent = `${r.clientLabel.name} (pid ${r.clientLabel.pid}) wants read access to ${instanceEntries
-    .map((e, i) => (e ? `${e.alias} [${e.env.toUpperCase()}] ${e.host}` : r.instances[i]))
-    .join(', ')}`;
-  const purpose = document.createElement('div');
-  purpose.className = 'purpose';
-  purpose.textContent = `Purpose (from Claude, unverified): ${r.purpose.slice(0, 200)}`;
+  const head = make(
+    'div',
+    { className: 'req-head' },
+    make('div', { className: 'code', text: formatCode(r.approvalCode) }),
+    make(
+      'div',
+      { className: 'req-meta' },
+      make('div', { text: r.clientLabel.name }),
+      make('div', { text: `expires in ${remaining(r.expiresAt - Date.now())}` }),
+    ),
+  );
+  const targets = instanceEntries.map((e, i) =>
+    e
+      ? make(
+          'div',
+          { className: 'target' },
+          envBadge(e.env),
+          make(
+            'div',
+            { className: 'inst-main' },
+            make('div', { className: 'inst-title' }, make('span', { text: e.alias })),
+            make('div', { className: 'inst-host mono', text: e.host }),
+          ),
+        )
+      : make('div', { className: 'target', text: r.instances[i] ?? '' }),
+  );
+  const purpose = make(
+    'div',
+    { className: 'purpose' },
+    make('small', { text: 'Reason given by Claude (unverified)' }),
+    r.purpose.slice(0, 200),
+  );
 
-  const actions = document.createElement('div');
-  actions.className = 'actions';
   let typed: HTMLInputElement | undefined;
+  const parts: Node[] = [
+    head,
+    make('div', { className: 'hint', text: 'wants read-only access to' }),
+    ...targets,
+    purpose,
+  ];
   if (isProd) {
-    typed = document.createElement('input');
+    typed = make('input');
     typed.type = 'text';
-    typed.placeholder = `Type ${instanceEntries[0]?.host ?? 'the host'} to approve`;
-    actions.append(typed);
+    typed.placeholder = instanceEntries[0]?.host ?? 'host';
+    parts.push(
+      make(
+        'label',
+        { className: 'field' },
+        make('span', { text: 'Production: type the host to approve' }),
+        typed,
+      ),
+    );
   }
-  const approve = document.createElement('button');
-  approve.type = 'button';
-  approve.textContent = 'Approve';
-  approve.addEventListener('click', () => {
+  const approve = (): void => {
     void ask({ type: 'popup.approve', requestId: r.requestId, typedHost: typed?.value }).then(
       (res) => {
         if (!res?.ok) setMessage(res?.message ?? 'Approval failed.', 'error');
-        else setMessage('Approved. Claude can now claim this access.', 'ok');
+        else setMessage('Approved. Claude can now use this access.', 'ok');
         (document.activeElement as HTMLElement | null)?.blur();
         void renderAccess();
       },
     );
+  };
+  typed?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') approve();
   });
-  const deny = document.createElement('button');
-  deny.type = 'button';
-  deny.className = 'secondary';
-  deny.textContent = 'Deny';
-  deny.addEventListener('click', () => {
-    void ask({ type: 'popup.deny', requestId: r.requestId }).then(() => renderAccess());
-  });
-  actions.append(approve, deny);
-  li.append(code, who, purpose, actions);
+  parts.push(
+    make(
+      'div',
+      { className: 'buttons' },
+      button('Deny', 'ghost', () => {
+        void ask({ type: 'popup.deny', requestId: r.requestId }).then(() => {
+          setMessage('Request denied.', 'ok');
+          void renderAccess();
+        });
+      }),
+      button('Approve', 'primary', approve),
+    ),
+  );
+  li.append(...parts);
   return li;
 }

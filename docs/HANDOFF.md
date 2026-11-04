@@ -48,6 +48,7 @@ _Last updated: 2026-11-04 (after T-010)_
 - **Current task:** none (nothing IN_PROGRESS).
 - **Last completed task:** T-010 — Full instance registry (commit `T-010: full instance registry`). Evidence: TASKS T-010 and `docs/evidence/T-010/`.
 - **Next task:** **T-011 — Full grant model** (depends on T-010 ✔). Build on T-010's `targets` binding: compare mode needs one target per instance, and `reconcile` already handles multi-instance grants.
+- **Popup redesign (after T-010, user request, 2026-11-04):** card layout, status pill, icon edit/remove, segmented env picker, collapsible add form, alias proposal from a tab suggestion, toasts. Same logic and permission calls. Screenshots (seeded data, stubbed `popup.state`): `docs/evidence/T-010/popup-*.png`.
 - **Also eligible:** T-016 (request builder hardening; depends on T-007 ✔ and T-003 ✔).
 - **Needs a manual check by the user (from T-010):** reload the extension, open the popup on an unregistered ServiceNow tab and check that **Use it** appears and only fills the form. Then edit or remove an instance and confirm `list_instances` in Claude Desktop follows. Removing `dev` ends any active scope.
 - **Finding to carry forward:**

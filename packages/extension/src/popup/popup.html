@@ -6,58 +6,75 @@
     <link rel="stylesheet" href="popup.css" />
   </head>
   <body>
-    <header>
-      <h1>sn-mcp Session Bridge</h1>
-      <p class="sub">Read-only. Claude can only use instances you register and approve here.</p>
-      <p id="bridge" class="muted">Bridge: …</p>
+    <header class="top">
+      <div class="brand">
+        <div class="logo" aria-hidden="true">SN</div>
+        <div>
+          <h1>ServiceNow Bridge</h1>
+          <p class="tagline">Read-only access for Claude</p>
+        </div>
+      </div>
+      <span id="bridge" class="pill" title="">
+        <span class="dot"></span><span id="bridge-text">Connecting</span>
+      </span>
     </header>
+    <p id="bridge-detail" class="banner bad" hidden></p>
 
-    <section id="requests-section" hidden>
-      <h2>Access requests</h2>
-      <p class="muted">Approve only if the code matches the one Claude showed you in this conversation.</p>
-      <ul id="requests"></ul>
-    </section>
+    <main>
+      <section id="requests-section" hidden>
+        <h2>Access requests</h2>
+        <p class="hint">Approve only if the code matches the one Claude showed you.</p>
+        <ul id="requests" class="stack"></ul>
+      </section>
 
-    <section id="grants-section" hidden>
-      <h2>Active access</h2>
-      <ul id="grants"></ul>
-    </section>
+      <section id="grants-section" hidden>
+        <h2>Active access</h2>
+        <ul id="grants" class="card list"></ul>
+      </section>
 
-    <section>
-      <h2>Registered instances</h2>
-      <p id="empty" class="muted">No instances registered yet.</p>
-      <ul id="instances"></ul>
-    </section>
+      <section>
+        <div class="section-head">
+          <h2>Instances</h2>
+          <button id="add-toggle" type="button" class="ghost small">+ Add</button>
+        </div>
+        <div id="suggestion" class="suggestion" hidden></div>
+        <form id="register" class="card form" autocomplete="off" hidden>
+          <div class="form-title">Add an instance</div>
+          <label class="field">
+            <span>Instance URL</span>
+            <input id="url" name="url" type="text" placeholder="https://dev12345.service-now.com" required />
+          </label>
+          <div class="row2">
+            <label class="field">
+              <span>Alias</span>
+              <input id="alias" name="alias" type="text" placeholder="dev" maxlength="32" required />
+            </label>
+            <label class="field">
+              <span>Label <em>optional</em></span>
+              <input id="label" name="label" type="text" maxlength="80" placeholder="My PDI" />
+            </label>
+          </div>
+          <div class="field">
+            <span>Environment</span>
+            <div id="env" class="segmented" data-value="unclassified"></div>
+            <small id="env-hint" class="hint"></small>
+          </div>
+          <div class="buttons">
+            <button id="register-cancel" type="button" class="ghost">Cancel</button>
+            <button type="submit" class="primary">Add and allow access</button>
+          </div>
+        </form>
+        <div id="empty" class="empty" hidden>
+          <p><strong>No instances yet.</strong></p>
+          <p>Add the ServiceNow instance you want Claude to read from. Chrome will ask you to allow that one site.</p>
+        </div>
+        <ul id="instances" class="card list"></ul>
 
-    <section>
-      <h2>Register an instance</h2>
-      <div id="suggestion" class="suggestion" hidden></div>
-      <form id="register" autocomplete="off">
-        <label>
-          Instance URL or host
-          <input id="url" name="url" type="text" placeholder="https://dev12345.service-now.com" required />
-        </label>
-        <label>
-          Alias
-          <input id="alias" name="alias" type="text" placeholder="dev" maxlength="32" required />
-        </label>
-        <label>
-          Environment
-          <select id="env" name="env" required>
-            <option value="unclassified" selected>Unclassified (treated as PROD)</option>
-            <option value="dev">DEV</option>
-            <option value="test">TEST</option>
-            <option value="prod">PROD</option>
-          </select>
-        </label>
-        <label>
-          Label (optional)
-          <input id="label" name="label" type="text" maxlength="80" />
-        </label>
-        <button type="submit">Register and grant access to this host</button>
-      </form>
-      <p id="message" role="status"></p>
-    </section>
+      </section>
+    </main>
+
+    <footer>Claude can only use instances you add and approve here.</footer>
+    <div id="message" role="status" class="toast" hidden></div>
 
     <script type="module" src="popup.js"></script>
   </body>
