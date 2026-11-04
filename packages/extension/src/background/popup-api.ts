@@ -18,7 +18,14 @@ export type PopupMessage =
     }
   | { type: 'popup.registry.edit'; alias: string; label?: string; env?: string; envName?: string }
   | { type: 'popup.registry.remove'; alias: string; removeHostPermission: boolean }
-  | { type: 'popup.approve'; requestId: string; typedHost?: string }
+  | {
+      type: 'popup.approve';
+      requestId: string;
+      typedHost?: string;
+      typedHosts?: string[];
+      ttlMinutes?: number;
+    }
+  | { type: 'popup.revokeAll' }
   | { type: 'popup.deny'; requestId: string }
   | { type: 'popup.revoke'; grantId: string };
 
@@ -57,13 +64,21 @@ export async function handlePopupMessage(raw: unknown, d: PopupApiDeps): Promise
     }
     case 'popup.approve': {
       if (typeof m.requestId !== 'string') return { ok: false, message: 'invalid request' };
-      const r = await d.grants.approve(
-        m.requestId,
-        await d.registry(),
-        typeof m.typedHost === 'string' ? m.typedHost : undefined,
-      );
+      const typedHosts = [
+        ...(Array.isArray(m.typedHosts) ? m.typedHosts.filter((h) => typeof h === 'string') : []),
+        ...(typeof m.typedHost === 'string' ? [m.typedHost] : []),
+      ];
+      const r = await d.grants.approve(m.requestId, await d.registry(), {
+        typedHosts,
+        ...(typeof m.ttlMinutes === 'number' ? { ttlMinutes: m.ttlMinutes } : {}),
+      });
       d.onChanged();
       return r.ok ? { ok: true } : { ok: false, message: r.message };
+    }
+    case 'popup.revokeAll': {
+      const revoked = await d.grants.revokeAll();
+      d.onChanged();
+      return { ok: true, revoked };
     }
     case 'popup.deny': {
       if (typeof m.requestId !== 'string') return { ok: false, message: 'invalid request' };

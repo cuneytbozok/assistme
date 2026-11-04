@@ -1,11 +1,11 @@
 # Handoff
 
-_Last updated: 2026-11-04 (after T-010)_
+_Last updated: 2026-11-04 (after T-011)_
 
 ## Current project state
 
 - **Phase 0 (Foundation):** complete (T-001, T-002, T-003).
-- **Phase 2:** T-010 (full instance registry) is DONE: add, edit and remove in the popup; grants bound to `{alias, host, env}` and invalidated on removal or env change; `activeTab` suggestions; server-side `registry.update` cache.
+- **Phase 2:** T-011 (full grant model) is DONE: compare grants, TTL choice, revoke-all, red PROD badge, request notifications, purpose and approval time on active access. T-010 (full instance registry) is DONE: add, edit and remove in the popup; grants bound to `{alias, host, env}` and invalidated on removal or env change; `activeTab` suggestions; server-side `registry.update` cache.
 - **Phase 1:** T-004 is DONE. The MV3 extension builds to `packages/extension/dist/` with stable ID `clipfeocpiljpcngmjpdbegciimchbol` (`packages/extension/EXTENSION_ID`). It has a minimal popup registry: paste the URL, pick alias and env, and it requests the exact host permission and saves to `chrome.storage.local`.
 - **Packages:**
   - `packages/shared`: protocol schemas, errors, limits, identifier validation, query module.
@@ -46,8 +46,9 @@ _Last updated: 2026-11-04 (after T-010)_
 ## Tasks
 
 - **Current task:** none (nothing IN_PROGRESS).
-- **Last completed task:** T-010 — Full instance registry (commit `T-010: full instance registry`). Evidence: TASKS T-010 and `docs/evidence/T-010/`.
-- **Next task:** **T-011 — Full grant model** (depends on T-010 ✔). Build on T-010's `targets` binding: compare mode needs one target per instance, and `reconcile` already handles multi-instance grants.
+- **Last completed task:** T-011 — Full grant model (commit `T-011: full grant model`). Evidence: TASKS T-011 and `docs/evidence/T-011/`.
+- **Next task:** **T-012 — MCP scope enforcement** (depends on T-008 ✔ and T-011 ✔). Note: the extension supports compare scopes, but `request_scope` only sends `mode: single`. Decide in T-012 whether to expose `instances[]`/`mode` there or leave it to T-032.
+- **"Other" environment (after T-010, user request):** the popup shows `unclassified` as **Other** with an optional name (UAT, SIT, …). It always gets PROD rules and the name is display only. `list_instances` returns `env_name` and `policy`.
 - **Popup redesign (after T-010, user request, 2026-11-04):** card layout, status pill, icon edit/remove, segmented env picker, collapsible add form, alias proposal from a tab suggestion, toasts. Same logic and permission calls. Screenshots (seeded data, stubbed `popup.state`): `docs/evidence/T-010/popup-*.png`.
 - **Also eligible:** T-016 (request builder hardening; depends on T-007 ✔ and T-003 ✔).
 - **Needs a manual check by the user (from T-010):** reload the extension, open the popup on an unregistered ServiceNow tab and check that **Use it** appears and only fills the form. Then edit or remove an instance and confirm `list_instances` in Claude Desktop follows. Removing `dev` ends any active scope.
@@ -65,19 +66,17 @@ _Last updated: 2026-11-04 (after T-010)_
 ## Files changed in last task
 
 - Extension:
-  - `manifest.json` (`activeTab`)
-  - `src/background/{registry,grants,authz,popup-api,index}.ts`
+  - `src/background/{grants,popup-api,index}.ts`
   - `src/popup/{popup.ts,popup.html,popup.css}`
-  - `README.md`
-  - `test/registry-lifecycle.test.ts` (new), `test/manifest.test.ts`
-- Server: `src/bridge/client.ts` (registry cache), `src/mcp/server.ts` (cache refresh, alias hint), `test/mcp.test.ts`.
-- Docs: TASKS, HANDOFF, DECISIONS (ADR-003 and ADR-007 addenda), ARCHITECTURE §5.1, `docs/evidence/T-010/`.
+  - `manifest.json` (icons), `build.mjs`, `icons/*.png`
+  - `test/grant-model.test.ts` (new), `test/grants.test.ts`
+- Docs: TASKS, HANDOFF, DECISIONS (ADR-003 T-011 addendum), ARCHITECTURE §5.4, `docs/evidence/T-011/`.
 
 ## Tests performed
 
-- Root build, tests (shared 240, server 58, extension 105) and lint all exit 0.
-- Mutation checks: 5 of 5 caught.
-- Headless Chrome: loads clean, no warnings; popup edit and remove work; no console errors.
+- Root build, tests (shared 240, server 58, extension 121) and lint all exit 0.
+- Mutation checks: 6 of 6 caught.
+- Headless Chrome: loads clean, notification created, red PROD badge, popup screenshots in light and dark mode with no overflow.
 
 ## Open blockers
 

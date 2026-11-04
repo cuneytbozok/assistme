@@ -1,0 +1,16 @@
+{
+  "load": {
+    "id": "clipfeocpiljpcngmjpdbegciimchbol"
+  },
+  "info": {
+    "state": "ENABLED",
+    "installWarnings": [],
+    "manifestErrors": [],
+    "runtimeErrors": [],
+    "icon": "data:image/png;base64,iVBORw0KGgoAAAANSU\u2026"
+  },
+  "notification": "created req:test",
+  "seed": "ok",
+  "badge": ["PROD", [220, 38, 38, 255]],
+  "errors": []
+}

@@ -20,7 +20,7 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 | T-008 | Minimal MCP server                              | 006, 003 | DONE        |
 | T-009 | PoC end-to-end in Claude Code + Desktop (M1)    | 007, 008 | DONE        |
 | T-010 | Full instance registry                          | 007      | DONE        |
-| T-011 | Full grant model                                | 010      | TODO        |
+| T-011 | Full grant model                                | 010      | DONE        |
 | T-012 | MCP scope enforcement                           | 008, 011 | TODO        |
 | T-013 | Session lifecycle & status                      | 011      | TODO        |
 | T-014 | Bridge resilience                               | 012      | TODO        |
@@ -512,7 +512,7 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 
 ### T-011 — Full grant model
 
-- **Status:** TODO
+- **Status:** DONE
 - **Purpose:** Complete ADR-003 policies.
 - **Dependencies:** T-010
 - **Deliverables:**
@@ -530,7 +530,40 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
   3. Purpose text is rendered as text, never HTML.
 - **Verification:** `npm test -w packages/extension`; manual popup check.
 - **DoD:** policy table in ARCHITECTURE §5.4 matches the implementation.
-- **Evidence:** —
+- **Evidence (2026-11-04):**
+  - Implemented:
+    - `grants.ts`:
+      - Compare requests (two distinct instances); `policyEnv` (strictest wins); `ApproveOptions {typedHosts[], ttlMinutes}` with range checks.
+      - Grant record gains `env`, `purpose`, `approvedAt`; `revokeAll()`; `TTL_CHOICES`; `badgeFor()`.
+    - `popup-api.ts`: `popup.approve` takes `typedHosts` and `ttlMinutes`; new `popup.revokeAll`.
+    - `index.ts`: red PROD badge (also refreshed every 30 s); notification on each new request (no purpose; a click opens the popup).
+    - Popup:
+      - Duration picker per request, kept across the 2 s refresh; one typed-host field per PROD instance; compare requests show both instances.
+      - Active access shows the purpose, approval time and time left; **Revoke all** appears when there are two or more grants.
+      - Fixed a layout overflow (grid tracks widened by nowrap text).
+    - `manifest.json` and `build.mjs`: icons. Tests: `test/grant-model.test.ts` (new); `grants.test.ts` updated for compare mode.
+  - Root `npm run build` → exit 0. `npm test` → shared 240, server 58, extension 121 passed. `npm run lint` → exit 0.
+  - **Acceptance criteria:**
+    - AC1 ✔ `grant-model.test.ts`:
+      - Claiming twice → `claimed`; another client → `expired` (indistinguishable from unknown).
+      - Expired → `SCOPE_EXPIRED`; revoked → `SCOPE_UNKNOWN`; revoke-all ends grants for every client and denies pending requests.
+      - PROD, unclassified and PROD-containing compare approvals without every PROD host typed → refused.
+      - PROD TTL 15 min default, 60 allowed, 61 refused; DEV 4 h default, 12 h max, and 721, 0, negative, fractional and NaN refused. A DEV+PROD pair uses the PROD range.
+      - A compare grant can't be used for a third instance; a single grant can't be used for another instance.
+      - No renewal: the request can't be re-approved after claim, and `Grants` has no `renew`.
+      - The stored record has `clientKeyId`, `instances`, `mode`, `env`, `purpose`, `approvedAt` and `expiresAt` (plus `scopeHash`, hidden in the UI snapshot).
+    - AC2 ✔ Codes use only `APPROVAL_CODE_ALPHABET` (no 0/1/I/L/O); requests expire after 300 s, after which approval → `NOT_FOUND` and they leave the pending list.
+    - AC3 ✔ The popup has no HTML sinks (`innerHTML`, `outerHTML`, `insertAdjacentHTML`, `document.write`, `DOMParser`, `createContextualFragment`; enforced by a test); everything uses `textContent`/`append`. The notification code never references the purpose (test).
+  - **Mutation checks** (each reverted): checking only the first PROD host (1 failure), no PROD TTL cap (1), revoke-all keeping grants (2), policy not strictest (2), compare of any size (1), no PROD badge (1).
+  - **Headless Chrome** (Chrome 156, throwaway profile; `docs/evidence/T-011/`):
+    - Loads `ENABLED` with no install warnings, manifest errors or runtime errors; the icon is served.
+    - `chrome.notifications.create` with the packaged icon → created.
+    - A seeded active PROD grant → badge text `PROD` in red (`[220,38,38]`).
+    - Popup screenshots (stubbed `popup.state`) in light and dark mode; page width 380 px (no overflow); no console errors.
+  - DoD ✔ ARCHITECTURE §5.4 now lists TTL choices, compare policy, the grant record, revoke semantics, notification content and the badge.
+  - Unverified:
+    - A real notification on screen and a click opening the popup (headless has no notification UI).
+    - The full approve flow with a duration choice against the live instance. Claude can't request compare scopes until T-012/T-032 add it to `request_scope`.
 
 ### T-012 — MCP scope enforcement
 

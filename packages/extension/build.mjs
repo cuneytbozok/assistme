@@ -37,6 +37,8 @@ const files = [
   ['manifest.json', 'manifest.json'],
   ['src/popup/popup.html', 'popup.html'],
   ['src/popup/popup.css', 'popup.css'],
+  ...[16, 32, 48, 128].map((n) => [`icons/icon${n}.png`, `icons/icon${n}.png`]),
 ];
+mkdirSync(join(out, 'icons'), { recursive: true });
 for (const [from, to] of files) copyFileSync(join(root, from), join(out, to));
 console.log(`Built unpacked extension in ${out}`);

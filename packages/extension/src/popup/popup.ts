@@ -10,6 +10,7 @@
  */
 import '../csp.js';
 import { ALIAS_RE, GRANT_TTL_MINUTES } from '@sn-mcp/shared';
+import { type PolicyEnv, policyEnv, TTL_CHOICES } from '../background/grants.js';
 import {
   chromeRegistryStorage,
   effectiveEnv,
@@ -435,6 +436,12 @@ function onSubmit(event: SubmitEvent): void {
 
 el<HTMLFormElement>('register').addEventListener('submit', onSubmit);
 el('add-toggle').addEventListener('click', () => setFormOpen(!isFormOpen()));
+el('revoke-all').addEventListener('click', () => {
+  void ask({ type: 'popup.revokeAll' }).then((r) => {
+    setMessage(r?.ok ? 'Revoked all access.' : 'Could not revoke.', r?.ok ? 'ok' : 'error');
+    void renderAccess();
+  });
+});
 el('register-cancel').addEventListener('click', () => {
   resetForm();
   setFormOpen(false);
@@ -456,15 +463,32 @@ interface PopupState {
     approvalCode: string;
     clientLabel: { name: string; pid: number; cwd?: string };
     instances: string[];
+    mode: 'single' | 'compare';
     purpose: string;
+    createdAt: number;
     expiresAt: number;
   }[];
   grants: {
     grantId: string;
     clientLabel: { name: string; pid: number };
     instances: string[];
+    mode: 'single' | 'compare';
+    env: PolicyEnv;
+    purpose: string;
+    approvedAt: number;
     expiresAt: number;
   }[];
+}
+
+/** Per-request UI state that must survive the 2 s refresh (chosen TTL, typed hosts). */
+const draft = new Map<string, { ttl?: number; typed: Map<string, string> }>();
+
+function ttlLabel(min: number): string {
+  return min < 60 ? `${min} min` : `${min / 60} h`;
+}
+
+function clock(t: number): string {
+  return new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
 function bridgeView(b: PopupState['bridge']): { pill: string; cls: string; detail?: string } {
@@ -527,19 +551,37 @@ async function renderAccess(): Promise<void> {
   grantList.replaceChildren();
   const grants = state.grants ?? [];
   el('grants-section').hidden = grants.length === 0;
+  el('revoke-all').hidden = grants.length < 2;
   for (const g of grants) {
     const instEntries = g.instances.map((a) => entries.find((e) => e.alias === a));
     const li = make(
       'li',
-      { className: 'grant' },
-      ...instEntries.map((e) => (e ? envBadge(e.env, e.envName) : make('span'))),
+      { className: `grant${g.env === 'prod' ? ' prod' : ''}` },
+      make(
+        'div',
+        { className: 'badges' },
+        ...instEntries.map((e) => (e ? envBadge(e.env, e.envName) : make('span'))),
+      ),
       make(
         'div',
         { className: 'inst-main' },
-        make('div', { className: 'inst-title' }, make('span', { text: g.instances.join(', ') })),
+        make(
+          'div',
+          { className: 'inst-title' },
+          make('span', { text: g.instances.join(g.mode === 'compare' ? ' ⇄ ' : ', ') }),
+          make('span', {
+            className: 'label',
+            text: `${remaining(g.expiresAt - Date.now())} left`,
+          }),
+        ),
+        make('div', {
+          className: 'grant-purpose',
+          text: g.purpose.slice(0, 120),
+          title: g.purpose.slice(0, 200),
+        }),
         make('div', {
           className: 'sub',
-          text: `${g.clientLabel.name} · ${remaining(g.expiresAt - Date.now())} left`,
+          text: `${g.clientLabel.name} · approved ${clock(g.approvedAt)}`,
         }),
       ),
       button('Revoke', 'danger-text small', () => {
@@ -551,11 +593,18 @@ async function renderAccess(): Promise<void> {
     );
     grantList.append(li);
   }
+  for (const id of draft.keys()) {
+    if (!pending.some((r) => r.requestId === id)) draft.delete(id);
+  }
 }
 
 function renderRequest(r: PopupState['pending'][number]): HTMLLIElement {
   const instanceEntries = r.instances.map((a) => entries.find((e) => e.alias === a));
-  const isProd = instanceEntries.some((e) => !e || effectiveEnv(e.env) === 'prod');
+  const known = instanceEntries.filter((e): e is InstanceEntry => e !== undefined);
+  const policy = known.length === instanceEntries.length ? policyEnv(known) : 'prod';
+  const isProd = policy === 'prod';
+  const d = draft.get(r.requestId) ?? { typed: new Map<string, string>() };
+  draft.set(r.requestId, d);
   const li = make('li', { className: `card req${isProd ? ' prod' : ''}` });
   li.dataset.requestId = r.requestId;
 
@@ -566,7 +615,7 @@ function renderRequest(r: PopupState['pending'][number]): HTMLLIElement {
     make(
       'div',
       { className: 'req-meta' },
-      make('div', { text: r.clientLabel.name }),
+      make('div', { text: `${r.clientLabel.name} · ${clock(r.createdAt)}` }),
       make('div', { text: `expires in ${remaining(r.expiresAt - Date.now())}` }),
     ),
   );
@@ -592,39 +641,84 @@ function renderRequest(r: PopupState['pending'][number]): HTMLLIElement {
     r.purpose.slice(0, 200),
   );
 
-  let typed: HTMLInputElement | undefined;
   const parts: Node[] = [
     head,
-    make('div', { className: 'hint', text: 'wants read-only access to' }),
+    make('div', {
+      className: 'hint',
+      text:
+        r.mode === 'compare'
+          ? 'wants to compare, read-only, these two instances:'
+          : 'wants read-only access to',
+    }),
     ...targets,
     purpose,
   ];
-  if (isProd) {
-    typed = make('input');
-    typed.type = 'text';
-    typed.placeholder = instanceEntries[0]?.host ?? 'host';
+
+  // Duration (fixed at approval; there is no renewal).
+  const choices = TTL_CHOICES[policy];
+  const fallback = GRANT_TTL_MINUTES[policy].default;
+  d.ttl ??= fallback;
+  const ttlGroup = make('div', { className: 'segmented', title: 'How long access lasts' });
+  ttlGroup.style.gridTemplateColumns = `repeat(${choices.length}, 1fr)`;
+  for (const min of choices) {
+    const b = make('button', { text: ttlLabel(min) });
+    b.type = 'button';
+    b.setAttribute('aria-pressed', String(min === d.ttl));
+    b.addEventListener('click', () => {
+      d.ttl = min;
+      for (const o of ttlGroup.querySelectorAll('button')) {
+        o.setAttribute('aria-pressed', String(o === b));
+      }
+    });
+    ttlGroup.append(b);
+  }
+  parts.push(
+    make(
+      'div',
+      { className: 'field' },
+      make('span', { text: isProd ? 'Access lasts (no renewal)' : 'Access lasts' }),
+      ttlGroup,
+    ),
+  );
+
+  const typedInputs: HTMLInputElement[] = [];
+  for (const e of known.filter((x) => effectiveEnv(x.env) === 'prod')) {
+    const input = make('input');
+    input.type = 'text';
+    input.placeholder = e.host;
+    input.value = d.typed.get(e.host) ?? '';
+    input.addEventListener('input', () => d.typed.set(e.host, input.value));
+    typedInputs.push(input);
     parts.push(
       make(
         'label',
         { className: 'field' },
-        make('span', { text: 'Strict rules apply: type the host to approve' }),
-        typed,
+        make('span', { text: `Strict rules: type ${e.alias}'s host to approve` }),
+        input,
       ),
     );
   }
   const approve = (): void => {
-    void ask({ type: 'popup.approve', requestId: r.requestId, typedHost: typed?.value }).then(
-      (res) => {
-        if (!res?.ok) setMessage(res?.message ?? 'Approval failed.', 'error');
-        else setMessage('Approved. Claude can now use this access.', 'ok');
-        (document.activeElement as HTMLElement | null)?.blur();
-        void renderAccess();
-      },
-    );
+    void ask({
+      type: 'popup.approve',
+      requestId: r.requestId,
+      typedHosts: typedInputs.map((i) => i.value),
+      ttlMinutes: d.ttl,
+    }).then((res) => {
+      if (!res?.ok) setMessage(res?.message ?? 'Approval failed.', 'error');
+      else {
+        draft.delete(r.requestId);
+        setMessage(`Approved for ${ttlLabel(d.ttl ?? fallback)}. Claude can now use it.`, 'ok');
+      }
+      (document.activeElement as HTMLElement | null)?.blur();
+      void renderAccess();
+    });
   };
-  typed?.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') approve();
-  });
+  for (const input of typedInputs) {
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') approve();
+    });
+  }
   parts.push(
     make(
       'div',

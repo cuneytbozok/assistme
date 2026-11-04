@@ -564,3 +564,30 @@ input[type="text"]:focus {
   background: var(--danger);
   color: #fff;
 }
+
+.grant.prod {
+  box-shadow: inset 3px 0 0 var(--prod);
+}
+.grant .badges {
+  display: grid;
+  gap: 3px;
+}
+.grant-purpose {
+  margin-top: 2px;
+  color: var(--fg);
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Grid tracks must not grow with nowrap content (hosts, purposes). */
+main,
+section,
+.stack,
+.req,
+.panel,
+.form,
+.field {
+  grid-template-columns: minmax(0, 1fr);
+}

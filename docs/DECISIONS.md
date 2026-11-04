@@ -104,6 +104,12 @@ Format: Status · Context · Decision · Alternatives considered · Consequences
   - Alias and host are immutable once registered; to change them, remove and register again.
   - *Follow-up (2026-11-04, user request):* **"Other" environments with a custom name.** The protocol enum stays `dev|test|prod|unclassified`. The popup shows `unclassified` as **Other** with an optional `envName` (`ENV_NAME_RE`: 1–16 letters, digits, spaces, `-`, `_`; `dev`/`test`/`prod`/`production`/`development` refused). `envName` is display only. It always gets PROD rules and isn't part of the grant target, so a rename keeps grants. `InstanceInfo.envName` is optional; `list_instances` returns `env_name` and `policy`. The add form has no default environment; the user must choose (previously the default was unclassified).
 
+- *Addendum (T-011, 2026-11-04):*
+  - Compare mode is enabled in the extension (exactly two distinct instances). The policy is the strictest of the pair, and every PROD host must be typed. The MCP `request_scope` tool still requests single scopes only. Exposing compare requests to Claude belongs to T-012/T-032.
+  - TTL choices are fixed lists within the ADR caps (DEV/TEST 1/4/8/12 h, PROD 15/30/60 min). There is no renewal.
+  - Notifications use a fixed template (client label, aliases, approval code), never the purpose. The extension now ships icons (`packages/extension/icons/`, generated once from a canvas; no external assets).
+  - Badge: red while any PROD grant is active, refreshed every 30 s and on every change.
+
 ## ADR-004 — Operation descriptors, never URLs
 
 - **Status:** Accepted (2026-11-04)

@@ -8,8 +8,12 @@
  * - Every operation re-checks scope, client binding, expiry and instance.
  * - State lives in chrome.storage.session (cleared when Chrome restarts).
  *
- * T-007 scope: single-instance grants with default TTLs; PROD/unclassified approval requires
- * typing the host. Compare mode, TTL choice, badges and revoke-all come in T-011.
+ * Policies (ARCHITECTURE §5.4, T-011):
+ * - Single grants cover one instance; compare grants cover one fixed pair of distinct instances.
+ * - The strictest instance decides: if any is PROD/unclassified, every PROD host must be typed,
+ *   and the TTL is chosen from the PROD range (default 15 min, max 60).
+ * - DEV/TEST: default 4 h, max 12 h. The user picks the TTL at approval; it can't be changed or
+ *   renewed afterwards (a new request is needed).
  */
 import {
   APPROVAL_CODE_ALPHABET,
@@ -45,6 +49,9 @@ export interface ScopeRequestRecord {
   targets?: GrantTarget[];
 }
 
+/** The policy class a grant gets: the strictest of its instances. */
+export type PolicyEnv = 'dev' | 'test' | 'prod';
+
 /** The registry entry a grant was approved for. A grant never follows a changed entry. */
 export interface GrantTarget {
   alias: string;
@@ -62,6 +69,17 @@ export interface GrantRecord {
   createdAt: number;
   expiresAt: number;
   targets: GrantTarget[];
+  /** Strictest effective env across the instances (prod if any is prod/unclassified). */
+  env: PolicyEnv;
+  /** Shown in the popup next to the grant (untrusted text from Claude; rendered as text). */
+  purpose: string;
+  approvedAt: number;
+}
+
+function policyOfTargets(targets: readonly GrantTarget[]): PolicyEnv {
+  const envs = targets.map((t) => effectiveEnv(t.env));
+  if (envs.length === 0 || envs.includes('prod')) return 'prod';
+  return envs.includes('test') ? 'test' : 'dev';
 }
 
 /** True when the registry entry still matches exactly what the user approved. */
@@ -137,6 +155,28 @@ export function defaultTtlMinutes(env: InstanceEntry['env']): number {
   return GRANT_TTL_MINUTES[env].default;
 }
 
+/** Strictest policy across entries: prod > test > dev. */
+export function policyEnv(entries: readonly InstanceEntry[]): PolicyEnv {
+  const envs = entries.map((e) => effectiveEnv(e.env));
+  if (envs.includes('prod')) return 'prod';
+  if (envs.includes('test')) return 'test';
+  return 'dev';
+}
+
+/** TTL choices offered in the popup for a policy class (minutes; first is not the default). */
+export const TTL_CHOICES: Record<PolicyEnv, readonly number[]> = {
+  dev: [60, 240, 480, 720],
+  test: [60, 240, 480, 720],
+  prod: [15, 30, 60],
+};
+
+export interface ApproveOptions {
+  /** Hosts the user typed to confirm PROD instances (each PROD host must be present). */
+  typedHosts?: readonly string[];
+  /** Chosen lifetime; must be within the policy's range. Default: the policy default. */
+  ttlMinutes?: number;
+}
+
 function sanitizeState(raw: unknown): GrantState {
   const s = (raw ?? {}) as Partial<GrantState>;
   return {
@@ -188,9 +228,17 @@ export class Grants {
     return this.exclusive<
       GrantResult<{ requestId: string; approvalCode: string; expiresInSeconds: number }>
     >(async (state) => {
-      if (input.mode !== 'single' || input.instances.length !== 1) {
+      const distinct = new Set(input.instances).size === input.instances.length;
+      if (
+        !distinct ||
+        (input.mode === 'single' && input.instances.length !== 1) ||
+        (input.mode === 'compare' && input.instances.length !== 2)
+      ) {
         return {
-          value: err('INVALID_INPUT', 'Only single-instance scopes are available in this version.'),
+          value: err(
+            'INVALID_INPUT',
+            'A single scope covers exactly one instance; a compare scope covers two different instances.',
+          ),
           save: false,
         };
       }
@@ -230,12 +278,17 @@ export class Grants {
     });
   }
 
-  /** User action (popup only). PROD/unclassified needs the host typed exactly. */
+  /**
+   * User action (popup only). Every PROD/unclassified instance needs its host typed exactly.
+   * `confirm` may be a single typed host (shorthand) or full options.
+   */
   approve(
     requestId: string,
     registry: readonly InstanceEntry[],
-    typedHost?: string,
+    confirm?: string | ApproveOptions,
   ): Promise<GrantResult<true>> {
+    const opts: ApproveOptions =
+      typeof confirm === 'string' ? { typedHosts: [confirm] } : (confirm ?? {});
     return this.exclusive<GrantResult<true>>(async (state) => {
       const r = state.requests.find((x) => x.requestId === requestId && x.status === 'pending');
       if (!r) return { value: err('NOT_FOUND', 'The request is no longer pending.'), save: false };
@@ -244,17 +297,27 @@ export class Grants {
         return { value: err('INSTANCE_NOT_REGISTERED', 'An instance was removed.'), save: false };
       }
       const resolved = entries as InstanceEntry[];
+      const typed = new Set((opts.typedHosts ?? []).map((h) => h.trim().toLowerCase()));
       for (const e of resolved) {
-        if (effectiveEnv(e.env) === 'prod' && typedHost?.trim().toLowerCase() !== e.host) {
+        if (effectiveEnv(e.env) === 'prod' && !typed.has(e.host)) {
           return {
             value: err('INVALID_INPUT', `Type ${e.host} to approve access to a PROD instance.`),
             save: false,
           };
         }
       }
+      const policy = policyEnv(resolved);
+      const range = GRANT_TTL_MINUTES[policy];
+      const ttl = opts.ttlMinutes ?? range.default;
+      if (!Number.isInteger(ttl) || ttl < 1 || ttl > range.max) {
+        return {
+          value: err('INVALID_INPUT', `Access can last at most ${range.max} min for this request.`),
+          save: false,
+        };
+      }
       r.status = 'approved';
       r.approvedAt = this.deps.now();
-      r.ttlMinutes = Math.min(...resolved.map((e) => defaultTtlMinutes(e.env)));
+      r.ttlMinutes = ttl;
       r.targets = resolved.map((e) => ({ alias: e.alias, host: e.host, env: e.env }));
       return { value: { ok: true, value: true }, save: true };
     });
@@ -293,6 +356,9 @@ export class Grants {
         createdAt: now,
         expiresAt,
         targets: (r.targets ?? []).map((t) => ({ ...t })),
+        env: policyOfTargets(r.targets ?? []),
+        purpose: r.purpose,
+        approvedAt: r.approvedAt ?? now,
       });
       r.status = 'claimed';
       return {
@@ -365,6 +431,21 @@ export class Grants {
     });
   }
 
+  /** User action (popup only): ends every grant and denies every open request. */
+  revokeAll(): Promise<number> {
+    return this.exclusive(async (state) => {
+      let n = state.grants.filter((g) => g.expiresAt > this.deps.now()).length;
+      state.grants = [];
+      for (const r of state.requests) {
+        if (r.status === 'pending' || r.status === 'approved') {
+          r.status = 'denied';
+          n++;
+        }
+      }
+      return { value: n, save: true };
+    });
+  }
+
   /**
    * Registry changed (T-010): drops every grant, and denies every open request, that refers to
    * an alias no longer registered or whose host/env differ from what was approved. Called with
@@ -429,6 +510,22 @@ export class Grants {
       save: false,
     }));
   }
+}
+
+/**
+ * Badge: pending request count (blue). While any PROD grant is active the badge turns red and
+ * shows "PROD" when nothing is pending (FR-3.6).
+ */
+export function badgeFor(
+  pending: number,
+  grants: readonly { env: string; expiresAt: number }[],
+  now: number,
+): { text: string; color: string } {
+  const prodActive = grants.some((g) => g.env === 'prod' && g.expiresAt > now);
+  return {
+    text: pending > 0 ? String(pending) : prodActive ? 'PROD' : '',
+    color: prodActive ? '#dc2626' : '#2563eb',
+  };
 }
 
 export function chromeGrantStorage(): GrantStorage {

@@ -206,7 +206,7 @@ describe('grants (minimal model)', () => {
     });
   });
 
-  it('rejects unregistered instances and (for now) compare mode', async () => {
+  it('rejects unregistered instances and malformed instance sets', async () => {
     const { grants } = setup();
     expect(
       await grants.createRequest(
@@ -218,13 +218,15 @@ describe('grants (minimal model)', () => {
       ok: false,
       code: 'INSTANCE_NOT_REGISTERED',
     });
-    expect(
-      await grants.createRequest(
-        A,
-        { instances: ['dev', 'prod'], mode: 'compare', purpose: 'x' },
-        REGISTRY,
-      ),
-    ).toMatchObject({ ok: false, code: 'INVALID_INPUT' });
+    for (const [instances, mode] of [
+      [['dev', 'dev'], 'compare'],
+      [['dev'], 'compare'],
+      [['dev', 'prod'], 'single'],
+    ] as const) {
+      expect(
+        await grants.createRequest(A, { instances: [...instances], mode, purpose: 'x' }, REGISTRY),
+      ).toMatchObject({ ok: false, code: 'INVALID_INPUT' });
+    }
   });
 
   it('release (client) and revoke (user) end access immediately', async () => {

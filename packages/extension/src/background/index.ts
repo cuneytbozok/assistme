@@ -6,7 +6,7 @@ import '../csp.js';
 import { type ExtensionToBroker, PROTOCOL_VERSION, protocolError } from '@sn-mcp/shared';
 import { handleForward } from './authz.js';
 import { ChromeTokenProvider, Executor } from './executor.js';
-import { browserGrantDeps, chromeGrantStorage, Grants } from './grants.js';
+import { badgeFor, browserGrantDeps, chromeGrantStorage, Grants } from './grants.js';
 import { handlePopupMessage, isPopupSender } from './popup-api.js';
 import { BridgePort, type BridgeState, chromeConnect } from './port.js';
 import { chromeRegistryStorage, REGISTRY_STORAGE_KEY, Registry } from './registry.js';
@@ -18,9 +18,30 @@ const executor = new Executor({ fetch: (...a) => fetch(...a), tokens });
 let bridgeState: BridgeState = { state: 'connecting' };
 
 async function updateBadge(): Promise<void> {
+  const { pending, grants: active } = await grants.snapshot();
+  const b = badgeFor(pending.length, active, Date.now());
+  await chrome.action.setBadgeText({ text: b.text });
+  await chrome.action.setBadgeBackgroundColor({ color: b.color });
+}
+
+/** Notifies about a new access request. Only fixed text, alias and code: never the purpose. */
+async function notifyRequest(requestId: string): Promise<void> {
   const { pending } = await grants.snapshot();
-  await chrome.action.setBadgeText({ text: pending.length > 0 ? String(pending.length) : '' });
-  await chrome.action.setBadgeBackgroundColor({ color: '#0b63ce' });
+  const r = pending.find((x) => x.requestId === requestId);
+  if (!r) return;
+  const code = `${r.approvalCode.slice(0, 4)}-${r.approvalCode.slice(4)}`;
+  try {
+    await chrome.notifications.create(`req:${r.requestId}`, {
+      type: 'basic',
+      iconUrl: chrome.runtime.getURL('icons/icon128.png'),
+      title: 'Claude is asking for ServiceNow access',
+      message: `${r.clientLabel.name.slice(0, 40)} → ${r.instances.join(' + ')} · code ${code}`,
+      contextMessage: 'Click the extension icon to approve or deny.',
+      priority: 2,
+    });
+  } catch {
+    // Notifications are a convenience; the popup and badge remain authoritative.
+  }
 }
 
 async function sendRegistryUpdate(): Promise<void> {
@@ -67,6 +88,9 @@ const port = new BridgePort({
       onPendingChanged: () => void updateBadge(),
     }).then((response) => {
       if (response) respond(response);
+      if (response?.ok && response.result.type === 'scope.request') {
+        void notifyRequest(response.result.requestId);
+      }
     });
   },
 });
@@ -96,5 +120,12 @@ chrome.storage.onChanged.addListener((changes, area) => {
 });
 chrome.runtime.onInstalled.addListener(() => port.start());
 chrome.runtime.onStartup.addListener(() => port.start());
+chrome.notifications.onClicked.addListener((id) => {
+  if (!id.startsWith('req:')) return;
+  void chrome.action.openPopup().catch(() => undefined);
+  void chrome.notifications.clear(id);
+});
 port.start();
 void updateBadge();
+// Keeps the PROD badge honest when grants expire while the popup is closed.
+setInterval(() => void updateBadge(), 30_000);

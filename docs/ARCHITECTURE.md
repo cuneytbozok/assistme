@@ -145,12 +145,20 @@ Claude ──claim_scope({request_id})──▶ {scope_id, instances, env, expir
 
 ### 5.4 Environment policies
 
-|                    | DEV / TEST    | PROD / unclassified      |
-| ------------------ | ------------- | ------------------------ |
-| Approval           | One click     | Type the host to confirm |
-| TTL default / max  | 4 h / 12 h    | 15 min / 60 min          |
-| Renewal            | New request   | New request (no renewal) |
-| Badge              | Normal        | Red while active         |
+|                    | DEV / TEST                         | PROD / unclassified ("Other")              |
+| ------------------ | ---------------------------------- | ------------------------------------------ |
+| Approval           | One click                          | Type the host to confirm (each PROD host)  |
+| TTL default / max  | 4 h / 12 h                         | 15 min / 60 min                            |
+| TTL choices        | 1 h, 4 h, 8 h, 12 h                | 15 min, 30 min, 60 min                     |
+| Renewal            | New request                        | New request (no renewal)                   |
+| Badge              | Blue pending count                 | Red ("PROD", or the pending count) while active |
+
+- **Compare grants** cover one fixed pair of distinct aliases. The strictest instance decides the policy (`policyEnv`: prod > test > dev). Every PROD host in the pair must be typed.
+- The user picks the TTL at approval. It is fixed afterwards: there is no extend or renew API (`Grants` has none).
+- Grant record (`chrome.storage.session`): `{grantId, scopeHash, clientKeyId, clientLabel, instances, mode, env (policy), targets[{alias,host,env}], purpose, approvedAt, createdAt, expiresAt}`.
+- Revoke (one) and revoke-all are popup-only. Revoked grants are deleted, so they return `SCOPE_UNKNOWN`; expired ones are kept as tombstones for a day and return `SCOPE_EXPIRED`.
+- A new request raises a Chrome notification with the client label, the aliases and the approval code. It never includes the purpose (untrusted text). Clicking it opens the popup.
+- Active access shows the purpose and approval time, because every Claude Desktop conversation shares one client label (§5.5).
 
 PROD differs only in **authorization**. Operational safeguards (timeout, size, concurrency) have the same defaults for every environment. The user can override them per instance in the popup, for example lowering concurrency for a fragile instance (ADR-011, §8.2).
 
