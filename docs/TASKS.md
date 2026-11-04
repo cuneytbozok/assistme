@@ -16,7 +16,7 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 | T-004 | MV3 extension skeleton + minimal registry       | 001      | DONE        |
 | T-005 | Live session hypothesis spike (H1–H8)           | 004      | DONE        |
 | T-006 | Native host / authenticated broker              | 002      | DONE        |
-| T-007 | Extension ↔ host port, executor, minimal grants | 005, 006 | TODO        |
+| T-007 | Extension ↔ host port, executor, minimal grants | 005, 006 | DONE        |
 | T-008 | Minimal MCP server                              | 006, 003 | TODO        |
 | T-009 | PoC end-to-end in Claude Code + Desktop (M1)    | 007, 008 | TODO        |
 | T-010 | Full instance registry                          | 007      | TODO        |
@@ -310,7 +310,7 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 
 ### T-007 — Extension ↔ host port, executor, minimal grants
 
-- **Status:** TODO
+- **Status:** DONE
 - **Purpose:** Connect the extension to the broker and run real operations via the ADR-002 path, gated by a minimal user approval.
 - **Dependencies:** T-005, T-006
 - **Deliverables:**
@@ -328,7 +328,36 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
   5. Messages to the SW from non-popup senders are ignored.
 - **Verification:** unit tests (chrome API stubs); a manual run with a test client script `packages/server/scripts/dev-client.ts` (authenticates to the broker and issues request/claim/op) against real DEV.
 - **DoD:** dev-client usage documented in the package README.
-- **Evidence:** —
+- **Evidence (2026-11-04):**
+  - **Implemented (extension):**
+    - `src/background/{port,executor,grants,authz,popup-api,index}.ts`.
+    - Popup sections for the bridge status, access requests (code, client label, instance + env, purpose as text) and active access (revoke).
+  - **Implemented (server):** `src/bin/dev-client.ts` (`npm run dev-client -w @sn-mcp/server`) and `packages/server/README.md` (native host + dev-client usage, the DoD).
+  - **Unit tests:** `npm test -w @sn-mcp/extension` → 74 passed. Grant model, executor (stubbed fetch), dispatcher, port lifecycle (fake port and timers), credential guard and popup sender check. These are mocks.
+  - **Mutation checks** (each reverted afterwards): each of these fails at least one test:
+    - `authorize` ignoring client binding, expiry or instance;
+    - claim by another client; claim reusable;
+    - no PROD typed-host check;
+    - popup sender's `tab` not checked;
+    - no credential guard;
+    - no operation re-validation.
+  - **Live** (2026-11-04, user's Chrome 156, `dev469966.service-now.com`; host installed with `npm run install-native-host`):
+    - AC1 ✔
+      - Chrome launched the host with argv origin `chrome-extension://clipfeocpiljpcngmjpdbegciimchbol/` (pid 89564). The broker created the 0600 socket, key and lock in the 0700 dir.
+      - After `kill -9 89564`, the extension relaunched the host within 4 s (pid 89888). The new host recovered the stale socket, rotated the key (fingerprint d9236e00 → add1210a) and logged `broker.started`.
+      - A fresh client authenticated to the new broker and `registry.get` returned `dev`.
+    - AC2 ✔ Live, `sn.op` with an unknown scope → `SCOPE_UNKNOWN`, and after `scope.release` → `SCOPE_UNKNOWN`. Unit tests also cover expired scopes, another client's scope, and an instance outside the scope.
+    - AC3 ✔ The dev client authenticated and listed `dev (dev, dev469966.service-now.com)`. `scope.request` gave code `7QAT-QC`, which the user approved in the popup. The claim returned a scope until 21:02 UTC (4 h DEV TTL); a second claim returned `claimed` without a scope. `sn.op table.list incident limit 1` → HTTP 200 in 631 ms, rows=1, totalCount=67, first=INC0000060.
+    - AC4 ✔ The credential guard (`containsSecret` over every outbound message, active in all builds, not just dev) blocks any message containing a cached token; unit-tested through `BridgePort.send`. The protocol has no field for cookies or headers (T-002), and the extension has no `cookies` permission. `broker.log` from the live run holds only metadata (kinds, codes, durations, 8-char client prefixes).
+    - AC5 ✔ `isPopupSender` requires extension id + exact `popup.html` URL + no tab; non-popup senders get no response (unit test). There is no `externally_connectable` and no content scripts.
+  - **Build/lint:** root `npm run build`, `npm test` (shared 240, server 38, extension 74) and `npm run lint` → exit 0.
+  - **Notes:**
+    - Compare mode is refused until T-011. PROD/unclassified approval already requires typing the host.
+    - The extension's re-validation allows `123TEXTQUERY321` (the server emits it only for `text`; raw model input stays `strict`).
+  - **Unverified:**
+    - Behaviour on a logged-out instance. Chrome's HTTP-auth dialog (T-005 finding) is still to be handled in T-013.
+    - The live popup sender rejection (unit-tested only).
+
 
 ### T-008 — Minimal MCP server
 

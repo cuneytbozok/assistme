@@ -134,6 +134,7 @@ Format: Status · Context · Decision · Alternatives considered · Consequences
   - **Field-to-field operators:** `SAMEAS`, `NSAMEAS`, `GT_FIELD`, `LT_FIELD`, `GT_OR_EQUALS_FIELD`, `LT_OR_EQUALS_FIELD` are allowed. Their value fields are added to `referencedFields`, so dictionary validation covers them.
   - **Structured relative dates:** `within_last` (→ `RELATIVEGE@unit@ago@n`) and `older_than` (→ `RELATIVELT@unit@ago@n`).
   - **Text search:** `123TEXTQUERY321` is only accepted when `allowTextSearch` is set (server `text` parameter) and only as the first term.
+  - *T-007:* the extension's re-validation (`enforce`) sets `allowTextSearch`, because it can't tell compiled `text` input from other compiled input. The gating against raw model input is the server's `strict` parse.
 
 ## ADR-006 — Response budgets, signed cursors, ambiguity errors
 

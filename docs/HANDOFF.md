@@ -1,6 +1,6 @@
 # Handoff
 
-_Last updated: 2026-11-04 (after T-006)_
+_Last updated: 2026-11-04 (after T-007)_
 
 ## Current project state
 
@@ -39,30 +39,27 @@ _Last updated: 2026-11-04 (after T-006)_
 ## Tasks
 
 - **Current task:** none (nothing IN_PROGRESS).
-- **Last completed task:** T-006 — Native host / authenticated broker (commit `T-006: native host and authenticated broker`).
-- **Next task:** **T-007 — Extension ↔ host port, executor, minimal grants.** It depends on T-005 ✔ and T-006 ✔.
-  - It needs the native host installed for real: `npm run build && npm run install-native-host`. That writes the wrapper to `~/Library/Application Support/sn-mcp/host/` and the manifest to Chrome's `NativeMessagingHosts/com.snmcp.bridge.json`.
-  - Live checks need the user to reload the extension in their Chrome.
-- **Also eligible:** T-008 (minimal MCP server), which depends on T-006 ✔ and T-003 ✔. It can reuse `src/bridge/handshake.ts` (`connectToBroker`).
+- **Last completed task:** T-007 — Extension ↔ host port, executor, minimal grants (commit `T-007: extension bridge port, executor and minimal grants`).
+- **Live chain proven:** dev client → broker → extension → `dev469966` Table API.
+- **Next task:** **T-008 — Minimal MCP server.** It depends on T-006 ✔ and T-003 ✔. Reuse `src/bridge/handshake.ts`; the dev client (`src/bin/dev-client.ts`) shows the request/claim/op sequence. Then T-009 (PoC E2E in Claude Code + Desktop) needs T-007 ✔ and T-008.
+- **Installed on the user's Mac:** the native host (wrapper `~/Library/Application Support/sn-mcp/host/native-host`, manifest `…/NativeMessagingHosts/com.snmcp.bridge.json`). Uninstall with `npm run install-native-host -- --uninstall`. Re-run the install after a Node upgrade.
 
 ## Files changed in last task
 
-- New:
-  - `packages/server/src/native-host/{framing,auth,socket-guard,logger,broker,main}.ts`
-  - `src/bin/{native-host,install-native-host}.ts`, `src/install/installer.ts`, `src/bridge/handshake.ts`
-  - `test/{helpers,units,broker,native-host.integration,installer}.test.ts` (helpers is not a test file)
-  - `packages/shared/src/extension-id.ts`
-- Removed: `packages/server/test/index.test.ts` (placeholder).
-- Modified:
-  - server `package.json` (`test` = build + vitest, `install-native-host`, `bin`)
-  - root `package.json` (`install-native-host`), shared `index.ts`, the extension manifest test (shared-ID sync)
-- Docs: TASKS (T-006 evidence, broker-limit wording per ADR-011), ARCHITECTURE §4.1, DECISIONS (ADR-001 addendum), HANDOFF.
+- Extension:
+  - New: `src/background/{port,executor,grants,authz,popup-api}.ts`, `test/{grants,bridge}.test.ts`.
+  - Rewritten: `src/background/index.ts`.
+  - Popup: html/css/ts sections for access requests and active access.
+- Server: `src/bin/dev-client.ts`, `README.md`, and a `dev-client` script in `package.json`.
+- Docs: TASKS (T-007 evidence), DECISIONS (ADR-005 note on text search in the extension), HANDOFF.
 
 ## Tests performed
 
-- Root build, tests (shared 240, server 38, extension 50) and lint all exit 0.
-- Mutation checks on six security checks.
-- Installer dry run on this Mac.
+- Root build, tests (shared 240, server 38, extension 74) and lint all exit 0. 9 mutation checks.
+- Live:
+  - dev client request → approve (code `7QAT-QC`) → claim → `table.list incident` (HTTP 200, INC0000060).
+  - Negative checks with an unknown or released scope.
+  - Host `kill -9` → automatic relaunch and key rotation.
 
 ## Open blockers
 

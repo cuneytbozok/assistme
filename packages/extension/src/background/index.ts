@@ -1,26 +1,90 @@
 /**
- * MV3 service worker (T-004 skeleton).
- *
- * Later tasks add the native-messaging port (T-007), grants (T-011) and the request builder
- * (T-016). For now it only reports the registry state on install/startup so loading the
- * unpacked extension can be checked in the service-worker console.
+ * MV3 service worker: connects to the native broker, authorizes and executes forwarded
+ * requests, and serves the popup.
  */
 import '../csp.js';
-import { PROTOCOL_VERSION } from '@sn-mcp/shared';
-import { chromeRegistryStorage, Registry } from './registry.js';
+import { type ExtensionToBroker, PROTOCOL_VERSION, protocolError } from '@sn-mcp/shared';
+import { handleForward } from './authz.js';
+import { ChromeTokenProvider, Executor } from './executor.js';
+import { browserGrantDeps, chromeGrantStorage, Grants } from './grants.js';
+import { handlePopupMessage, isPopupSender } from './popup-api.js';
+import { BridgePort, type BridgeState, chromeConnect } from './port.js';
+import { chromeRegistryStorage, REGISTRY_STORAGE_KEY, Registry } from './registry.js';
 
 const registry = new Registry(chromeRegistryStorage());
+const grants = new Grants(chromeGrantStorage(), browserGrantDeps);
+const tokens = new ChromeTokenProvider();
+const executor = new Executor({ fetch: (...a) => fetch(...a), tokens });
+let bridgeState: BridgeState = { state: 'connecting' };
 
-async function reportState(reason: string): Promise<void> {
-  const entries = await registry.list();
-  console.info(
-    `[sn-mcp] ${reason}: protocol v${PROTOCOL_VERSION}, ${entries.length} registered instance(s)`,
-  );
+async function updateBadge(): Promise<void> {
+  const { pending } = await grants.snapshot();
+  await chrome.action.setBadgeText({ text: pending.length > 0 ? String(pending.length) : '' });
+  await chrome.action.setBadgeBackgroundColor({ color: '#0b63ce' });
 }
 
-chrome.runtime.onInstalled.addListener((details) => {
-  void reportState(`installed (${details.reason})`);
+async function sendRegistryUpdate(): Promise<void> {
+  const instances = (await registry.list()).map((e) => ({
+    alias: e.alias,
+    label: e.label.slice(0, 64),
+    host: e.host,
+    env: e.env,
+    connection: 'unknown' as const,
+  }));
+  port.send({ v: PROTOCOL_VERSION, kind: 'registry.update', instances });
+}
+
+function respond(message: ExtensionToBroker): void {
+  if (port.send(message)) return;
+  if (message.kind === 'response') {
+    // Withheld by the credential guard (or invalid): answer with an error instead.
+    port.send({
+      v: PROTOCOL_VERSION,
+      kind: 'response',
+      id: message.id,
+      ok: false,
+      error: protocolError('SN_API_ERROR', 'The response was withheld by the extension.'),
+    });
+  }
+}
+
+const port = new BridgePort({
+  connect: chromeConnect,
+  lastError: () => chrome.runtime.lastError?.message,
+  onState: (s) => {
+    bridgeState = s;
+  },
+  onReady: () => void sendRegistryUpdate(),
+  secrets: () => tokens.knownSecrets(),
+  onMessage: (m) => {
+    if (m.kind !== 'forward') return;
+    void handleForward(m, {
+      grants,
+      registry: () => registry.list(),
+      hasPermission: (origin) => chrome.permissions.contains({ origins: [origin] }),
+      execute: (host, op) => executor.run(host, op),
+      onPendingChanged: () => void updateBadge(),
+    }).then((response) => {
+      if (response) respond(response);
+    });
+  },
 });
-chrome.runtime.onStartup.addListener(() => {
-  void reportState('startup');
+
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (!isPopupSender(sender, chrome.runtime.id, chrome.runtime.getURL('popup.html'))) return false;
+  void handlePopupMessage(message, {
+    grants,
+    registry: () => registry.list(),
+    bridgeState: () => bridgeState,
+    onChanged: () => void updateBadge(),
+  }).then(sendResponse);
+  return true;
 });
+
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area === 'local' && REGISTRY_STORAGE_KEY in changes) void sendRegistryUpdate();
+});
+chrome.runtime.onInstalled.addListener(() => port.start());
+chrome.runtime.onStartup.addListener(() => port.start());
+port.start();
+void updateBadge();

@@ -9,7 +9,19 @@
     <header>
       <h1>sn-mcp Session Bridge</h1>
       <p class="sub">Read-only. Claude can only use instances you register and approve here.</p>
+      <p id="bridge" class="muted">Bridge: …</p>
     </header>
+
+    <section id="requests-section" hidden>
+      <h2>Access requests</h2>
+      <p class="muted">Approve only if the code matches the one Claude showed you in this conversation.</p>
+      <ul id="requests"></ul>
+    </section>
+
+    <section id="grants-section" hidden>
+      <h2>Active access</h2>
+      <ul id="grants"></ul>
+    </section>
 
     <section>
       <h2>Registered instances</h2>

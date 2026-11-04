@@ -120,3 +120,36 @@ button.secondary {
 #message.ok {
   color: var(--ok);
 }
+
+.code {
+  font:
+    600 16px / 1.2 ui-monospace,
+    monospace;
+  letter-spacing: 2px;
+}
+.purpose {
+  color: var(--muted);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.req {
+  display: grid;
+  gap: 4px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+.req .actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.req input {
+  flex: 1;
+  min-width: 0;
+}
+#bridge.ok {
+  color: var(--ok);
+}
+#bridge.bad {
+  color: var(--prod);
+}

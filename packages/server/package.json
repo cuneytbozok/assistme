@@ -8,7 +8,8 @@
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "tsc -p tsconfig.json && vitest run",
-    "install-native-host": "node dist/bin/install-native-host.js"
+    "install-native-host": "node dist/bin/install-native-host.js",
+    "dev-client": "node dist/bin/dev-client.js"
   },
   "dependencies": {
     "@sn-mcp/shared": "0.0.0"
