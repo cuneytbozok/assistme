@@ -23,10 +23,9 @@ export const ERROR_CODES = [
   'INVALID_INPUT',
   'INVALID_FIELD',
   'UNSAFE_QUERY',
-  'QUERY_TOO_BROAD',
   'FORBIDDEN_OPERATION',
   'TABLE_DENIED',
-  'BUDGET_EXCEEDED',
+  'RATE_LIMITED',
   'RESPONSE_TOO_LARGE',
   'TIMEOUT',
   'SN_API_ERROR',
@@ -63,13 +62,13 @@ export const DEFAULT_HINTS: Readonly<Record<ErrorCode, string>> = {
   INVALID_INPUT: 'The input failed validation. Fix the reported fields and retry.',
   INVALID_FIELD: 'A field does not exist on the table. Use describe_table to see valid fields.',
   UNSAFE_QUERY: 'The query uses a disallowed operator or value. Use structured filters instead.',
-  QUERY_TOO_BROAD:
-    'Narrow the query: add a sys_created_on time window or a selective key condition, or lower the limit.',
   FORBIDDEN_OPERATION: 'This connector is read-only; the requested operation is not available.',
   TABLE_DENIED: 'This table is blocked because it may contain credentials or secrets.',
-  BUDGET_EXCEEDED: 'Too many requests for this scope. Wait a moment and retry with fewer calls.',
-  RESPONSE_TOO_LARGE: 'The response was too large. Request fewer fields or rows.',
-  TIMEOUT: 'ServiceNow did not respond in time. Retry with a narrower query.',
+  RATE_LIMITED: 'ServiceNow asked the connector to slow down. Retry after the indicated delay.',
+  RESPONSE_TOO_LARGE:
+    'A single record exceeded the per-request size limit even after automatic page-size reduction. Request fewer fields, or read large fields with get_field_content.',
+  TIMEOUT:
+    'ServiceNow did not respond in time. Narrow the time range or add a selective condition, order by an indexed field, or use aggregate_records.',
   SN_API_ERROR: 'ServiceNow returned an error. See the message for details.',
 };
 

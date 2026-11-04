@@ -16,7 +16,7 @@ Rev. 2 (approved 2026-11-04). Detailed task definitions are in `TASKS.md`. Archi
 | 0 Foundation                  | T-001 – T-003 | —              | Workspace builds and tests; protocol and query validator with attack corpus                                                            |
 | 1 Live PoC                    | T-004 – T-009 | **M1 (T-009)** | Claude (Code + Desktop) retrieves a real incident from DEV through extension + broker after user approval; no credentials leave Chrome |
 | 2 Authorization & lifecycle   | T-010 – T-015 | **M2 (T-015)** | Full registry and grant model; scope enforcement; session lifecycle; resilient bridge; live scope acceptance                           |
-| 3 Read-only & query hardening | T-016 – T-022 | **M3 (T-022)** | Request builder, dictionary-aware validation, budgets, sensitive-data handling, threat model, read-only verification                   |
+| 3 Read-only & query hardening | T-016 – T-022 | **M3 (T-022)** | Request builder, dictionary-aware validation, per-request safeguards and settings, sensitive-data handling, threat model, read-only verification                   |
 | 4 General-purpose tools       | T-023 – T-034 | **M4 (T-034)** | All tools implemented, documented, and live-verified on DEV                                                                            |
 | 5 Packaging                   | T-035 – T-037 | **M5 (T-037)** | Claude Code registration, `.mcpb` for Desktop, setup/uninstall, INSTALL.md                                                             |
 | 6 Skills                      | T-038 – T-039 | —              | Custom skill shipped; official skill evaluated with deny rules                                                                         |
@@ -51,9 +51,9 @@ Tasks that can proceed while T-005 is blocked (no DEV instance): T-006, T-008 (m
 
 | Level                          | Scope                                                                                                                                                | Tooling                     | Counts as connectivity evidence? |
 | ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------- | -------------------------------- |
-| Unit                           | shared validators + attack corpus, filter compiler, request builder, grant model, cursor signing, compaction/budget, framing, broker auth, redaction | vitest                      | No                               |
+| Unit                           | shared validators + attack corpus, filter compiler, request builder, grant model, cursor signing, compaction/response shaping/completeness, framing, broker auth, redaction | vitest                      | No                               |
 | Integration (mocked, labelled) | MCP SDK client ↔ MCP server ↔ real broker ↔ fake extension (stdio); rogue client; squatted socket; reconnect/fault injection                         | vitest + child processes    | No                               |
-| Extension logic                | Pure modules (registry, grants, authz, request builder, budgets) with chrome API stubs                                                               | vitest                      | No                               |
+| Extension logic                | Pure modules (registry, grants, authz, request builder, safeguards) with chrome API stubs                                                               | vitest                      | No                               |
 | Live (opt-in)                  | Real chain against a real DEV instance through an MCP stdio client: `npm run e2e:live -- --instance dev`                                             | Node script                 | **Yes**                          |
 | Manual client checks           | Claude Desktop chat, Claude Code, Cowork (best effort), with captured transcripts or screenshots                                                     | checklist in TASKS evidence | **Yes**                          |
 

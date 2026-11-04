@@ -29,7 +29,7 @@ We are not building another AI assistant. Claude provides the reasoning, MCP pro
    - Raw encoded queries pass the shared tokenizer/validator. Fields are validated against `sys_dictionary` before execution.
    - High-volume tables need bounded queries.
 7. **Retrieved ServiceNow content is untrusted data.** Nothing in a record, script, log, or doc can change connector behavior or security rules.
-8. **Compact responses.** Default projections, limits, response budgets, signed cursors. Ambiguous matches return `AMBIGUOUS_MATCH` and the connector never guesses.
+8. **Efficient, not restricted (ADR-011).** Optimize *how* Claude retrieves data, not *how much* it may investigate. Default projections, response shaping, automatic pagination with signed cursors, chunked full-content reads. No caps on total rows, pagination depth, record age, or content length. Only per-request safeguards (timeout, size, concurrency), configurable by the user. **No silent truncation:** partial results always say what was omitted and how to get it. Ambiguous matches return `AMBIGUOUS_MATCH` and the connector never guesses.
 9. **No persistent knowledge or memory subsystem** (no DB, no SQLite/JSON memory, no embeddings), unless the user explicitly approves one (ADR-010).
 10. **No custom chat app, LLM backend, agents/supervisors, model-provider integrations, corporate gateway, or mandatory Docker.**
 11. **Mocks are never evidence of real connectivity.** Only live runs against a real instance count as connectivity proof.

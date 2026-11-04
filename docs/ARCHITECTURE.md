@@ -17,16 +17,16 @@ Native Host = Broker (Node/TS)  ─ launched by Chrome via Native Messaging; dum
    ▼
 Chrome Extension (MV3 service worker + popup)
    │  AUTHORITATIVE for: instance registry, user approvals/grants, operation validation,
-   │  URL construction, budgets, session access. Trusts neither broker nor MCP server.
+   │  URL construction, per-request safeguards, session access. Trusts neither broker nor MCP server.
    ▼ HTTPS GET with the user's session (credentials never leave Chrome)
 ServiceNow Table API / Stats API  →  JSON
 ```
 
 | Component  | Responsibility                                                                                                                                                                                               | Not responsible for                     |
 | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------- |
-| MCP server | MCP protocol and tool definitions; input validation (friendly errors); compiling structured filters; the metadata cache; compaction, response budgets, signed cursors; composite tools (fan-out); provenance | Authorization decisions, URLs, sessions |
-| Broker     | Client authentication, routing, request-ID rewriting, size/rate limits, lifecycle                                                                                                                            | Any ServiceNow logic or policy          |
-| Extension  | Registry, grants and approval UI, per-request authorization, re-validation, URL building, session/token handling, budgets, size caps                                                                         | Tool semantics, compaction              |
+| MCP server | MCP protocol and tool definitions; input validation (friendly errors); compiling structured filters; the metadata cache; compaction, response shaping, automatic pagination, completeness reporting, signed cursors; composite tools; provenance | Authorization decisions, URLs, sessions |
+| Broker     | Client authentication, routing, request-ID rewriting, message-size and in-flight limits, lifecycle                                                                                                                            | Any ServiceNow logic or policy          |
+| Extension  | Registry, grants and approval UI, per-request authorization, re-validation, URL building, session/token handling, per-request safeguards (timeout, size, concurrency)                                       | Tool semantics, compaction              |
 | Skills     | Optional guidance                                                                                                                                                                                            | Data access, workflows                  |
 
 ## 2. Data flow (one query)
@@ -38,13 +38,13 @@ ServiceNow Table API / Stats API  →  JSON
 5. The extension:
    - Checks the grant: the scope exists, isn't expired, is bound to this `client_key_id`, and is for the instance.
    - Re-validates the operation with the shared validator.
-   - Checks budgets.
+   - Queues the request behind the instance's concurrency limit.
    - Builds the URL from a fixed template and performs a `GET` using the session mechanism chosen in ADR-002.
-   - Enforces the 30 s timeout and the 5 MB streaming cap.
+   - Enforces the configured timeout (default 30 s) and response-size cap (default 10 MB, streaming).
    - Maps HTTP results to error codes.
 6. The extension returns `{id, ok, status, data, headers:{xTotalCount?}, truncated?, error?}`. Cookie and token values are never present (no such fields exist in the schema).
 7. The broker restores the original `id` and sends the response to the right client.
-8. The MCP server compacts the result: projection, `{v,d}` references, field truncation, the response budget, and a signed `next_cursor`. It adds provenance and returns `content` (compact JSON text) plus `structuredContent`.
+8. The MCP server compacts the result: projection, `{v,d}` references, long-field previews, the response budget, automatic upstream pagination, a signed `next_cursor`, and the completeness report (`complete`, `omitted[]`). It adds provenance and returns `content` (compact JSON text) plus `structuredContent`.
 
 ## 3. Trust boundaries
 
@@ -87,7 +87,7 @@ Out of scope: malware running as the same macOS user (it can read Chrome's profi
 
 - Upstream request max 256 KB. Downstream responses are bounded by the extension's caps. The 1 MB host→extension native-messaging limit applies only to requests.
 - zod validation at each hop; unknown kinds are dropped.
-- The broker rewrites request IDs and enforces per-client rate limits and an in-flight maximum.
+- The broker rewrites request IDs and enforces a per-client in-flight maximum (default 64) against misbehaving clients. The MCP server stays well below it because the extension queues requests per instance. There is no per-client request quota.
 
 ### 4.5 Lifecycle
 
@@ -136,9 +136,9 @@ Claude ──claim_scope({request_id})──▶ {scope_id, instances, env, expir
 | Approval           | One click     | Type the host to confirm |
 | TTL default / max  | 4 h / 12 h    | 15 min / 60 min          |
 | Renewal            | New request   | New request (no renewal) |
-| Max limit          | 100           | 50                       |
-| Rate / concurrency | 60 req/min, 4 | 20 req/min, 2            |
 | Badge              | Normal        | Red while active         |
+
+PROD differs only in **authorization**. Operational safeguards (timeout, size, concurrency) have the same defaults for every environment. The user can override them per instance in the popup, for example lowering concurrency for a fragile instance (ADR-011, §8.2).
 
 ### 5.5 Residual risk
 
@@ -172,11 +172,14 @@ Values containing `^`, control characters, or newlines are rejected, as are `,` 
 - This matters because ServiceNow may ignore invalid fields and return all rows.
 - Tool-internal conditions are compiled from structured filters only. Raw queries are never concatenated with internal conditions.
 
-### 6.4 Cost guards
+### 6.4 Cost-aware defaults (ADR-011, replaces the former cost guards)
 
-- No conditions → limit ≤20.
-- **High-volume tables** (configurable: `syslog*`, `sys_audit`, `sys_journal_field`, `ecc_queue`, `sys_email`, `sys_history_line`, `discovery_device_history`, `sys_poll`, `*_log`) require a `sys_created_on` window (≤7 days by default) **or** an equality/IN on an indexed key (`sys_id`, `number`, `documentkey`, `element_id`, `source`, `agent_correlator`, …). `contains` on these tables also needs the time window.
-- Counts are opt-in (`include_total`). The default sends `sysparm_no_count=true`.
+- No query is rejected for being broad, old or unconditioned. Validation rejects only *unsafe* or *invalid* queries (§6.2–6.3).
+- **High-volume tables** (configurable: `syslog*`, `sys_audit`, `sys_journal_field`, `ecc_queue`, `sys_email`, `sys_history_line`, `discovery_device_history`, `sys_poll`, `*_log`):
+  - With no `order_by`, the default order is `ORDERBYDESCsys_created_on` (indexed, newest first).
+  - Responses carry a hint suggesting time ranges, key conditions or `aggregate_records` when the query has no selective condition.
+- Counts are opt-in (`include_total`). The default sends `sysparm_no_count=true`, and `has_more` is detected by fetching one extra row.
+- Instance protection comes from per-request safeguards (§8.2), not from rejecting queries.
 
 ### 6.4a Profiles (T-003)
 `enforce` (authoritative; server + extension) vs `strict` (raw `encoded_query` from the model; additionally rejects `gs.`, `${`, `eval(`, `new X`). See the ADR-005 addendum.
@@ -195,7 +198,7 @@ Hypotheses H1–H8 (see `DECISIONS.md` ADR-002) are tested live.
 
 Session expiry (401, redirect, or HTML response) → `SESSION_EXPIRED`. The token is cleared and the popup status updated. Nothing is retried elsewhere.
 
-## 8. MCP tools, efficiency & ambiguity (ADR-006)
+## 8. MCP tools, efficiency & ambiguity (ADR-006, ADR-011)
 
 | Tool                  | Inputs (abridged)                                                                                    | Notes                                                                                 |
 | --------------------- | ---------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
@@ -206,50 +209,90 @@ Session expiry (401, redirect, or HTML response) → `SESSION_EXPIRED`. The toke
 | `discover_tables`     | scope_id, search, limit                                                                              | `sys_db_object`                                                                       |
 | `describe_table`      | scope_id, table, include_inherited, include_choices                                                  | dictionary hierarchy; NOT_FOUND + suggestions                                         |
 | `query_records`       | scope_id, table, where/any_of or encoded_query, fields, text, order_by, limit, cursor, include_total | main query                                                                            |
-| `get_record`          | scope_id, table, sys_id or match{field:value}, fields, expand_references                             | `AMBIGUOUS_MATCH` (≤5 candidates + count)                                             |
-| `get_field_content`   | scope_id, table, sys_id, field, start_line, max_lines ≤400                                           | numbered lines, chunked                                                               |
-| `aggregate_records`   | scope_id, table, where, group_by, limit                                                              | Stats API                                                                             |
-| `get_related_records` | scope_id, table, sys_id, max_relations ≤10                                                           | reverse refs via dictionary + counts + ≤3 samples                                     |
-| `get_record_history`  | scope_id, table, sys_id, limit                                                                       | `sys_audit` + `sys_journal_field`                                                     |
-| `search_code`         | scope_id, pattern, tables?, limit                                                                    | script fields discovered from dictionary; ±3-line snippets                            |
+| `get_record`          | scope_id, table, sys_id or match{field:value}, fields, expand_references                             | `AMBIGUOUS_MATCH` (5 candidates + count + query to list all)                          |
+| `get_field_content`   | scope_id, table, sys_id, field, start_line, start_char, max_lines, max_chars, refresh                | numbered lines; any length; complete content reachable chunk by chunk                 |
+| `aggregate_records`   | scope_id, table, where, group_by, aggregates, cursor                                                 | Stats API; all groups, paginated                                                      |
+| `get_related_records` | scope_id, table, sys_id, samples, cursor                                                             | all reverse refs via dictionary + counts + samples; paginated                         |
+| `get_record_history`  | scope_id, table, sys_id, limit, cursor, since?, until?                                               | `sys_audit` + `sys_journal_field`; full history, any age                              |
+| `search_code`         | scope_id, pattern, tables?, limit, cursor                                                            | all script fields from dictionary; ±3-line snippets; continues across tables          |
 | `compare_records`     | scope_id (compare grant), table, match_a, match_b?, fields                                           | per-side ambiguity check; field diff + unified diff                                   |
 
-All ServiceNow tools are annotated `readOnlyHint: true`. There is no generic HTTP tool.
+All ServiceNow tools are annotated `readOnlyHint: true`. There is no generic HTTP tool. Every data tool also accepts `max_chars` (§8.3).
 
-**Default projection:** `sys_id`, the dictionary display field, `number`/`name`/`short_description` if present, `sys_updated_on`, `sys_class_name`. `fields:["*"]` caps the limit at 10.
+### 8.1 Principle (ADR-011)
 
-**Limits:**
+Optimize *how* Claude retrieves information, not *how much* it may investigate. Nothing caps the total rows, the pagination depth, the age of records, or the length of content Claude can read. Every limit is either a per-request reliability safeguard (§8.2) or response shaping with an explicit continuation (§8.3).
 
-- Default 20, max 100 (PROD 50). Offset ≤2,000.
-- Long fields are truncated at 1,000 chars and point to `get_field_content`.
-- References are compacted to `{v, d}`.
+### 8.2 Per-request safeguards (extension-enforced, user-configurable)
 
-**Response budget:** about 24k chars, configurable. Overflow rows are dropped (`truncated.rows=true`), and the cursor resumes at the first dropped row.
+| Setting                     | Default | Allowed range | Behavior when hit                                                             |
+| --------------------------- | ------- | ------------- | ----------------------------------------------------------------------------- |
+| Request timeout             | 30 s    | 5–300 s       | `TIMEOUT` (hint: narrow the range or order by an indexed field)               |
+| Max raw response per request | 10 MB   | 1–50 MB       | Streaming abort → `RESPONSE_TOO_LARGE`; the server retries automatically (§8.3) |
+| Max concurrent per instance | 4       | 1–16          | Extra requests queue (FIFO). A queue wait longer than the timeout → `TIMEOUT` |
+| Upstream page size (wire)   | —       | 1–1,000 rows  | Validation bound on one HTTP request                                          |
 
-**Cursors:** HMAC-signed with a per-process key. They bind the query hash, scope, and offset, so a tampered or mismatched cursor returns `INVALID_INPUT`. A stable order with a `sys_id` tiebreak is enforced.
+- Settings live in the popup, globally and optionally per instance, in `chrome.storage.local`. Only the user changes them. The MCP server and broker can't.
+- ServiceNow `429` or transaction-quota errors → `RATE_LIMITED`, with the `Retry-After` value in the hint.
+- There is no per-minute quota, no dedup and no fan-out cap. Add one only if live use shows a need.
 
-**Budgets:**
+### 8.3 Response shaping, pagination and completeness (MCP server)
 
-- Per-scope rate and concurrency limits (§5.4) are enforced in the extension.
-- Composite-tool fan-out caps are enforced in the MCP server, and responses report `requests_used`.
-- Identical requests are deduplicated for 30 s.
-- 5 MB raw cap.
+| Server setting (env var / `.mcpb` user_config)  | Default | Purpose                                                  |
+| ----------------------------------------------- | ------- | -------------------------------------------------------- |
+| `SN_MCP_RESPONSE_CHARS`                         | 24,000  | Default size of one tool result                          |
+| `SN_MCP_MAX_RESPONSE_CHARS`                     | 100,000 | Ceiling for the per-call `max_chars` argument            |
+| `SN_MCP_PAGE_SIZE`                              | 100     | Rows per upstream request during automatic pagination    |
+| `SN_MCP_FIELD_PREVIEW_CHARS`                    | 1,000   | Preview length of long fields in record lists            |
+| `SN_MCP_FIELD_CACHE_MB` / `SN_MCP_FIELD_CACHE_TTL_S` | 64 / 600 | In-process cache for chunked field reads             |
 
-**Cache:** metadata only (`sys_db_object`, `sys_dictionary`, `sys_choice`), 15 min TTL per instance. Record data is never cached beyond the dedup window.
+- **Default projection:** `sys_id`, the dictionary display field, `number`/`name`/`short_description` if present, `sys_updated_on`, `sys_class_name`. `fields:["*"]` is allowed with any `limit`; the response budget decides how many rows fit per result.
+- **`limit`** is the number of rows wanted. It has no maximum and defaults to 20.
+- **Automatic pagination:**
+  - The server fetches upstream pages of `SN_MCP_PAGE_SIZE` (+1 row to detect more) until `limit` is reached or the response budget is full.
+  - It returns `next_cursor` whenever more rows exist. Claude continues with `{cursor}` alone and never handles offsets.
+  - No offset ceiling. Ordering always ends with a `sys_id` tiebreak.
+- **Adaptive size:** on `RESPONSE_TOO_LARGE`, the server halves the upstream page size and retries, down to 1 row. A single record still over the cap is returned without its largest fields, each listed in `omitted` with the exact `get_field_content` call.
+- **Long fields:**
+  - Lists show a preview with an `omitted` entry (`shown_chars`, `total_chars`, next call).
+  - `get_field_content` returns numbered line windows. Lines longer than the budget are split by `start_char`.
+  - Every chunk reports `total_lines`, `total_chars`, `next` and `complete`, so Claude can always read the whole value.
+- **Cursors:**
+  - HMAC-signed with a per-process key. They bind table, query, fields, order and instance (not scope ID), so pagination survives re-approval of an expired grant.
+  - Every request still needs a valid scope for that instance.
+  - A tampered or mismatched cursor → `INVALID_INPUT`.
+- **Composite tools:**
+  - `get_related_records`: all relations.
+  - `get_record_history`: all entries, any age.
+  - `search_code`: all script tables.
+  - `compare_records`: the full diff.
+  - All of them page through results with cursors and report `requests_used`. Their requests go through the same concurrency queue.
+- **Caches** (in-process only, never persisted; ADR-010):
+  - Metadata (`sys_db_object`, `sys_dictionary`, `sys_choice`): 15 min TTL per instance.
+  - Field content for chunked reads: TTL and LRU size as configured; bypassed with `refresh: true`.
+- **Hints, not refusals:** on high-volume tables or unselective queries, the result suggests filters, time ranges or `aggregate_records` (§6.4).
 
-**Response contract:**
+**Response contract** (completeness is mandatory: a result is either `complete: true` or says exactly what is missing and how to get it):
 
 ```json
 {"ok":true,
  "provenance":{"instance":"dev","env":"dev","host":"acmedev.service-now.com","scope":"…3f9a","retrieved_at":"…"},
  "data":{…},
- "page":{"returned":20,"next_cursor":"…","total":null},
- "truncated":{"rows":false,"fields":["script"]},
+ "complete":false,
+ "page":{"returned":60,"has_more":true,"next_cursor":"…","total":null},
+ "omitted":[
+   {"kind":"rows","reason":"response_budget","next":{"tool":"query_records","args":{"scope_id":"…","cursor":"…"}}},
+   {"kind":"field","sys_id":"…","field":"script","shown_chars":1000,"total_chars":48211,
+    "next":{"tool":"get_field_content","args":{"scope_id":"…","table":"sys_script_include","sys_id":"…","field":"script"}}}
+ ],
+ "hints":["syslog has no selective condition; consider a sys_created_on range or aggregate_records."],
  "links":["https://acmedev.service-now.com/nav_to.do?uri=incident.do?sys_id=…"]}
 ```
+`omitted[].kind` is one of `rows`, `field`, `relation`, `table`, `source` (for example, ACL denied on one history source) or `groups`.
+
 Errors: `isError: true`, `{"ok":false,"error":{"code","message","hint","candidates?"}}`.
 
-**Error codes:** `SCOPE_REQUIRED, SCOPE_UNKNOWN, SCOPE_EXPIRED, SCOPE_NOT_APPROVED, REQUEST_DENIED, INSTANCE_NOT_REGISTERED, INSTANCE_NOT_IN_SCOPE, BRIDGE_UNAVAILABLE, BROKER_CONFLICT, NO_INSTANCE_TAB, SESSION_EXPIRED, ACL_DENIED, NOT_FOUND, AMBIGUOUS_MATCH, INVALID_INPUT, INVALID_FIELD, UNSAFE_QUERY, QUERY_TOO_BROAD, FORBIDDEN_OPERATION, TABLE_DENIED, BUDGET_EXCEEDED, RESPONSE_TOO_LARGE, TIMEOUT, SN_API_ERROR`.
+**Error codes:** `SCOPE_REQUIRED, SCOPE_UNKNOWN, SCOPE_EXPIRED, SCOPE_NOT_APPROVED, REQUEST_DENIED, INSTANCE_NOT_REGISTERED, INSTANCE_NOT_IN_SCOPE, BRIDGE_UNAVAILABLE, BROKER_CONFLICT, NO_INSTANCE_TAB, SESSION_EXPIRED, ACL_DENIED, NOT_FOUND, AMBIGUOUS_MATCH, INVALID_INPUT, INVALID_FIELD, UNSAFE_QUERY, FORBIDDEN_OPERATION, TABLE_DENIED, RATE_LIMITED, RESPONSE_TOO_LARGE, TIMEOUT, SN_API_ERROR`.
 
 ## 9. Read-only enforcement (defense in depth)
 

@@ -1,6 +1,6 @@
 # Handoff
 
-_Last updated: 2026-11-04 (after T-004)_
+_Last updated: 2026-11-04 (after T-004 and the ADR-011 efficiency revision)_
 
 ## Current project state
 
@@ -11,6 +11,30 @@ _Last updated: 2026-11-04 (after T-004)_
   - `packages/server`: placeholder.
   - `packages/extension`: service worker (`src/background/index.ts`, logging only), `src/background/registry.ts` (pure logic plus a `chrome.storage.local` adapter), popup (`src/popup/*`), and `src/csp.ts` (zod `jitless`; must be the first import of every entry point).
 - **Toolchain:** Node 24, TypeScript 7.0.2, vitest 5.1.0, Biome 2.6.5, esbuild 0.28.2 (its postinstall is denied in `allowScripts`; it works without it).
+
+## Design revision — ADR-011 (2026-11-04, user-directed)
+
+**"Optimize how Claude retrieves information, not how much it may investigate."**
+
+- **Removed:**
+  - Row caps (100, or 50 on PROD), the offset ceiling of 2,000, and the no-condition limit of 20.
+  - The `fields:["*"]` limit of 10, the high-volume time-window requirement and `QUERY_TOO_BROAD`.
+  - Per-minute quotas and `BUDGET_EXCEEDED`, fan-out caps, the 30 s dedup, and the 400-line chunk cap.
+- **Kept, as user-configurable per-request safeguards in the extension:** timeout 30 s, response size 10 MB (the server halves the page size automatically), concurrency 4 per instance (queued). Same for DEV and PROD; PROD is stricter only for authorization.
+- **New contract:**
+  - Automatic upstream pagination with signed cursors bound to the instance (not the scope).
+  - `complete` + `omitted[]` with a `next` call for every missing part.
+  - Complete field reads through line/char chunks, with an in-process field cache.
+  - Per-call `max_chars` up to a configurable ceiling.
+- **Updated:**
+  - Docs: ARCHITECTURE §5.4, §6.4, §8; PRODUCT_SPEC FR-3.6, FR-5.5, FR-6, AC-12; CLAUDE.md rule 8; IMPLEMENTATION_PLAN.
+  - DECISIONS: ADR-011 added; ADR-005 and ADR-006 marked partly superseded.
+  - TASKS: T-018, T-019, T-023, T-024, T-025, T-027–T-034 rewritten; T-016 note.
+- **Shared code aligned:**
+  - `limits.ts`: `MAX_PAGE_SIZE`, `SERVER_DEFAULTS`, `SAFEGUARD_DEFAULTS`/`RANGES`, `BROKER_MAX_IN_FLIGHT_PER_CLIENT`.
+  - `protocol.ts`: page size ≤1,000 per request, no offset ceiling.
+  - `errors.ts`: `RATE_LIMITED`, revised hints.
+  - Tests updated: 240 shared tests pass.
 
 ## Tasks
 

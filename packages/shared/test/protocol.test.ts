@@ -207,13 +207,16 @@ describe('operation limits', () => {
   };
   const ok = (o: object) => OperationSchema.safeParse({ ...base, ...o }).success;
 
-  it('enforces limit, offset and field-count bounds', () => {
-    expect(ok({ limit: 100 })).toBe(true);
-    expect(ok({ limit: 101 })).toBe(false);
+  it('bounds one request (page size, field count) but never pagination depth (ADR-011)', () => {
+    expect(ok({ limit: 1000 })).toBe(true);
+    expect(ok({ limit: 1001 })).toBe(false);
     expect(ok({ limit: 0 })).toBe(false);
     expect(ok({ limit: 1.5 })).toBe(false);
-    expect(ok({ offset: 2000 })).toBe(true);
-    expect(ok({ offset: 2001 })).toBe(false);
+    expect(ok({ offset: 2001 })).toBe(true);
+    expect(ok({ offset: 5_000_000 })).toBe(true);
+    expect(ok({ offset: Number.MAX_SAFE_INTEGER })).toBe(true);
+    expect(ok({ offset: -1 })).toBe(false);
+    expect(ok({ offset: 1.5 })).toBe(false);
     expect(ok({ fields: Array.from({ length: 50 }, (_, i) => `f${i}`) })).toBe(true);
     expect(ok({ fields: Array.from({ length: 51 }, (_, i) => `f${i}`) })).toBe(false);
     expect(ok({ fields: [] })).toBe(false);
@@ -322,5 +325,26 @@ describe('errors', () => {
         error: { code: 'WHATEVER', message: 'x' },
       }).success,
     ).toBe(false);
+  });
+});
+
+describe('ADR-011: no volume-limit codes or DEV/PROD operational limits', () => {
+  it('has no codes that reject queries for breadth or request quotas', () => {
+    const codes: readonly string[] = ERROR_CODES;
+    expect(codes).not.toContain('QUERY_TOO_BROAD');
+    expect(codes).not.toContain('BUDGET_EXCEEDED');
+    expect(codes).toContain('RATE_LIMITED');
+  });
+
+  it('safeguard defaults sit inside their user-configurable ranges', async () => {
+    const { SAFEGUARD_DEFAULTS, SAFEGUARD_RANGES, SERVER_DEFAULTS, MAX_PAGE_SIZE } = await import(
+      '../src/limits.js'
+    );
+    for (const key of Object.keys(SAFEGUARD_DEFAULTS) as (keyof typeof SAFEGUARD_DEFAULTS)[]) {
+      expect(SAFEGUARD_DEFAULTS[key]).toBeGreaterThanOrEqual(SAFEGUARD_RANGES[key].min);
+      expect(SAFEGUARD_DEFAULTS[key]).toBeLessThanOrEqual(SAFEGUARD_RANGES[key].max);
+    }
+    expect(SERVER_DEFAULTS.pageSize).toBeLessThanOrEqual(MAX_PAGE_SIZE);
+    expect(SERVER_DEFAULTS.responseChars).toBeLessThanOrEqual(SERVER_DEFAULTS.maxResponseChars);
   });
 });

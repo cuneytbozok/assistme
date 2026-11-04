@@ -89,6 +89,8 @@ Format: Status · Context · Decision · Alternatives considered · Consequences
 
 ## ADR-005 — Structured filters + validated encoded queries + dictionary validation
 
+> Partly superseded by ADR-011 (2026-11-04): the cost guards (no-condition limit ≤20, mandatory time window / indexed key on high-volume tables, `QUERY_TOO_BROAD`) are removed. Query validation and anti-broadening are unchanged.
+
 - **Status:** Accepted (2026-11-04)
 - **Context:**
   - Encoded queries can contain server-side script (`javascript:`), dynamic filters, and related-list subqueries.
@@ -120,7 +122,8 @@ Format: Status · Context · Decision · Alternatives considered · Consequences
 
 ## ADR-006 — Response budgets, signed cursors, ambiguity errors
 
-- **Status:** Accepted (2026-11-04)
+- **Status:** Superseded in part by ADR-011 (2026-11-04). Still in force: default projection, HMAC-signed cursors with stable ordering, `AMBIGUOUS_MATCH` and table suggestions. Replaced: hard row limits, PROD limits, the offset ceiling, per-scope rate budgets, fan-out caps, the 30 s dedup and "record data is never cached".
+- **Original status:** Accepted (2026-11-04)
 - **Decision:**
   - Default projection; limits of 20 default, 100 max, 50 on PROD; long fields truncated at 1,000 chars, with `get_field_content` for chunks.
   - Response budget of about 24k chars with truncation indicators.
@@ -172,3 +175,50 @@ Format: Status · Context · Decision · Alternatives considered · Consequences
   - No replacement either (no SQLite, JSON memory, or other persistence).
   - Continuity comes from native Claude conversation history and Projects.
 - **Consequences:** reintroducing any persistent memory needs explicit user approval and a new ADR.
+
+## ADR-011 — Retrieval efficiency without volume limits
+
+- **Status:** Accepted (2026-11-04, user-directed revision)
+- **Principle:** optimize *how* Claude retrieves information, not *how much* it may investigate.
+- **Context:** ADR-006 and the ADR-005 cost guards put hard caps on investigation volume: max 100 rows (PROD 50), offset ≤2,000, ≤7-day windows on high-volume tables, 60/20 requests per minute, fan-out caps, a 400-line chunk limit. These would stop legitimate investigations, such as reading a year of `syslog` entries for one source, a whole 5,000-line script include, or every related record of a CI. Most of these caps did not protect anything that per-request safeguards don't already protect.
+- **Decision:**
+  1. **No caps on the total amount investigated.**
+     - `limit` is the number of rows wanted, with no maximum.
+     - Offsets have no ceiling, and queries have no time-window requirement.
+     - Composite tools have no relation, table or history caps.
+     - DEV and PROD get the same operational defaults. PROD stays stricter only for *authorization* (typed confirmation, short TTL, badge; ADR-003).
+  2. **Per-request safeguards only**, enforced in the extension and configurable by the user (popup settings, globally or per instance; the MCP server cannot change them):
+     - Request timeout: default 30 s.
+     - Maximum raw response size per HTTP response: default 10 MB.
+     - Maximum concurrent requests per instance: default 4. Extra requests **queue**; they are not rejected.
+     - Upstream page size: at most 1,000 rows per HTTP request (wire limit).
+     - ServiceNow's own `429`/transaction-quota responses map to `RATE_LIMITED`, with a retry hint.
+     - There is no per-minute quota. Concurrency plus timeouts bound the load on the instance, and a quota can be added later only if live use shows a need (point 10).
+  3. **Responses are shaped, not capped.**
+     - Each tool result has a size budget: default 24k chars, configurable in the server. Claude may pass `max_chars` per call, up to a configurable ceiling (default 100k).
+     - When more data exists, the response always carries a continuation.
+     - The server pages upstream automatically (default 100 rows per request) until `limit` is reached or the budget is full. Claude never manages offsets.
+     - If a response exceeds the byte cap, the server halves the page size and retries, down to 1 row.
+     - A single record still over the cap is returned without its largest fields, each listed under `omitted` with a `get_field_content` call to fetch it.
+  4. **No silent truncation (completeness contract).** Every result has `complete: true|false`. When it's false:
+     - `page.has_more` and `next_cursor` say whether more rows exist. One extra row is fetched to detect this, so no count is needed.
+     - Each `omitted[]` entry says what is missing (rows, field text, a relation, a table, a source that ACLs denied) and gives the exact tool call that retrieves it.
+  5. **Complete content.** `get_field_content` can read any field in full:
+     - Chunks are line windows, and lines longer than the budget are split by character offset (minified scripts, one-line payloads).
+     - Each chunk reports `total_lines`, `total_chars`, the next position and `complete`.
+     - To avoid refetching per chunk, the server keeps field content in a short-lived **in-process** cache: 10 min TTL, 64 MB LRU, keyed by instance, table, sys_id and field; `refresh: true` bypasses it. This is transient memory, not persistence, so ADR-010 is unaffected.
+  6. **Intelligent retrieval over restriction.**
+     - Default projection, previews of long fields (1,000 chars, configurable).
+     - Structured filters, `aggregate_records` for counts and distributions, `sysparm_no_count` by default.
+     - On configured high-volume tables, a default order of `ORDERBYDESCsys_created_on` (indexed) plus hints that suggest filters or aggregates.
+     - Hints advise; they never reject a query.
+  7. **Cursors** are HMAC-signed and bind table, query, fields, order and *instance* (not scope ID). After a PROD grant expires and the user re-approves, pagination continues with the new scope, and every request still needs a valid scope for that instance. Ordering always ends with a `sys_id` tiebreak.
+- **Still fixed (validation, not volume):**
+  - Encoded query ≤2 KB, ≤20 terms, ≤3 `^NQ` groups, ≤100 `IN` items, ≤50 named fields (`["*"]` is allowed), dot-walk ≤3.
+  - These bound the size of one query and its URL, not the amount of data. Larger needs are split across queries.
+- **Removed:** `QUERY_TOO_BROAD`, `BUDGET_EXCEEDED` (replaced by `RATE_LIMITED`), PROD row limits, the offset ceiling, the `fields:["*"]` limit of 10, the no-condition limit of 20, fan-out caps, the 30 s dedup.
+- **Consequences:**
+  - Large investigations take several tool calls, each bounded in size and time, and Claude always knows how to continue.
+  - Deep offset pages on very large tables can be slow. The per-request timeout protects the instance, and the timeout hint suggests narrowing the order or range. Keyset pagination is a possible later optimization if live use shows a need.
+  - Offset pagination over data that changes during the walk can skip or repeat rows. Each page reports `retrieved_at`.
+

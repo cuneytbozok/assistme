@@ -5,8 +5,7 @@ import {
   MAX_ENCODED_QUERY_LENGTH,
   MAX_FIELDS,
   MAX_GROUP_BY_FIELDS,
-  MAX_LIMIT,
-  MAX_OFFSET,
+  MAX_PAGE_SIZE,
   MAX_PURPOSE_LENGTH,
   PROTOCOL_VERSION,
 } from './limits.js';
@@ -60,8 +59,10 @@ export const TableListOpSchema = z.strictObject({
   table: TableNameSchema,
   query: EncodedQuerySchema.optional(),
   fields: FieldListSchema.optional(),
-  limit: z.int().min(1).max(MAX_LIMIT),
-  offset: z.int().min(0).max(MAX_OFFSET),
+  /** Rows in this one HTTP request (the server paginates automatically; ADR-011). */
+  limit: z.int().min(1).max(MAX_PAGE_SIZE),
+  /** No ceiling: any record of a large table is reachable. */
+  offset: z.int().min(0).max(Number.MAX_SAFE_INTEGER),
   displayValue: DisplayValueSchema,
   /** When false the extension requests X-Total-Count (opt-in, ADR-005). */
   noCount: z.boolean(),

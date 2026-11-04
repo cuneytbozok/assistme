@@ -28,11 +28,11 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 | T-016 | Extension request builder hardening             | 007, 003 | TODO        |
 | T-017 | Metadata service                                | 012, 016 | TODO        |
 | T-018 | Dictionary-aware query validation & guards      | 017      | TODO        |
-| T-019 | Budgets & limits                                | 016      | TODO        |
+| T-019 | Per-request safeguards & settings               | 016      | TODO        |
 | T-020 | Sensitive data protection                       | 017      | TODO        |
 | T-021 | Untrusted content, error catalog, SECURITY.md   | 018, 019 | TODO        |
 | T-022 | Read-only verification (M3)                     | 021      | TODO        |
-| T-023 | Compaction, response budget, signed cursors     | 018      | TODO        |
+| T-023 | Response shaping, pagination, completeness      | 018      | TODO        |
 | T-024 | `query_records` full                            | 023      | TODO        |
 | T-025 | `get_record`                                    | 024      | TODO        |
 | T-026 | `discover_tables` + `describe_table`            | 017, 023 | TODO        |
@@ -122,6 +122,7 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
     - Approval codes use an unambiguous alphabet.
     - Purpose text rejects control characters.
     - Operation bounds: limit ≤100, offset ≤2000, ≤50 fields, dot-walk ≤3, query ≤2048 chars with no control characters.
+    - _Revised 2026-11-04 by ADR-011:_ page size ≤1,000 per request, no offset ceiling; `QUERY_TOO_BROAD`/`BUDGET_EXCEEDED` replaced by `RATE_LIMITED`.
   - Notes:
     - `validation.ts` (identifier regexes) was created here because the protocol depends on it. T-003 extends it with query normalization.
     - `PROTOCOL_VERSION` moved to `limits.ts`; it is still re-exported from the index.
@@ -458,7 +459,7 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 - **Purpose:** The only URL constructor; GET-only (ADR-004, S-1..S-3).
 - **Dependencies:** T-007, T-003
 - **Deliverables:**
-  - `request-builder.ts`: fixed templates, param allowlist, fixed headers, `redirect:'manual'`, 30 s timeout.
+  - `request-builder.ts`: fixed templates, param allowlist, fixed headers, `redirect:'manual'`, 30 s timeout (default; becomes user-configurable in T-019).
   - Re-validation of every operation with the shared module.
   - `executor.ts` uses only the builder.
 - **Files:** `packages/extension/src/background/{request-builder,executor}.ts`, tests
@@ -490,39 +491,48 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 - **DoD:** —
 - **Evidence:** —
 
-### T-018 — Dictionary-aware query validation & guards
+### T-018 — Dictionary-aware query validation & cost-aware defaults
 
 - **Status:** TODO
-- **Purpose:** Prevent broadening and expensive queries (ADR-005 §3–4).
+- **Purpose:** Prevent broadening through invalid fields, and steer expensive queries without restricting them (ADR-005, ADR-011).
 - **Dependencies:** T-017
 - **Deliverables:**
-  - Validate `referencedFields`, `fields`, and `order_by` against metadata (`INVALID_FIELD` + suggestions).
+  - Validate `referencedFields`, `fields` and `order_by` against metadata (`INVALID_FIELD` + suggestions).
   - Rule that internal conditions can't be combined with raw queries.
-  - Unbounded-query rule.
-  - High-volume table list (configurable) with time-window or indexed-key requirement (`QUERY_TOO_BROAD`).
-  - Opt-in counts.
-- **Files:** `packages/server/src/mcp/query-guard.ts`, `packages/shared/src/limits.ts`, tests
+  - High-volume table list (configurable). With no `order_by`, these tables default to `ORDERBYDESCsys_created_on`, and unselective queries get hints (time range, key condition, `aggregate_records`). **No rejection** for breadth, age or missing conditions.
+  - Opt-in counts (`sysparm_no_count=true` by default).
+- **Files:** `packages/server/src/mcp/query-guard.ts`, `packages/server/src/config.ts`, tests
 - **Acceptance criteria:**
   1. A test where an invalid field "would return all rows" is rejected before any bridge call.
-  2. `syslog` without a window or key → `QUERY_TOO_BROAD`; with a 24 h window → allowed; with a 30-day window → rejected.
-  3. `contains` on high-volume tables without a window → rejected.
-  4. Empty query with limit 50 → rejected; with limit 20 → allowed.
+  2. `syslog` with no conditions, and `syslog` filtered to records from two years ago, are both **accepted**. The first gets the default newest-first order and a hint.
+  3. `contains` on a high-volume table is accepted, with a hint.
+  4. An empty query with `limit` 500 is accepted, and the response is paginated (with T-023).
+  5. A user-specified `order_by` is never overridden.
 - **Verification:** `npm test`.
-- **DoD:** guard config documented.
+- **DoD:** high-volume list and hint rules documented in ARCHITECTURE §6.4.
 - **Evidence:** —
 
-### T-019 — Budgets & limits
+### T-019 — Per-request safeguards & settings
 
 - **Status:** TODO
-- **Purpose:** Bound load and size (ADR-006).
+- **Purpose:** Reliability safeguards per request, never caps on total investigation (ADR-011, ARCHITECTURE §8.2).
 - **Dependencies:** T-016
 - **Deliverables:**
-  - Extension `budgets.ts`: per-scope token bucket (DEV 60/min, PROD 20/min), concurrency (4/2), 30 s dedup, 5 MB streaming cap (`RESPONSE_TOO_LARGE`), timeout (`TIMEOUT`).
-  - Server fan-out cap helper with `requests_used`.
-- **Files:** `packages/extension/src/background/budgets.ts`, `packages/server/src/mcp/budget.ts`, tests
-- **Acceptance criteria:** tests for rate exceed → `BUDGET_EXCEEDED`, concurrency queueing, dedup hit, size-cap abort, timeout, and stricter PROD limits.
+  - Extension `safeguards.ts`:
+    - Configurable request timeout (default 30 s) → `TIMEOUT`.
+    - Streaming response-size cap (default 10 MB) → `RESPONSE_TOO_LARGE`.
+    - Per-instance concurrency limit with a FIFO queue (default 4). A queue wait longer than the timeout → `TIMEOUT`.
+    - ServiceNow `429`/quota → `RATE_LIMITED` with `Retry-After`.
+  - Settings: popup "Settings", global plus optional per-instance overrides in `chrome.storage.local`, with validated ranges (timeout 5–300 s, size 1–50 MB, concurrency 1–16). Only the popup can change them.
+  - Shared `limits.ts` defaults and ranges.
+  - **No** per-minute quotas, DEV/PROD-specific limits, dedup or fan-out caps.
+- **Files:** `packages/extension/src/background/{safeguards,settings}.ts`, popup, `packages/shared/src/limits.ts`, tests
+- **Acceptance criteria:**
+  1. Tests cover: timeout; size-cap abort; concurrency queueing (the 5th request waits, then runs, and is never rejected while within the timeout); `429` → `RATE_LIMITED`; a per-instance override takes precedence over the global value; out-of-range settings are refused; a non-popup sender can't change settings.
+  2. The same defaults apply to DEV and PROD.
+  3. 500 sequential requests against a stub complete with no quota error.
 - **Verification:** `npm test`.
-- **DoD:** —
+- **DoD:** settings documented in the extension README.
 - **Evidence:** —
 
 ### T-020 — Sensitive data protection
@@ -579,23 +589,29 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 
 ## Phase 4 — General-purpose tools (Milestone M4)
 
-### T-023 — Compaction, response budget, signed cursors
+### T-023 — Response shaping, automatic pagination, completeness contract
 
 - **Status:** TODO
-- **Purpose:** Compact, bounded responses (FR-6).
+- **Purpose:** Compact results that never silently truncate and can always continue (FR-6, ADR-011).
 - **Dependencies:** T-018
 - **Deliverables:**
-  - `compact.ts`: default projection from the dictionary, `{v,d}` references, 1,000-char field truncation with `truncated.fields`, record links.
-  - `budget.ts`: ~24k-char response budget with row dropping.
-  - `cursor.ts`: HMAC-signed cursor (query hash, scope, offset, order), stable `sys_id` tiebreak.
-  - Response envelope builder.
-- **Files:** `packages/server/src/mcp/{compact,budget,cursor,response}.ts`, tests
+  - `compact.ts`: default projection from the dictionary, `{v,d}` references, long-field previews (`SN_MCP_FIELD_PREVIEW_CHARS`) with `omitted` field entries (`shown_chars`, `total_chars`, next call), record links.
+  - `paginate.ts`:
+    - Automatic upstream paging (`SN_MCP_PAGE_SIZE`, +1 row to detect `has_more`) until `limit` is reached or the response budget is full.
+    - On `RESPONSE_TOO_LARGE`, halve the page size and retry, down to 1 row. A single oversized record is returned without its largest fields, which are listed in `omitted`.
+  - `cursor.ts`: HMAC-signed cursor binding table, query, fields, order, offset and instance (not scope ID); stable `sys_id` tiebreak; no offset ceiling.
+  - `response.ts`: envelope with `complete`, `page{returned, has_more, next_cursor, total}`, `omitted[]` (each with a ready-to-use `next` call), `hints[]`, provenance.
+  - `config.ts`: server settings from env vars / `.mcpb` user_config (ARCHITECTURE §8.3); per-call `max_chars` up to the ceiling.
+- **Files:** `packages/server/src/mcp/{compact,paginate,cursor,response,config}.ts`, tests
 - **Acceptance criteria:**
-  1. Oversized results are truncated, and the cursor resumes at the first dropped row with no gaps or duplicates (fixture test).
-  2. A tampered cursor or a cursor with a different query → `INVALID_INPUT`.
-  3. `fields:["*"]` caps the limit at 10.
+  1. Walking a 5,000-row fixture with cursors only returns every row exactly once, in order, with no gaps or duplicates, and has no offset ceiling.
+  2. **Completeness invariant** (property test): any response with `has_more`, an omitted field, or fewer rows than requested-and-available has `complete:false` and an `omitted` entry whose `next` call retrieves the missing data. There is never a silent drop.
+  3. A tampered cursor, or a cursor reused with a different query → `INVALID_INPUT`. A cursor stays usable with a new scope for the same instance, and is rejected for another instance.
+  4. `fields:["*"]` works with any `limit`.
+  5. The adaptive page-size test: a stubbed `RESPONSE_TOO_LARGE` leads to a smaller page and success; an oversized single record yields an `omitted` field entry.
+  6. `max_chars` above the ceiling is clamped, and the response says so in `hints`.
 - **Verification:** `npm test`.
-- **DoD:** —
+- **DoD:** response contract documented in ARCHITECTURE §8.3.
 - **Evidence:** —
 
 ### T-024 — `query_records` full
@@ -603,13 +619,16 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 - **Status:** TODO
 - **Purpose:** Primary general-purpose query tool.
 - **Dependencies:** T-023
-- **Deliverables:** inputs `where`/`any_of` or `encoded_query` (mutually exclusive), `fields`, `text` (→ `123TEXTQUERY321` added by the server only), `order_by`, `limit` (PROD max 50), `cursor`, `include_total`, `display_value`. Output schema.
+- **Deliverables:** inputs:
+  - `where`/`any_of` or `encoded_query` (mutually exclusive), `fields`, `text` (→ `123TEXTQUERY321`, added by the server only), `order_by`.
+  - `limit` (default 20, **no maximum**), `cursor`, `include_total`, `display_value`, `max_chars`.
+  - Output schema per the T-023 envelope.
 - **Files:** `packages/server/src/mcp/tools/query-records.ts`, tests
 - **Acceptance criteria:**
-  1. All guards from T-018 apply.
-  2. Pagination via cursor only.
+  1. All T-018 validation and defaults apply.
+  2. Continuing needs only `{scope_id, cursor}`. `limit: 1000` on a stub returns budget-sized results with cursors until all 1,000 rows are delivered.
   3. `include_total` adds `total`.
-  4. Responses fit the budget.
+  4. Every response satisfies the completeness invariant.
   5. Structured and raw inputs give equivalent results for equivalent queries (fixture).
 - **Verification:** `npm test`.
 - **DoD:** —
@@ -620,9 +639,14 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 - **Status:** TODO
 - **Purpose:** Fetch exactly one record, never guessing.
 - **Dependencies:** T-024
-- **Deliverables:** lookup by `sys_id` or `match{field:value}` (fields validated). Internally queries with limit 6. More than one match → `AMBIGUOUS_MATCH` with ≤5 candidates + count; none → `NOT_FOUND`. `expand_references` (≤5 fields) gives compact summaries of the referenced records. `document_id`-style fields require an explicit table.
+- **Deliverables:**
+  - Lookup by `sys_id` or `match{field:value}` (fields validated). Internally it queries with limit 6.
+  - More than one match → `AMBIGUOUS_MATCH` with 5 candidates, the total count, and the equivalent `query_records` arguments to list them all. None → `NOT_FOUND`.
+  - `expand_references` gives compact summaries of the referenced records.
+  - Long fields follow the T-023 preview/`omitted` contract.
+  - `document_id`-style fields require an explicit table.
 - **Files:** `packages/server/src/mcp/tools/get-record.ts`, tests
-- **Acceptance criteria:** ambiguous, not-found, and unique cases tested; references expanded with provenance; fan-out reported.
+- **Acceptance criteria:** ambiguous, not-found and unique cases are tested; the ambiguity result includes a working "list all" call; references are expanded with provenance; `requests_used` is reported.
 - **Verification:** `npm test`.
 - **DoD:** —
 - **Evidence:** —
@@ -642,11 +666,18 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 ### T-027 — `get_field_content`
 
 - **Status:** TODO
-- **Purpose:** Read long scripts and log text in chunks.
+- **Purpose:** Read scripts, logs and payloads of any length, completely when needed (FR-6.3).
 - **Dependencies:** T-025
-- **Deliverables:** fetch a single field (`sysparm_fields`) and return a numbered line window (`start_line`, `max_lines`≤400) plus `total_lines` and `next_start_line`.
-- **Files:** `packages/server/src/mcp/tools/get-field-content.ts`, tests
-- **Acceptance criteria:** the chunks of a 3,000-line fixture reassemble the original exactly; password fields are refused.
+- **Deliverables:**
+  - Fetch a single field (`sysparm_fields`). Return a numbered line window (`start_line`, `max_lines`, default 400, **no hard maximum**; bounded per result by `max_chars`), plus `total_lines`, `total_chars`, `next{start_line,start_char}` and `complete`.
+  - Lines longer than the budget are split by `start_char`.
+  - In-process field cache (TTL/LRU per config; `refresh:true` bypasses it), so chunked reads don't refetch the field.
+- **Files:** `packages/server/src/mcp/tools/get-field-content.ts`, `packages/server/src/mcp/field-cache.ts`, tests
+- **Acceptance criteria:**
+  1. Chunks of a 20,000-line fixture and of a 2 MB single-line fixture each reassemble the original exactly, following `next` until `complete:true`.
+  2. Chunked reading of one field issues one upstream request (cache hit thereafter), and `refresh` refetches.
+  3. The cache evicts at its size limit and never persists to disk.
+  4. Password fields are refused.
 - **Verification:** `npm test`.
 - **DoD:** —
 - **Evidence:** —
@@ -654,11 +685,11 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 ### T-028 — `aggregate_records`
 
 - **Status:** TODO
-- **Purpose:** Counts and grouping via the Stats API.
+- **Purpose:** Counts, distributions and min/max/avg/sum via the Stats API: the efficient alternative to pulling rows.
 - **Dependencies:** T-024
-- **Deliverables:** a `stats.aggregate` operation (count, group_by ≤2 fields, limit on groups); guards apply.
+- **Deliverables:** a `stats.aggregate` operation (count, group_by ≤2 fields, aggregates). All groups are returned, sorted by count and paginated by cursor when they exceed the response budget.
 - **Files:** `packages/server/src/mcp/tools/aggregate-records.ts`, extension builder support, tests
-- **Acceptance criteria:** group-by results are compact and sorted by count; high-volume guard applies.
+- **Acceptance criteria:** group-by results are compact and sorted; 2,000 groups are fully retrievable through cursors; `complete` and `omitted` are correct.
 - **Verification:** `npm test`.
 - **DoD:** —
 - **Evidence:** —
@@ -668,9 +699,13 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 - **Status:** TODO
 - **Purpose:** Reverse reference discovery without hard-coding.
 - **Dependencies:** T-026, T-028
-- **Deliverables:** find dictionary fields referencing the table or its ancestors (cached); for up to `max_relations` (≤10) relations, get counts via stats and ≤3 sample sys_ids each; denylist enforced; fan-out cap reported.
+- **Deliverables:**
+  - Find dictionary fields referencing the table or its ancestors (cached).
+  - For **every** relation, get a count via stats and `samples` sys_ids (default 3).
+  - Relations beyond the response budget continue via cursor, and each relation links to the `query_records` call that lists all its records.
+  - Denylist enforced; `requests_used` reported. Requests go through the extension's concurrency queue, with no fan-out cap.
 - **Files:** `packages/server/src/mcp/tools/get-related-records.ts`, tests
-- **Acceptance criteria:** fixture CI with relationships returns correct relation counts; fan-out ≤ cap; truncation is indicated.
+- **Acceptance criteria:** a fixture CI with 25 relationships returns correct counts for all 25 across cursor pages; each relation's "list all" call works; denied tables appear in `omitted` with the reason.
 - **Verification:** `npm test`.
 - **DoD:** —
 - **Evidence:** —
@@ -678,11 +713,15 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 ### T-030 — `get_record_history`
 
 - **Status:** TODO
-- **Purpose:** Audit and journal timeline (replaces `get_audit_history`).
+- **Purpose:** Full audit and journal timeline of any age (replaces `get_audit_history`).
 - **Dependencies:** T-025
-- **Deliverables:** `sys_audit` (documentkey = sys_id, ordered by time) + `sys_journal_field` (element_id = sys_id), merged into a compact timeline `{at, user, field, old, new | journal}`; internal conditions come only from structured filters; ACL denials reported per source.
+- **Deliverables:**
+  - `sys_audit` (documentkey = sys_id, ordered by time) and `sys_journal_field` (element_id = sys_id), merged into a compact timeline `{at, user, field, old, new | journal}`.
+  - Optional `since`/`until`; no default window. Paginated with a merged cursor.
+  - Internal conditions come only from structured filters.
+  - A source that is ACL-denied is reported in `omitted` (`kind:"source"`).
 - **Files:** `packages/server/src/mcp/tools/get-record-history.ts`, tests
-- **Acceptance criteria:** merged ordering is correct; one source being ACL-denied gives a partial result with a warning; limits apply.
+- **Acceptance criteria:** merged ordering is correct across page boundaries; a 3-year, 1,500-entry fixture history is fully retrievable; one source being denied gives `complete:false` with an `omitted` entry; long journal entries follow the field contract.
 - **Verification:** `npm test`.
 - **DoD:** —
 - **Evidence:** —
@@ -692,9 +731,12 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 - **Status:** TODO
 - **Purpose:** Find which scripts or configuration reference a pattern (e.g. a field update).
 - **Dependencies:** T-026
-- **Deliverables:** discover script-type fields (`internal_type` script, script_plain, script_server, conditions, …) from the dictionary (cached per instance); query each relevant table with `<field>LIKE<pattern>` (structured, validated), optionally restricted to the given `tables`; return record refs + ±3-line snippets; table fan-out cap and `requests_used`.
+- **Deliverables:**
+  - Discover script-type fields (`internal_type` script, script_plain, script_server, conditions, …) from the dictionary (cached per instance).
+  - Query **all** relevant tables (or the given `tables`) with `<field>LIKE<pattern>` (structured, validated).
+  - Return record refs plus ±3-line snippets, with a cursor that continues across tables and rows. `tables_searched`/`tables_remaining` are reported, along with `requests_used`.
 - **Files:** `packages/server/src/mcp/tools/search-code.ts`, tests
-- **Acceptance criteria:** fixture finds matches in business rules and script includes without a hard-coded table list; snippets are bounded; the pattern goes through value validation.
+- **Acceptance criteria:** a fixture finds matches in business rules and script includes without a hard-coded table list; following the cursor covers every table; the pattern goes through value validation; `complete:true` only after the last table.
 - **Verification:** `npm test`.
 - **DoD:** —
 - **Evidence:** —
@@ -704,9 +746,13 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 - **Status:** TODO
 - **Purpose:** Explicitly authorized cross-instance comparison (AC-8).
 - **Dependencies:** T-025, T-011
-- **Deliverables:** requires a compare-mode `scope_id` covering both instances; `match_a` (and optional `match_b`, defaulting to `match_a`) must each resolve uniquely (per-side `AMBIGUOUS_MATCH`/`NOT_FOUND`); field diff + truncated unified diff for script fields; provenance for both sides.
+- **Deliverables:**
+  - Requires a compare-mode `scope_id` covering both instances.
+  - `match_a` (and optional `match_b`, defaulting to `match_a`) must each resolve uniquely (per-side `AMBIGUOUS_MATCH`/`NOT_FOUND`).
+  - Field diff plus a unified diff for script fields. The full diff is reachable through cursor pages when it exceeds the response budget.
+  - Provenance for both sides.
 - **Files:** `packages/server/src/mcp/tools/compare-records.ts`, tests
-- **Acceptance criteria:** a single-instance scope is rejected; ambiguity on either side is reported; the diff is bounded.
+- **Acceptance criteria:** a single-instance scope is rejected; ambiguity on either side is reported; a 5,000-line script diff is fully retrievable through cursors.
 - **Verification:** `npm test`.
 - **DoD:** —
 - **Evidence:** —
@@ -718,7 +764,7 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 - **Dependencies:** T-024 – T-032
 - **Deliverables:** review names, descriptions (concise, with when-to-use guidance), input and output schemas, annotations, and error mapping; `docs/TOOLS.md` with every contract, an example, and the error catalog; tool-surface snapshot updated.
 - **Files:** `packages/server/src/mcp/tools/*`, `docs/TOOLS.md`
-- **Acceptance criteria:** every tool has an `outputSchema` and examples; total `tools/list` payload ≤ 12 KB; snapshot test passes.
+- **Acceptance criteria:** every tool has an `outputSchema` and examples; every data tool documents its continuation (`cursor`/`next`) and `complete`/`omitted` semantics; the tool descriptions tell Claude to prefer filters, projection and aggregates, and to continue cursors when needed; total `tools/list` payload ≤ 12 KB; snapshot test passes.
 - **Verification:** `npm test`; size measurement recorded.
 - **DoD:** —
 - **Evidence:** —
@@ -728,9 +774,9 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 - **Status:** TODO
 - **Purpose:** Prove AC-10, AC-11, AC-12, AC-13 on a real instance.
 - **Dependencies:** T-033
-- **Deliverables:** `test/e2e/live.ts` (`npm run e2e:live -- --instance dev`) that uses an MCP stdio client and goes through the real approval flow, exercising every tool: discover a custom table, describe `incident`, query and paginate `syslog` within a window, get a business-rule script in chunks, search_code for a field name, related records for a CI, history of an incident, aggregate by state, and an ambiguous `get_record`. Results saved (redacted) to `docs/evidence/T-034/`.
+- **Deliverables:** `test/e2e/live.ts` (`npm run e2e:live -- --instance dev`) that uses an MCP stdio client and goes through the real approval flow, exercising every tool: discover a custom table, describe `incident`, query `syslog` with no time window and paginate past offset 2,000 by cursor, query records older than one year, read a large script include completely in chunks, search_code for a field name, related records for a CI, history of an incident, aggregate by state, and an ambiguous `get_record`. Results saved (redacted) to `docs/evidence/T-034/`.
 - **Files:** `test/e2e/live.ts`, `docs/evidence/T-034/*`
-- **Acceptance criteria:** every scenario passes on live DEV; response sizes are recorded and within budget.
+- **Acceptance criteria:** every scenario passes on live DEV; no scenario is blocked by a volume limit; every partial result had `complete:false` with working continuations; response sizes and `requests_used` are recorded.
 - **Verification:** live run.
 - **DoD:** M4 marked achieved.
 - **Blocker:** requires a DEV instance.
