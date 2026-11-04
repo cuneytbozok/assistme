@@ -28,7 +28,7 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 | T-016 | Extension request builder hardening             | 007, 003 | DONE        |
 | T-017 | Metadata service                                | 012, 016 | DONE        |
 | T-018 | Dictionary-aware query validation & guards      | 017      | DONE        |
-| T-019 | Per-request safeguards & settings               | 016      | TODO        |
+| T-019 | Per-request safeguards & settings               | 016      | DONE        |
 | T-020 | Sensitive data protection                       | 017      | TODO        |
 | T-021 | Untrusted content, error catalog, SECURITY.md   | 018, 019 | TODO        |
 | T-022 | Read-only verification (M3)                     | 021      | TODO        |
@@ -805,7 +805,7 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 
 ### T-019 — Per-request safeguards & settings
 
-- **Status:** TODO
+- **Status:** DONE
 - **Purpose:** Reliability safeguards per request, never caps on total investigation (ADR-011, ARCHITECTURE §8.2).
 - **Dependencies:** T-016
 - **Deliverables:**
@@ -824,7 +824,28 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
   3. 500 sequential requests against a stub complete with no quota error.
 - **Verification:** `npm test`.
 - **DoD:** settings documented in the extension README.
-- **Evidence:** —
+- **Evidence (2026-11-04):**
+  - Implemented:
+    - `extension/src/background/settings.ts`: validated global and per-instance overrides in `chrome.storage.local` (`settings.v1`); re-validated on load; overrides dropped when an instance is removed.
+    - `safeguards.ts`: `ConcurrencyLimiter` (per-instance FIFO; a queue wait over the timeout → `TIMEOUT`, never sent) and `retryAfterSeconds`.
+    - `executor.ts`: per-host settings for the timeout and streaming size cap; the limiter around each operation; `429` or a quota message → `RATE_LIMITED` with `Retry-After`.
+    - `popup-api.ts`: `popup.settings.get/set` (popup-only via `isPopupSender`).
+    - Popup: Settings panel (global values, collapsible per-instance overrides, reset).
+    - Shared `limits.ts` already had `SAFEGUARD_DEFAULTS`/`RANGES` (ADR-011); no change needed.
+    - Tests: `test/safeguards.test.ts` (new).
+  - Root build → exit 0. `npm test` → shared 240, server 110, extension 277 passed. Lint → exit 0.
+  - **Acceptance criteria:**
+    - AC1 ✔
+      - Timeout aborts the fetch → `TIMEOUT`. The size cap cancels the stream early → `RESPONSE_TOO_LARGE`.
+      - Concurrency 4: the 5th request waits and runs once a slot frees, and none is rejected. A queue wait past the timeout → `TIMEOUT`, with the request never sent. Other instances aren't blocked.
+      - `429` with and without `Retry-After`, and the quota message → `RATE_LIMITED`.
+      - A per-instance override beats global, which beats the default. 9 invalid values are refused and nothing is stored; overrides for unknown instances are refused; tampered storage is cleaned on load.
+      - Tab, other-extension and other-page senders are rejected, and a forged broker `settings.set` isn't parsed.
+    - AC2 ✔ `effectiveSafeguards(state, alias)` has no environment input; DEV and PROD both get the defaults.
+    - AC3 ✔ 500 sequential requests against a stub → all OK.
+  - **Mutation checks** (each reverted): no concurrency limit (2 failures), queue never timing out (1), global beating the instance override (1), no range check (9).
+  - Popup screenshot (stubbed state): `docs/evidence/T-019/popup-settings.png`. Width 380 px, no console errors.
+  - DoD ✔ Settings documented in the extension README.
 
 ### T-020 — Sensitive data protection
 

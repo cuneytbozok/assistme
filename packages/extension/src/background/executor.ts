@@ -13,6 +13,8 @@ import {
   RequestBuildError,
   revalidate,
 } from './request-builder.js';
+import { ConcurrencyLimiter, retryAfterSeconds } from './safeguards.js';
+import type { Safeguards } from './settings.js';
 
 export { buildPath, revalidate } from './request-builder.js';
 
@@ -29,22 +31,52 @@ export type ExecResult =
 export interface ExecutorDeps {
   fetch: typeof fetch;
   tokens: TokenProvider;
+  /** Fixed values (tests); `safeguards` takes precedence when given. */
   timeoutMs?: number;
   maxResponseBytes?: number;
+  /** User settings per host (T-019): timeout, size cap, concurrency. */
+  safeguards?: (host: string) => Promise<Safeguards>;
+  limiter?: ConcurrencyLimiter;
 }
 
 const fail = (code: ErrorCode, message: string): ExecResult => ({ ok: false, code, message });
 
 export class Executor {
-  private readonly timeoutMs: number;
-  private readonly maxBytes: number;
+  private readonly limiter: ConcurrencyLimiter;
 
   constructor(private readonly deps: ExecutorDeps) {
-    this.timeoutMs = deps.timeoutMs ?? SAFEGUARD_DEFAULTS.requestTimeoutMs;
-    this.maxBytes = deps.maxResponseBytes ?? SAFEGUARD_DEFAULTS.maxResponseBytes;
+    this.limiter = deps.limiter ?? new ConcurrencyLimiter();
   }
 
+  private async safeguardsFor(host: string): Promise<Safeguards> {
+    if (this.deps.safeguards) return this.deps.safeguards(host);
+    return {
+      requestTimeoutMs: this.deps.timeoutMs ?? SAFEGUARD_DEFAULTS.requestTimeoutMs,
+      maxResponseBytes: this.deps.maxResponseBytes ?? SAFEGUARD_DEFAULTS.maxResponseBytes,
+      maxConcurrentPerInstance: SAFEGUARD_DEFAULTS.maxConcurrentPerInstance,
+    };
+  }
+
+  /**
+   * Runs one operation within the host's concurrency limit. Queued operations wait in FIFO
+   * order; one that can't start within the timeout gets TIMEOUT and is never sent.
+   */
   async run(host: string, rawOp: unknown): Promise<ExecResult> {
+    const sg = await this.safeguardsFor(host);
+    return this.limiter.run(
+      host,
+      sg.maxConcurrentPerInstance,
+      sg.requestTimeoutMs,
+      () => this.runNow(host, rawOp, sg),
+      () =>
+        fail(
+          'TIMEOUT',
+          `Waited ${Math.round(sg.requestTimeoutMs / 1000)} s for a free slot (${sg.maxConcurrentPerInstance} parallel requests to ${host}); the request was not sent.`,
+        ),
+    );
+  }
+
+  private async runNow(host: string, rawOp: unknown, sg: Safeguards): Promise<ExecResult> {
     const checked = revalidate(rawOp);
     if (!checked.ok) return checked;
     const build = (token: string): BuiltRequest | ExecResult => {
@@ -62,13 +94,13 @@ export class Executor {
     }
     let req = build(token);
     if (!('url' in req)) return req;
-    let res = await this.fetchOnce(req);
+    let res = await this.fetchOnce(req, sg);
     if (res.kind === 'http' && res.status === 401) {
       token = await this.deps.tokens.get(host, { refresh: true });
       if (!token) return fail('NO_INSTANCE_TAB', `Open ${host} in a Chrome tab and log in.`);
       req = build(token);
       if (!('url' in req)) return req;
-      res = await this.fetchOnce(req);
+      res = await this.fetchOnce(req, sg);
       if (res.kind === 'http' && res.status === 401) {
         this.deps.tokens.clear(host);
         return fail('SESSION_EXPIRED', `The ServiceNow session for ${host} has expired.`);
@@ -78,7 +110,10 @@ export class Executor {
     return this.mapResponse(res);
   }
 
-  private async fetchOnce(req: BuiltRequest): Promise<
+  private async fetchOnce(
+    req: BuiltRequest,
+    sg: Safeguards,
+  ): Promise<
     | {
         kind: 'http';
         status: number;
@@ -86,12 +121,13 @@ export class Executor {
         text: string;
         bytes: number;
         totalCount: string | null;
+        retryAfter: string | null;
         redirected: boolean;
       }
     | { kind: 'error'; result: ExecResult }
   > {
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort('timeout'), this.timeoutMs);
+    const timer = setTimeout(() => controller.abort('timeout'), sg.requestTimeoutMs);
     try {
       const res = await this.deps.fetch(req.url, {
         ...req.init,
@@ -106,14 +142,15 @@ export class Executor {
           text: '',
           bytes: 0,
           totalCount: null,
+          retryAfter: null,
           redirected: true,
         };
       }
-      const { text, bytes, tooLarge } = await readCapped(res, this.maxBytes, controller);
+      const { text, bytes, tooLarge } = await readCapped(res, sg.maxResponseBytes, controller);
       if (tooLarge) {
         return {
           kind: 'error',
-          result: fail('RESPONSE_TOO_LARGE', `The response exceeded ${this.maxBytes} bytes.`),
+          result: fail('RESPONSE_TOO_LARGE', `The response exceeded ${sg.maxResponseBytes} bytes.`),
         };
       }
       return {
@@ -123,13 +160,14 @@ export class Executor {
         text,
         bytes,
         totalCount: res.headers.get('x-total-count'),
+        retryAfter: res.headers.get('retry-after'),
         redirected: false,
       };
     } catch (e) {
       if (controller.signal.aborted) {
         return {
           kind: 'error',
-          result: fail('TIMEOUT', `No response within ${this.timeoutMs} ms.`),
+          result: fail('TIMEOUT', `No response within ${sg.requestTimeoutMs} ms.`),
         };
       }
       return {
@@ -147,6 +185,7 @@ export class Executor {
     text: string;
     bytes: number;
     totalCount: string | null;
+    retryAfter: string | null;
   }): ExecResult {
     let body: unknown;
     if (r.contentType.includes('application/json')) {
@@ -176,7 +215,13 @@ export class Executor {
     }
     if (r.status === 403) return fail('ACL_DENIED', snMessage());
     if (r.status === 404) return fail('NOT_FOUND', snMessage());
-    if (r.status === 429) return fail('RATE_LIMITED', snMessage());
+    if (r.status === 429 || /maximum transaction|quota/i.test(snMessage())) {
+      const after = retryAfterSeconds(r.retryAfter);
+      return fail(
+        'RATE_LIMITED',
+        `${snMessage()}${after !== undefined ? ` Retry after ${after} s.` : ' Retry later.'}`,
+      );
+    }
     return fail('SN_API_ERROR', snMessage());
   }
 }

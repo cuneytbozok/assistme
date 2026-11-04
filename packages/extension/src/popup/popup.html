@@ -78,6 +78,18 @@
         <ul id="instances" class="card list"></ul>
 
       </section>
+      <section>
+        <details id="settings" class="card settings">
+          <summary>Settings</summary>
+          <p class="hint">Per-request safety limits. They apply equally to every environment and never limit how much Claude can read in total.</p>
+          <div id="settings-global" class="settings-grid"></div>
+          <div id="settings-instances"></div>
+          <div class="buttons">
+            <button id="settings-reset" type="button" class="ghost small">Reset to defaults</button>
+            <button id="settings-save" type="button" class="primary small">Save settings</button>
+          </div>
+        </details>
+      </section>
     </main>
 
     <footer>Claude can only use instances you add and approve here.</footer>

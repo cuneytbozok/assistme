@@ -16,11 +16,19 @@ import {
   Registry,
 } from './registry.js';
 import { type ConnectionState, SessionTracker, STATUS_REFRESH_MS } from './session.js';
+import { chromeSettingsStorage, SETTINGS_STORAGE_KEY, Settings } from './settings.js';
 
 const registry = new Registry(chromeRegistryStorage());
 const grants = new Grants(chromeGrantStorage(), browserGrantDeps);
 const tokens = new ChromeTokenProvider();
-const executor = new Executor({ fetch: (...a) => fetch(...a), tokens });
+const settings = new Settings(chromeSettingsStorage());
+const executor = new Executor({
+  fetch: (...a) => fetch(...a),
+  tokens,
+  // Per-request safeguards from the user's settings (T-019): instance override > global > default.
+  safeguards: async (host) =>
+    settings.forInstance((await registry.list()).find((e) => e.host === host)?.alias),
+});
 let bridgeState: BridgeState = { state: 'connecting' };
 const PROBE_OP = { kind: 'probe' } as const;
 const session = new SessionTracker({
@@ -121,6 +129,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     grants,
     registry: () => registry.list(),
     registryStore: registry,
+    settings,
     hasPermission: (origin) => chrome.permissions.contains({ origins: [origin] }),
     removePermission: (origin) => chrome.permissions.remove({ origins: [origin] }),
     bridgeState: () => bridgeState,
@@ -136,6 +145,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 });
 
 chrome.storage.onChanged.addListener((changes, area) => {
+  if (area === 'local' && SETTINGS_STORAGE_KEY in changes) settings.invalidate();
   if (area !== 'local' || !(REGISTRY_STORAGE_KEY in changes)) return;
   // Backstop for any registry write: grants never outlive or follow a changed entry.
   void registry

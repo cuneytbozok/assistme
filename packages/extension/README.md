@@ -44,6 +44,25 @@ access); the name is only a label.
   the box to keep it.
 - Claude sees changes on its next `list_instances` call; no restart is needed.
 
+## Settings
+
+Open **Settings** at the bottom of the popup. These are per-request safety limits. They are the
+same for every environment and never limit how much Claude can read in total (no row caps,
+quotas or pagination limits).
+
+| Setting | Default | Range | What happens when it's hit |
+| --- | --- | --- | --- |
+| Timeout | 30 s | 5–300 s | The request is aborted → `TIMEOUT`. A request waiting for a free slot longer than this is never sent → `TIMEOUT`. |
+| Max response | 10 MB | 1–50 MB | The download stops early → `RESPONSE_TOO_LARGE`. The server then asks for smaller pages. |
+| Parallel requests | 4 | 1–16 | Extra requests to the same instance wait in line (first in, first out). |
+
+- Leave an instance's box empty to use the global value; a filled box overrides it for that
+  instance only. **Reset to defaults** clears everything.
+- Values outside the range are refused, not adjusted.
+- Only this popup can change settings. Claude, the MCP server and the local helper can't.
+- If ServiceNow says to slow down (`429`, or a transaction-quota error), Claude gets
+  `RATE_LIMITED`, with the `Retry-After` time when ServiceNow sends one.
+
 ## Permissions
 
 `storage`, `scripting`, `nativeMessaging`, `notifications`, `activeTab` (tab suggestions only; see

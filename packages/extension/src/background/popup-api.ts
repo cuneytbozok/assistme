@@ -10,6 +10,7 @@ import type { Grants } from './grants.js';
 import type { BridgeState } from './port.js';
 import { type InstanceEntry, originPattern, type Registry } from './registry.js';
 import type { ConnectionState } from './session.js';
+import type { Settings } from './settings.js';
 
 export type PopupMessage =
   | { type: 'popup.state' }
@@ -28,6 +29,8 @@ export type PopupMessage =
     }
   | { type: 'popup.revokeAll' }
   | { type: 'popup.checkStatus' }
+  | { type: 'popup.settings.get' }
+  | { type: 'popup.settings.set'; settings: unknown }
   | { type: 'popup.deny'; requestId: string }
   | { type: 'popup.revoke'; grantId: string };
 
@@ -45,6 +48,7 @@ export interface PopupApiDeps {
   grants: Grants;
   registry: () => Promise<InstanceEntry[]>;
   registryStore?: Registry;
+  settings?: Settings;
   hasPermission?: (origin: string) => Promise<boolean>;
   removePermission?: (origin: string) => Promise<boolean>;
   bridgeState: () => BridgeState;
@@ -66,6 +70,16 @@ export async function handlePopupMessage(raw: unknown, d: PopupApiDeps): Promise
         registry: await d.registry(),
         connections: d.connections ? await d.connections({ probe: false }) : {},
       };
+    }
+    case 'popup.settings.get': {
+      if (!d.settings) return { ok: false, message: 'Settings are not available.' };
+      return { ok: true, settings: await d.settings.get() };
+    }
+    case 'popup.settings.set': {
+      if (!d.settings) return { ok: false, message: 'Settings are not available.' };
+      const aliases = (await d.registry()).map((e) => e.alias);
+      const r = await d.settings.set(m.settings, aliases);
+      return r.ok ? { ok: true, settings: r.value } : { ok: false, message: r.error };
     }
     case 'popup.checkStatus': {
       return { ok: true, connections: d.connections ? await d.connections({ probe: true }) : {} };
@@ -148,6 +162,7 @@ export async function handlePopupMessage(raw: unknown, d: PopupApiDeps): Promise
       const removed = await d.registryStore.remove(m.alias);
       if (!removed) return { ok: false, message: `No registered instance "${m.alias}".` };
       const invalidated = await d.grants.reconcile(await d.registry());
+      await d.settings?.forget(removed.alias);
       let permissionRemoved = false;
       const origin = originPattern(removed.host);
       if (

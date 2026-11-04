@@ -9,7 +9,7 @@
  * in the form; it never registers anything. All rendering uses textContent.
  */
 import '../csp.js';
-import { ALIAS_RE, GRANT_TTL_MINUTES } from '@sn-mcp/shared';
+import { ALIAS_RE, GRANT_TTL_MINUTES, SAFEGUARD_DEFAULTS, SAFEGUARD_RANGES } from '@sn-mcp/shared';
 import { type PolicyEnv, policyEnv, TTL_CHOICES } from '../background/grants.js';
 import {
   chromeRegistryStorage,
@@ -23,6 +23,12 @@ import {
   validateNewEntry,
 } from '../background/registry.js';
 import { type ConnectionState, describeState } from '../background/session.js';
+import {
+  SAFEGUARD_LABELS,
+  type SafeguardKey,
+  type SafeguardOverrides,
+  type SettingsState,
+} from '../background/settings.js';
 
 type Env = InstanceEntry['env'];
 
@@ -758,3 +764,112 @@ function renderRequest(r: PopupState['pending'][number]): HTMLLIElement {
   li.append(...parts);
   return li;
 }
+
+// --- settings (T-019) --------------------------------------------------------------------
+
+/** Display units: seconds, MB, count. Stored values are ms, bytes, count. */
+const UNITS: Record<SafeguardKey, { unit: string; short: string; factor: number }> = {
+  requestTimeoutMs: { unit: 'seconds', short: 'Timeout (s)', factor: 1000 },
+  maxResponseBytes: { unit: 'MB', short: 'Max response (MB)', factor: 1024 * 1024 },
+  maxConcurrentPerInstance: { unit: 'requests', short: 'Parallel requests', factor: 1 },
+};
+const SETTING_KEYS = Object.keys(SAFEGUARD_DEFAULTS) as SafeguardKey[];
+let settingsInputs: { alias?: string; key: SafeguardKey; input: HTMLInputElement }[] = [];
+
+function settingsRow(
+  key: SafeguardKey,
+  value: number | undefined,
+  fallback: number,
+  alias?: string,
+): Node[] {
+  const { unit, factor, short } = UNITS[key];
+  const r = SAFEGUARD_RANGES[key];
+  const input = make('input');
+  input.type = 'number';
+  input.min = String(r.min / factor);
+  input.max = String(r.max / factor);
+  input.step = '1';
+  input.placeholder = String(fallback / factor);
+  input.value = value === undefined ? '' : String(value / factor);
+  const range = `${SAFEGUARD_LABELS[key]}: ${r.min / factor}–${r.max / factor} ${unit}`;
+  input.title = range;
+  settingsInputs.push({ ...(alias ? { alias } : {}), key, input });
+  return [make('label', { text: short, title: range }), input];
+}
+
+function renderSettings(state: SettingsState): void {
+  settingsInputs = [];
+  const global = el('settings-global');
+  global.replaceChildren();
+  for (const k of SETTING_KEYS) {
+    global.append(...settingsRow(k, state.global[k], SAFEGUARD_DEFAULTS[k]));
+  }
+  const inst = el('settings-instances');
+  inst.replaceChildren();
+  if (entries.length > 0) {
+    inst.append(
+      make('div', { className: 'hint', text: 'Per-instance overrides (empty = global value):' }),
+    );
+  }
+  for (const e of entries) {
+    const grid = make('div', { className: 'settings-grid' });
+    for (const k of SETTING_KEYS) {
+      const fallback = state.global[k] ?? SAFEGUARD_DEFAULTS[k];
+      grid.append(...settingsRow(k, state.perInstance[e.alias]?.[k], fallback, e.alias));
+    }
+    const count = Object.keys(state.perInstance[e.alias] ?? {}).length;
+    const box = make('details', { className: 'override' });
+    box.open = count > 0;
+    const title = count > 0 ? `${e.alias} · ${count} override${count > 1 ? 's' : ''}` : e.alias;
+    box.append(make('summary', { text: title }), grid);
+    inst.append(box);
+  }
+}
+
+function collectSettings(): SettingsState | string {
+  const state: SettingsState = { global: {}, perInstance: {} };
+  for (const { alias, key, input } of settingsInputs) {
+    const raw = input.value.trim();
+    if (raw === '') continue;
+    const n = Number(raw);
+    if (!Number.isFinite(n)) return `${SAFEGUARD_LABELS[key]}: not a number.`;
+    const v = Math.round(n * UNITS[key].factor);
+    let target: SafeguardOverrides = state.global;
+    if (alias) {
+      const existing = state.perInstance[alias] ?? {};
+      state.perInstance[alias] = existing;
+      target = existing;
+    }
+    target[key] = v;
+  }
+  return state;
+}
+
+async function loadSettings(): Promise<void> {
+  const r = (await ask({ type: 'popup.settings.get' })) as {
+    ok: boolean;
+    settings?: SettingsState;
+  };
+  if (r?.ok && r.settings) renderSettings(r.settings);
+}
+
+el('settings').addEventListener('toggle', () => {
+  if ((el('settings') as HTMLDetailsElement).open) void loadSettings();
+});
+el('settings-save').addEventListener('click', () => {
+  const state = collectSettings();
+  if (typeof state === 'string') return setMessage(state, 'error');
+  void ask({ type: 'popup.settings.set', settings: state }).then((r) => {
+    if (!r?.ok) return setMessage(r?.message ?? 'Could not save settings.', 'error');
+    setMessage('Settings saved. They apply to the next request.', 'ok');
+    void loadSettings();
+  });
+});
+el('settings-reset').addEventListener('click', () => {
+  void ask({ type: 'popup.settings.set', settings: { global: {}, perInstance: {} } }).then((r) => {
+    if (r?.ok) {
+      setMessage('Settings reset to defaults.', 'ok');
+      void loadSettings();
+    }
+  });
+});

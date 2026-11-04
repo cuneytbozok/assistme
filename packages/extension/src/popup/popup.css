@@ -621,3 +621,52 @@ section,
 .status.no_permission .dot {
   background: var(--warn);
 }
+
+.settings {
+  padding: 10px 12px;
+}
+.settings summary {
+  cursor: pointer;
+  font-weight: 650;
+}
+.settings[open] {
+  display: grid;
+  gap: 10px;
+}
+.settings-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 90px;
+  gap: 6px 10px;
+  align-items: center;
+}
+.settings-grid input {
+  width: 100%;
+}
+.settings-grid .unit {
+  color: var(--faint);
+  font-size: 11px;
+}
+.settings h3 {
+  margin: 4px 0 0;
+  font-size: 12px;
+}
+input[type="number"] {
+  font: inherit;
+  padding: 5px 7px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--card);
+  color: var(--fg);
+}
+
+.override {
+  border-top: 1px solid var(--border);
+  padding-top: 6px;
+  margin-top: 6px;
+}
+.override summary {
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
