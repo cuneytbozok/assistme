@@ -15,6 +15,7 @@ import { type CallToolResult, McpServer } from '@modelcontextprotocol/server';
 import {
   AliasSchema,
   FieldPathSchema,
+  isDeniedTable,
   MAX_PURPOSE_LENGTH,
   NO_CONTROL_CHARS_RE,
   RequestIdSchema,
@@ -25,6 +26,7 @@ import {
 import { z } from 'zod';
 import { type BridgeClient, BridgeError, type BridgeRequest } from '../bridge/client.js';
 import { loadConfig, type ServerConfig } from '../config.js';
+import { stripSensitive } from './compact.js';
 import { mapBridgeError } from './errors.js';
 import { type MetaContext, MetadataError, MetadataService } from './metadata.js';
 import { planQuery } from './query-guard.js';
@@ -418,17 +420,28 @@ export function createMcpServer(
       if (typeof id !== 'string') return id;
       const target = scopes.resolveTarget(id, instance);
       if (!target.ok) return toolError(target.code, target.message, target.hint);
+      // Credential tables are refused before any request (T-020; the extension enforces too).
+      if (isDeniedTable(table, config.extraDeniedTables)) {
+        return toolError(
+          'TABLE_DENIED',
+          `The table ${table} may contain credentials and is blocked.`,
+        );
+      }
       // Validate the table and every field against the dictionary before reading data (T-018).
       const ctx = metaContext(id, target.instance);
       let plan: Awaited<ReturnType<typeof planQuery>>;
+      let known: Awaited<ReturnType<typeof meta.fields>>;
       try {
-        const known = fields ? undefined : await meta.fields(ctx, table);
+        known = await meta.fields(ctx, table);
         const projection = fields ?? DEFAULT_FIELDS.filter((f) => known?.has(f));
         plan = await planQuery(
           meta,
           ctx,
           { table, ...(projection.length > 0 ? { fields: projection } : {}), include_total },
-          { highVolumeTables: config.highVolumeTables },
+          {
+            highVolumeTables: config.highVolumeTables,
+            extraDeniedTables: config.extraDeniedTables,
+          },
         );
       } catch (e) {
         return metadataError(e, id);
@@ -454,7 +467,8 @@ export function createMcpServer(
       );
       if (!r.ok) return r.error;
       const res = r.value.result as Extract<Ok<'sn.op'>['result'], { type: 'sn.op' }>;
-      const records = Array.isArray(res.body) ? res.body : [];
+      // Password-type and credential-like fields never reach Claude, even with all fields (T-020).
+      const { records, stripped } = stripSensitive(Array.isArray(res.body) ? res.body : [], known);
       const total = res.totalCount;
       const complete = total === undefined ? records.length < limit : records.length >= total;
       return ok({
@@ -469,15 +483,29 @@ export function createMcpServer(
         page: { returned: records.length, total: total ?? null },
         ...(plan.hints.length > 0 ? { hints: plan.hints } : {}),
         complete,
-        ...(complete
+        ...(complete && stripped.length === 0
           ? {}
           : {
               omitted: [
-                {
-                  kind: 'rows',
-                  reason: 'poc_limit',
-                  note: 'query_records is the PoC version (limit ≤ 5); full pagination arrives with T-024.',
-                },
+                ...(complete
+                  ? []
+                  : [
+                      {
+                        kind: 'rows',
+                        reason: 'poc_limit',
+                        note: 'query_records is the PoC version (limit ≤ 5); full pagination arrives with T-024.',
+                      },
+                    ]),
+                ...(stripped.length > 0
+                  ? [
+                      {
+                        kind: 'fields',
+                        reason: 'sensitive',
+                        fields: stripped,
+                        note: 'Credential fields are never returned by this connector.',
+                      },
+                    ]
+                  : []),
               ],
             }),
       });

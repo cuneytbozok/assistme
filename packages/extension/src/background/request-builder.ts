@@ -13,7 +13,14 @@
  * - The built URL is parsed back and checked (scheme, exact host, no port or credentials, path
  *   matches a template, every parameter allowlisted) before it is returned.
  */
-import { type ErrorCode, type Operation, OperationSchema, parseEncodedQuery } from '@sn-mcp/shared';
+import {
+  type ErrorCode,
+  isDeniedTable,
+  isSensitiveFieldName,
+  type Operation,
+  OperationSchema,
+  parseEncodedQuery,
+} from '@sn-mcp/shared';
 import { isValidInstanceHost } from './registry.js';
 
 export type Template = 'table.list' | 'table.get' | 'stats';
@@ -68,18 +75,56 @@ export class RequestBuildError extends Error {
   }
 }
 
-/** Re-validates an operation that arrived from the (untrusted) broker. */
+/**
+ * Re-validates an operation that arrived from the (untrusted) broker: schema, query safety,
+ * and sensitive data (T-020): denied tables → TABLE_DENIED; credential-like field names in
+ * fields, conditions, grouping or aggregates → FORBIDDEN_OPERATION. `extraDenied` (user
+ * settings) can only add table patterns to the defaults.
+ */
 export function revalidate(
   op: unknown,
+  extraDenied: readonly string[] = [],
 ): { ok: true; op: Operation } | { ok: false; code: ErrorCode; message: string } {
   const parsed = OperationSchema.safeParse(op);
   if (!parsed.success) return { ok: false, code: 'INVALID_INPUT', message: 'Invalid operation.' };
   const o = parsed.data;
+  if (o.kind !== 'probe' && isDeniedTable(o.table, extraDenied)) {
+    return {
+      ok: false,
+      code: 'TABLE_DENIED',
+      message: `The table ${o.table} may contain credentials and is blocked.`,
+    };
+  }
+  const referenced: string[] = [];
   if ((o.kind === 'table.list' || o.kind === 'stats.aggregate') && o.query) {
     const q = parseEncodedQuery(o.query, { profile: 'enforce', allowTextSearch: true });
     if (!q.ok) return { ok: false, code: q.error.code, message: q.error.message };
+    referenced.push(...q.value.referencedFields);
+  }
+  if ((o.kind === 'table.list' || o.kind === 'table.get') && o.fields) referenced.push(...o.fields);
+  if (o.kind === 'stats.aggregate') {
+    referenced.push(...(o.groupBy ?? []), ...(o.aggregates ?? []).map((a) => a.field));
+  }
+  const sensitive = referenced.find((f) => isSensitiveFieldName(f));
+  if (sensitive) {
+    return {
+      ok: false,
+      code: 'FORBIDDEN_OPERATION',
+      message: `The field ${sensitive} looks like a credential and can't be read or filtered on.`,
+    };
   }
   return { ok: true, op: o };
+}
+
+/** Removes credential-like keys (incl. dot-walked ones) from a Table API result. */
+export function stripSensitiveKeys(result: unknown): unknown {
+  const clean = (row: unknown): unknown => {
+    if (typeof row !== 'object' || row === null || Array.isArray(row)) return row;
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(row)) if (!isSensitiveFieldName(k)) out[k] = v;
+    return out;
+  };
+  return Array.isArray(result) ? result.map(clean) : clean(result);
 }
 
 function pathAndParams(op: Operation): {
@@ -147,11 +192,16 @@ export function assertSafeUrl(url: string, host: string, template: Template): vo
  * Builds the one request for an operation on the granted host. Throws RequestBuildError for an
  * invalid operation or host; never returns anything but a GET to an allowlisted URL.
  */
-export function buildRequest(grantedHost: string, rawOp: unknown, token: string): BuiltRequest {
+export function buildRequest(
+  grantedHost: string,
+  rawOp: unknown,
+  token: string,
+  extraDenied: readonly string[] = [],
+): BuiltRequest {
   if (!isValidInstanceHost(grantedHost)) {
     throw new RequestBuildError('FORBIDDEN_OPERATION', 'Refused to build request: invalid host.');
   }
-  const checked = revalidate(rawOp);
+  const checked = revalidate(rawOp, extraDenied);
   if (!checked.ok) throw new RequestBuildError(checked.code, checked.message);
   const { template, path, params } = pathAndParams(checked.op);
   const qs = params.toString();

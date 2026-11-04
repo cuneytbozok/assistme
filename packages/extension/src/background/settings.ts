@@ -5,7 +5,7 @@
  * popup can change them (popup-api; the broker and MCP server have no message for it).
  * Defaults are the same for every environment: PROD is stricter only for authorization.
  */
-import { SAFEGUARD_DEFAULTS, SAFEGUARD_RANGES } from '@sn-mcp/shared';
+import { SAFEGUARD_DEFAULTS, SAFEGUARD_RANGES, TABLE_PATTERN_RE } from '@sn-mcp/shared';
 
 export type SafeguardKey = keyof typeof SAFEGUARD_DEFAULTS;
 export type Safeguards = { [K in SafeguardKey]: number };
@@ -14,7 +14,11 @@ export type SafeguardOverrides = Partial<Safeguards>;
 export interface SettingsState {
   global: SafeguardOverrides;
   perInstance: Record<string, SafeguardOverrides>;
+  /** Extra table patterns to block (T-020). Added to the built-in list; can't remove it. */
+  extraDeniedTables?: string[];
 }
+
+export const MAX_EXTRA_DENIED_TABLES = 200;
 
 export interface SettingsStorage {
   load(): Promise<unknown>;
@@ -78,7 +82,35 @@ export function validateState(
       if (Object.keys(v.value).length > 0) perInstance[alias] = v.value;
     }
   }
-  return { ok: true, value: { global: g.value, perInstance } };
+  let extraDeniedTables: string[] | undefined;
+  if (s.extraDeniedTables !== undefined) {
+    if (
+      !Array.isArray(s.extraDeniedTables) ||
+      s.extraDeniedTables.length > MAX_EXTRA_DENIED_TABLES
+    ) {
+      return {
+        ok: false,
+        error: `Blocked tables: a list of at most ${MAX_EXTRA_DENIED_TABLES} patterns.`,
+      };
+    }
+    for (const p of s.extraDeniedTables) {
+      if (typeof p !== 'string' || !TABLE_PATTERN_RE.test(p)) {
+        return {
+          ok: false,
+          error: `Blocked tables: "${String(p).slice(0, 40)}" is not a table name or pattern (letters, digits, _, optional * at the start or end).`,
+        };
+      }
+    }
+    extraDeniedTables = [...new Set(s.extraDeniedTables)];
+  }
+  return {
+    ok: true,
+    value: {
+      global: g.value,
+      perInstance,
+      ...(extraDeniedTables?.length ? { extraDeniedTables } : {}),
+    },
+  };
 }
 
 /** default < global < per-instance. No environment input: same for DEV and PROD. */
@@ -120,8 +152,9 @@ export class Settings {
     const s = await this.get();
     if (!(alias in s.perInstance)) return;
     const { [alias]: _gone, ...rest } = s.perInstance;
-    await this.storage.save({ global: s.global, perInstance: rest });
-    this.cache = { global: s.global, perInstance: rest };
+    const next: SettingsState = { ...s, perInstance: rest };
+    await this.storage.save(next);
+    this.cache = next;
   }
 
   /** Call when storage changed outside this object. */

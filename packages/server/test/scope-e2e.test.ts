@@ -51,10 +51,21 @@ function realAuthzExtension(ext: MockExtension) {
       const m = answerMetadata(op);
       if (m) return m;
       fetched.push(host);
+      const table = (op as { table?: string }).table;
       return {
         ok: true as const,
         status: 200,
-        body: [{ sys_id: 'a'.repeat(32), number: `INC-${host.split('.')[0]}` }],
+        body:
+          table === 'u_api_config'
+            ? [
+                {
+                  sys_id: 'b'.repeat(32),
+                  u_label: 'Payments',
+                  u_auth: 'hunter2',
+                  u_endpoint: 'https://x',
+                },
+              ]
+            : [{ sys_id: 'a'.repeat(32), number: `INC-${host.split('.')[0]}` }],
         totalCount: 1,
         bytes: 50,
       };
@@ -321,6 +332,32 @@ describe('T-012 scope enforcement end to end (real authz.ts)', () => {
     const good = await call('query_records', { scope_id: alpha, table: 'incident' });
     expect(good.body.ok).toBe(true);
     expect(s.fetched).toEqual(['alpha.service-now.com']);
+  });
+
+  it('T-020: credential tables are refused and password fields never reach Claude', async () => {
+    const s = await setup();
+    const call = await s.connect();
+    const alpha = await s.scopeFor(call, ['alpha']);
+    const denied = await call('query_records', { scope_id: alpha, table: 'discovery_credentials' });
+    expect(denied.body.error.code).toBe('TABLE_DENIED');
+    const viaWalk = await call('query_records', {
+      scope_id: alpha,
+      table: 'incident',
+      fields: ['u_cred_ref.name'],
+    });
+    expect(viaWalk.body.error.code).toBe('TABLE_DENIED');
+    expect(s.fetched).toEqual([]);
+    // No default-projection field exists on u_api_config → all fields come back, minus secrets.
+    const all = await call('query_records', { scope_id: alpha, table: 'u_api_config' });
+    expect(all.body.data.records).toEqual([
+      { sys_id: 'b'.repeat(32), u_label: 'Payments', u_endpoint: 'https://x' },
+    ]);
+    expect(all.body.omitted).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ kind: 'fields', reason: 'sensitive', fields: ['u_auth'] }),
+      ]),
+    );
+    expect(JSON.stringify(all.body)).not.toContain('hunter2');
   });
 
   it('list_instances reports connector-level access without ids', async () => {

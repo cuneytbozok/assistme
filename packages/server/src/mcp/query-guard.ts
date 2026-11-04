@@ -15,7 +15,10 @@
 import {
   compileFilter,
   type FilterInput,
+  isDeniedTable,
+  isSensitiveFieldName,
   MAX_ENCODED_QUERY_LENGTH,
+  PASSWORD_INTERNAL_TYPES,
   type ParsedQuery,
   parseEncodedQuery,
   TEXT_SEARCH_FIELD,
@@ -92,8 +95,20 @@ export async function planQuery(
   meta: MetadataService,
   ctx: MetaContext,
   req: QueryRequest,
-  opts: { highVolumeTables: readonly string[]; allowTextSearch?: boolean },
+  opts: {
+    highVolumeTables: readonly string[];
+    allowTextSearch?: boolean;
+    extraDeniedTables?: readonly string[];
+  },
 ): Promise<QueryPlan> {
+  const denied = opts.extraDeniedTables ?? [];
+  if (isDeniedTable(req.table, denied)) {
+    throw new QueryGuardError(
+      'TABLE_DENIED',
+      `The table ${req.table} may contain credentials and is blocked.`,
+      'Credential tables (and fields of type password) are never readable through this connector.',
+    );
+  }
   const structured = req.where !== undefined || req.any_of !== undefined || req.text !== undefined;
   if (req.encoded_query !== undefined && structured) {
     throw invalid('Use either structured filters (where/any_of/text) or encoded_query, not both.');
@@ -158,7 +173,21 @@ export async function planQuery(
       continue;
     }
     try {
-      await meta.resolvePath(ctx, req.table, path);
+      const resolved = await meta.resolvePath(ctx, req.table, path);
+      const blockedHop = resolved.tables.find((t) => isDeniedTable(t, denied));
+      if (blockedHop) {
+        throw new QueryGuardError(
+          'TABLE_DENIED',
+          `"${path}" reaches the blocked table ${blockedHop}.`,
+          'Credential tables are never readable, also not through a dot-walk.',
+        );
+      }
+      if (PASSWORD_INTERNAL_TYPES.includes(resolved.field.type) || isSensitiveFieldName(path)) {
+        throw new QueryGuardError(
+          'FORBIDDEN_OPERATION',
+          `"${path}" is a credential field and can't be read or filtered on.`,
+        );
+      }
     } catch (e) {
       if (e instanceof MetadataError && e.code === 'INVALID_FIELD') {
         const segs = path.split('.');

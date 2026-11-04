@@ -29,7 +29,7 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 | T-017 | Metadata service                                | 012, 016 | DONE        |
 | T-018 | Dictionary-aware query validation & guards      | 017      | DONE        |
 | T-019 | Per-request safeguards & settings               | 016      | DONE        |
-| T-020 | Sensitive data protection                       | 017      | TODO        |
+| T-020 | Sensitive data protection                       | 017      | DONE        |
 | T-021 | Untrusted content, error catalog, SECURITY.md   | 018, 019 | TODO        |
 | T-022 | Read-only verification (M3)                     | 021      | TODO        |
 | T-023 | Response shaping, pagination, completeness      | 018      | TODO        |
@@ -849,7 +849,7 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 
 ### T-020 — Sensitive data protection
 
-- **Status:** TODO
+- **Status:** DONE
 - **Purpose:** Avoid exposing credential material (S-5).
 - **Dependencies:** T-017
 - **Deliverables:**
@@ -861,7 +861,19 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
   2. Password-type fields never appear in output, even with `fields:["*"]`.
 - **Verification:** `npm test`.
 - **DoD:** —
-- **Evidence:** —
+- **Evidence (2026-11-04):**
+  - Implemented:
+    - `shared/src/sensitive.ts`: `DEFAULT_DENIED_TABLES` (24 patterns incl. every example in the task), `PASSWORD_INTERNAL_TYPES`, `SENSITIVE_FIELD_NAME_RE`, `isDeniedTable`, `isSensitiveFieldName`, `parseTablePatterns`. It sits beside `limits.ts` rather than inside it.
+    - Extension (`request-builder.ts` `revalidate`): denied table → `TABLE_DENIED`; credential-like names in fields, conditions, ordering, group-by or aggregates → `FORBIDDEN_OPERATION`. `stripSensitiveKeys` runs on every response.
+    - Settings: `extraDeniedTables`, additive only, validated, editable in the popup.
+    - Server: `config.ts` reads `SN_MCP_DENIED_TABLES` (additive). `query-guard.ts`: denied table, denied table on a dot-walk hop, password-type (dictionary) or credential-named field → refused. `compact.ts` `stripSensitive` (dictionary type plus name fallback); `query_records` reports stripped field names in `omitted` (`reason: sensitive`), never values.
+    - The task's file list names `authz.ts`; enforcement went into `revalidate`, which authz calls for every `sn.op`.
+    - Tests: `server/test/sensitive.test.ts`, `extension/test/sensitive.test.ts` (new); a `scope-e2e` case; fixture additions in `fake-sn.ts`.
+  - Root build → exit 0. `npm test` → shared 240, server 124, extension 295 passed. Lint → exit 0.
+  - **Acceptance criteria:**
+    - AC1 ✔ 7 credential tables are refused by the server before any metadata read, and by the extension for list, get and stats. Dot-walks into `discovery_credentials` through fields, conditions or ordering → `TABLE_DENIED`. Extras from config and settings add to the defaults; an empty extra list never re-enables a default. End to end: denied table and denied dot-walk → no data read at all. ◐ `get_related_records` fan-out doesn't exist yet: **T-029 must apply `isDeniedTable` to every related table** (noted there).
+    - AC2 ✔ Password fields can't be requested or filtered on: by dictionary type (`password2`, also with a harmless name like `u_auth`) or by name. With every field returned (`u_api_config`, no default-projection field), `u_auth` is removed and listed in `omitted`, and the value never appears. The extension strips by name too (defense in depth).
+  - **Mutation checks** (each reverted): no dot-walk hop check (2 failures), no server stripping (2), no extension denylist (9), no extension stripping (1).
 
 ### T-021 — Untrusted content, error catalog, SECURITY.md
 
@@ -1017,6 +1029,7 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
   - Relations beyond the response budget continue via cursor, and each relation links to the `query_records` call that lists all its records.
   - Denylist enforced; `requests_used` reported. Requests go through the extension's concurrency queue, with no fan-out cap.
 - **Files:** `packages/server/src/mcp/tools/get-related-records.ts`, tests
+- **From T-020:** apply `isDeniedTable` (defaults plus extras) to every related table before querying it, and strip sensitive fields from samples.
 - **Acceptance criteria:** a fixture CI with 25 relationships returns correct counts for all 25 across cursor pages; each relation's "list all" call works; denied tables appear in `omitted` with the reason.
 - **Verification:** `npm test`.
 - **DoD:** —

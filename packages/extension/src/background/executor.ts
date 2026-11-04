@@ -12,6 +12,7 @@ import {
   buildRequest,
   RequestBuildError,
   revalidate,
+  stripSensitiveKeys,
 } from './request-builder.js';
 import { ConcurrencyLimiter, retryAfterSeconds } from './safeguards.js';
 import type { Safeguards } from './settings.js';
@@ -37,6 +38,8 @@ export interface ExecutorDeps {
   /** User settings per host (T-019): timeout, size cap, concurrency. */
   safeguards?: (host: string) => Promise<Safeguards>;
   limiter?: ConcurrencyLimiter;
+  /** Extra denied table patterns from the user's settings (added to the defaults; T-020). */
+  extraDeniedTables?: () => Promise<readonly string[]>;
 }
 
 const fail = (code: ErrorCode, message: string): ExecResult => ({ ok: false, code, message });
@@ -77,11 +80,12 @@ export class Executor {
   }
 
   private async runNow(host: string, rawOp: unknown, sg: Safeguards): Promise<ExecResult> {
-    const checked = revalidate(rawOp);
+    const extra = (await this.deps.extraDeniedTables?.()) ?? [];
+    const checked = revalidate(rawOp, extra);
     if (!checked.ok) return checked;
     const build = (token: string): BuiltRequest | ExecResult => {
       try {
-        return buildRequest(host, checked.op, token);
+        return buildRequest(host, checked.op, token, extra);
       } catch (e) {
         if (e instanceof RequestBuildError) return fail(e.code, e.message);
         return fail('FORBIDDEN_OPERATION', 'Refused to build the request.');
@@ -206,7 +210,8 @@ export class Executor {
       return {
         ok: true,
         status: 200,
-        body: (body as { result?: unknown }).result ?? null,
+        // Name-based fallback: credential-like keys never leave the extension (T-020).
+        body: stripSensitiveKeys((body as { result?: unknown }).result ?? null),
         ...(total !== undefined && Number.isInteger(total) && total >= 0
           ? { totalCount: total }
           : {}),

@@ -176,6 +176,20 @@ export function dictionaryFixture(): FakeServiceNow {
   dict('sys_user', 'department', 'reference', { reference: 'cmn_department' });
   dict('cmn_department', 'name', 'string', { display: 'true' });
 
+  // T-020: credential material in the dictionary.
+  sn.insert('sys_db_object', {
+    name: 'discovery_credentials',
+    label: 'Credentials',
+    super_class: '',
+  });
+  sn.insert('sys_db_object', { name: 'u_api_config', label: 'API config', super_class: '' });
+  dict('sys_user', 'user_password', 'password2');
+  dict('incident', 'u_cred_ref', 'reference', { reference: 'discovery_credentials' });
+  dict('discovery_credentials', 'name', 'string');
+  dict('u_api_config', 'u_label', 'string');
+  dict('u_api_config', 'u_endpoint', 'string');
+  dict('u_api_config', 'u_auth', 'password2'); // a password type with a harmless name
+
   const choice = (
     name: string,
     element: string,

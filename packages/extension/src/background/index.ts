@@ -28,6 +28,7 @@ const executor = new Executor({
   // Per-request safeguards from the user's settings (T-019): instance override > global > default.
   safeguards: async (host) =>
     settings.forInstance((await registry.list()).find((e) => e.host === host)?.alias),
+  extraDeniedTables: async () => (await settings.get()).extraDeniedTables ?? [],
 });
 let bridgeState: BridgeState = { state: 'connecting' };
 const PROBE_OP = { kind: 'probe' } as const;

@@ -3,7 +3,7 @@
  * user_config, which arrives as env vars). Invalid values fall back to the default; nothing
  * here can widen authorization, it only shapes responses.
  */
-import { MAX_PAGE_SIZE, SERVER_DEFAULTS } from '@sn-mcp/shared';
+import { MAX_PAGE_SIZE, parseTablePatterns, SERVER_DEFAULTS } from '@sn-mcp/shared';
 
 /** Tables where unordered reads default to newest-first and get selectivity hints. */
 export const DEFAULT_HIGH_VOLUME_TABLES = [
@@ -24,6 +24,8 @@ export interface ServerConfig {
   pageSize: number;
   fieldPreviewChars: number;
   highVolumeTables: readonly string[];
+  /** Extra denied table patterns (SN_MCP_DENIED_TABLES); added to the shared defaults. */
+  extraDeniedTables: readonly string[];
 }
 
 function int(raw: string | undefined, fallback: number, min: number, max: number): number {
@@ -63,6 +65,7 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
       100_000,
     ),
     highVolumeTables: patterns,
+    extraDeniedTables: parseTablePatterns(env.SN_MCP_DENIED_TABLES),
   };
 }
 

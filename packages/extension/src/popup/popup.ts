@@ -799,6 +799,7 @@ function settingsRow(
 
 function renderSettings(state: SettingsState): void {
   settingsInputs = [];
+  el<HTMLInputElement>('settings-denied').value = (state.extraDeniedTables ?? []).join(', ');
   const global = el('settings-global');
   global.replaceChildren();
   for (const k of SETTING_KEYS) {
@@ -827,7 +828,15 @@ function renderSettings(state: SettingsState): void {
 }
 
 function collectSettings(): SettingsState | string {
-  const state: SettingsState = { global: {}, perInstance: {} };
+  const denied = el<HTMLInputElement>('settings-denied')
+    .value.split(/[,\s]+/)
+    .map((p) => p.trim().toLowerCase())
+    .filter(Boolean);
+  const state: SettingsState = {
+    global: {},
+    perInstance: {},
+    ...(denied.length > 0 ? { extraDeniedTables: denied } : {}),
+  };
   for (const { alias, key, input } of settingsInputs) {
     const raw = input.value.trim();
     if (raw === '') continue;

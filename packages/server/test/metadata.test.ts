@@ -52,6 +52,7 @@ describe('AC1: inherited fields (incident ← task)', () => {
         'state',
         'sys_created_on',
         'sys_id',
+        'u_cred_ref',
       ].sort(),
     );
     expect(fields.get('state')).toMatchObject({
@@ -80,7 +81,7 @@ describe('AC1: inherited fields (incident ← task)', () => {
       });
     }
     const fields = await new MetadataService().fields(ctxFor(sn), 'incident');
-    expect(fields.size).toBe(9 + 2100);
+    expect(fields.size).toBe(10 + 2100);
     expect(sn.calls.filter((c) => c.table === 'sys_dictionary').map((c) => c.offset)).toEqual([
       0, 1000, 2000,
     ]);

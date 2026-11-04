@@ -7,4 +7,5 @@ export * from './extension-id.js';
 export * from './limits.js';
 export * from './protocol.js';
 export * from './query/index.js';
+export * from './sensitive.js';
 export * from './validation.js';
