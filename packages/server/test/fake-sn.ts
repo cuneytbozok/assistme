@@ -68,6 +68,10 @@ export class FakeServiceNow {
         return v.toLowerCase().startsWith(t.value.toLowerCase());
       case 'ENDSWITH':
         return v.toLowerCase().endsWith(t.value.toLowerCase());
+      case 'BETWEEN': {
+        const [lo, hi] = t.value.split('@') as [string, string];
+        return v >= lo && v <= hi;
+      }
       case 'ISEMPTY':
         return v === '';
       case 'ISNOTEMPTY':
@@ -92,6 +96,12 @@ export class FakeServiceNow {
     if (req.query) {
       const p = parseEncodedQuery(req.query, { profile: 'enforce', allowTextSearch: true });
       if (!p.ok) throw new Error(`fake SN: bad query ${req.query}`);
+      const text = p.value.textSearch?.toLowerCase();
+      if (text) {
+        rows = rows.filter((row) =>
+          Object.values(row).some((v) => typeof v === 'string' && v.toLowerCase().includes(text)),
+        );
+      }
       const groups = p.value.groups;
       if (groups.length > 0) {
         rows = rows.filter((row) =>

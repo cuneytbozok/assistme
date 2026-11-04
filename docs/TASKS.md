@@ -33,7 +33,7 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 | T-021 | Untrusted content, error catalog, SECURITY.md   | 018, 019 | DONE        |
 | T-022 | Read-only verification (M3)                     | 021      | DONE        |
 | T-023 | Response shaping, pagination, completeness      | 018      | DONE        |
-| T-024 | `query_records` full                            | 023      | TODO        |
+| T-024 | `query_records` full                            | 023      | DONE        |
 | T-025 | `get_record`                                    | 024      | TODO        |
 | T-026 | `discover_tables` + `describe_table`            | 017, 023 | TODO        |
 | T-027 | `get_field_content`                             | 025      | TODO        |
@@ -979,7 +979,7 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 
 ### T-024 — `query_records` full
 
-- **Status:** TODO
+- **Status:** DONE
 - **Purpose:** Primary general-purpose query tool.
 - **Dependencies:** T-023
 - **Deliverables:** inputs:
@@ -995,7 +995,19 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
   5. Structured and raw inputs give equivalent results for equivalent queries (fixture).
 - **Verification:** `npm test`.
 - **DoD:** —
-- **Evidence:** —
+- **Evidence (2026-11-05):**
+  - Implemented:
+    - `server/src/mcp/tools/query-records.ts`: the tool moved here with `tools/common.ts` and `tools/context.ts`. New inputs: `where`, `any_of`, `encoded_query`, `text`, `order_by`, `display_value`. A cursor refuses every query-shaping input.
+    - **Bug fixed** in `query-guard.ts`: `where` together with `any_of` silently dropped `where`; it is now refused (`INVALID_INPUT`).
+    - Tests: `test/query-records.test.ts` (new); the harness was moved to `test/mcp-harness.ts`; `fake-sn` gained text search and `BETWEEN`. A date-dependent mock expiry in `mcp.test.ts` now uses 2099.
+  - Root build → exit 0. `npm test` → shared 240, server 186, extension 295 passed. Lint → exit 0.
+  - **Acceptance criteria:**
+    - AC1 ✔ Through the tool, unknown fields in `where`, raw queries, `order_by` or a dot-walk → `INVALID_FIELD` with no data read. Unsafe raw input, mixed inputs, raw plus `order_by`, and `where` plus `any_of` → refused. On `syslog`: newest first, selectivity and "contains" hints, two-year-old ranges accepted, and a user order kept (with the `sys_id` tiebreak). `text` becomes `123TEXTQUERY321` from the server only; raw `123TEXTQUERY321` is refused.
+    - AC2 ✔ `limit: 1000` with a filter is delivered over several budget-sized results using only `{scope_id, cursor}`: the first 1,000 rows in order, with no duplicates.
+    - AC3 ✔ `total` is null unless `include_total`; with it, `total: 8`.
+    - AC4 ✔ 12 seeded trials over 6 filter shapes with random sizes, page sizes, limits and budgets: `complete` equals "no `has_more` and no omissions" every time, each rows `next` equals `{scope_id, cursor}`, and there are no duplicates.
+    - AC5 ✔ 9 structured/raw pairs (`=`, `!=`, OR group, `IN`, `LIKE`, `STARTSWITH`, AND, `any_of`/`^NQ`, `ORDERBYDESC`) return identical rows.
+  - **Mutation checks** (each reverted): a cursor accepting `where` (1 failure), text search disabled (1), `where`+`any_of` allowed (2), `display_value` ignored (1), `order_by` dropped (4).
 
 ### T-025 — `get_record`
 

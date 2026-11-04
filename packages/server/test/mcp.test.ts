@@ -74,7 +74,7 @@ function fakeExtension(ext: MockExtension) {
               scopeId: SCOPE,
               instances: ['dev'],
               mode: 'single',
-              expiresAt: '2026-11-04T21:00:00.000Z',
+              expiresAt: '2099-01-01T00:00:00.000Z',
             });
           }
           break;

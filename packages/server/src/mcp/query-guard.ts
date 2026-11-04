@@ -110,6 +110,13 @@ export async function planQuery(
     );
   }
   const structured = req.where !== undefined || req.any_of !== undefined || req.text !== undefined;
+  if (req.where !== undefined && req.any_of !== undefined) {
+    // Never silently drop one of them: they mean different things.
+    throw invalid(
+      'Use either `where` (one AND group) or `any_of` (alternative groups), not both.',
+      'To combine, repeat the shared conditions inside each any_of group.',
+    );
+  }
   if (req.encoded_query !== undefined && structured) {
     throw invalid('Use either structured filters (where/any_of/text) or encoded_query, not both.');
   }

@@ -3,7 +3,7 @@
  * requests, and serves the popup.
  */
 import '../csp.js';
-import { type ExtensionToBroker, PROTOCOL_VERSION, protocolError } from '@sn-mcp/shared';
+import { PROTOCOL_VERSION } from '@sn-mcp/shared';
 import { handleForward } from './authz.js';
 import { ChromeTokenProvider, Executor } from './executor.js';
 import { badgeFor, browserGrantDeps, chromeGrantStorage, Grants } from './grants.js';

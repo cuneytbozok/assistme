@@ -1,6 +1,6 @@
 # Handoff
 
-_Last updated: 2026-11-04 (after T-023)_
+_Last updated: 2026-11-05 (after T-024)_
 
 ## Current project state
 
@@ -52,7 +52,8 @@ _Last updated: 2026-11-04 (after T-023)_
 - **Last completed task:** T-016 — Extension request builder hardening (commit `T-016: request builder hardening`).
 - **Blocked:** T-015 (live scope acceptance, M2) has no second instance for PROD checks (see TASKS T-015).
 - **Last completed task:** T-023 — Response shaping, automatic pagination, completeness contract. `query_records` now paginates with cursors, supports `fields:["*"]` and `max_chars`, and never drops rows silently (ACL-hidden rows handled via the count).
-- **Next task:** T-024 (`query_records` full: structured filters, `encoded_query`, `text`, `order_by` on top of T-023).
+- **T-024 DONE:** `query_records` is complete (filters, raw query, text, order, display mode, cursors). Tools now live in `server/src/mcp/tools/` with a shared `ToolContext`; tests use `test/mcp-harness.ts`.
+- **Next task:** T-025 (`get_record`).
 - **Verify live in T-034:** `sysparm_offset` counts pre-ACL rows (ADR-011 addendum).
 - **Waiting on the user:** T-015 live run (second instance); `REQUEST_DENIED` vs `status: denied` (T-015 AC6); fail-closed dictionary validation (ADR-005 addendum).
 - **Role-agnostic (ADR-012, 2026-11-04):** no ServiceNow role handling of any kind. Don't add role checks, dedicated accounts or impersonation features.

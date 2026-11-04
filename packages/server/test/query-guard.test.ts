@@ -171,6 +171,20 @@ describe('raw queries vs internal conditions', () => {
     expect((await s.plan({ table: 'incident', internal })).query).toBe(`caller_id=${id}`);
   });
 
+  it('where and any_of together are refused (never one silently dropped)', async () => {
+    const s = setup();
+    await expect(
+      s.plan({
+        table: 'incident',
+        where: [{ field: 'state', op: '=', value: 1 }],
+        any_of: [
+          [{ field: 'priority', op: '=', value: 1 }],
+          [{ field: 'priority', op: '=', value: 2 }],
+        ],
+      }),
+    ).rejects.toMatchObject({ code: 'INVALID_INPUT', message: expect.stringMatching(/not both/) });
+  });
+
   it('structured and raw input are exclusive; raw input uses the strict profile', async () => {
     const s = setup();
     await expect(
