@@ -1,11 +1,11 @@
 # Handoff
 
-_Last updated: 2026-11-04 (after T-020)_
+_Last updated: 2026-11-04 (after T-021)_
 
 ## Current project state
 
 - **Phase 0 (Foundation):** complete (T-001, T-002, T-003).
-- **Phase 3:** T-020 (sensitive data: credential-table denylist, password-field refusal and stripping) is DONE. T-019 (per-request safeguards and popup Settings) is DONE. T-018 (dictionary-aware validation, cost-aware defaults) is DONE; `query_records` already validates fields. T-017 (metadata service) is DONE, along with `test/fake-sn.ts` for server tests. T-016 (request builder hardening) is DONE: a single URL constructor with templates, allowlists and a self-check; stats requests are buildable.
+- **Phase 3:** T-021 (untrusted-content marker, error catalog test, `docs/SECURITY.md`) is DONE. T-020 (sensitive data: credential-table denylist, password-field refusal and stripping) is DONE. T-019 (per-request safeguards and popup Settings) is DONE. T-018 (dictionary-aware validation, cost-aware defaults) is DONE; `query_records` already validates fields. T-017 (metadata service) is DONE, along with `test/fake-sn.ts` for server tests. T-016 (request builder hardening) is DONE: a single URL constructor with templates, allowlists and a self-check; stats requests are buildable.
 - **Phase 2:** T-014 (bridge resilience) is DONE: fixed a stale-answer misdelivery bug after broker restarts, added a heartbeat timeout, and documented the scenario table in ARCHITECTURE §4.5. T-013 (session lifecycle and status) is DONE: per-instance connection states in the popup and `list_instances`; no credential prompts thanks to the `X-UserToken` invariant (ADR-002 addendum). T-012 (MCP scope enforcement) is DONE: `release_scope`, no default scope, compare requests through `request_scope`, `connector_access` in `list_instances`, and an e2e test against the real extension authz. T-011 (full grant model) is DONE: compare grants, TTL choice, revoke-all, red PROD badge, request notifications, purpose and approval time on active access. T-010 (full instance registry) is DONE: add, edit and remove in the popup; grants bound to `{alias, host, env}` and invalidated on removal or env change; `activeTab` suggestions; server-side `registry.update` cache.
 - **Phase 1:** T-004 is DONE. The MV3 extension builds to `packages/extension/dist/` with stable ID `clipfeocpiljpcngmjpdbegciimchbol` (`packages/extension/EXTENSION_ID`). It has a minimal popup registry: paste the URL, pick alias and env, and it requests the exact host permission and saves to `chrome.storage.local`.
 - **Packages:**
@@ -49,8 +49,8 @@ _Last updated: 2026-11-04 (after T-020)_
 - **Current task:** none (nothing IN_PROGRESS).
 - **Last completed task:** T-016 — Extension request builder hardening (commit `T-016: request builder hardening`).
 - **Blocked:** T-015 (live scope acceptance, M2) has no second instance for PROD checks (see TASKS T-015).
-- **Last completed task:** T-020 — Sensitive data protection.
-- **Next tasks:** T-021 (untrusted content, error catalog, SECURITY.md), T-023 (response shaping).
+- **Last completed task:** T-021 — Untrusted content, error catalog, SECURITY.md.
+- **Next tasks:** T-022 (read-only verification, M3; depends on T-021 ✔) and T-023 (response shaping; depends on T-018 ✔).
 - **Open decision for the user:** dictionary validation fails closed when the user can't read `sys_dictionary` (ADR-005 addendum).
 - **T-015 must include:** logout in the user's own profile → `SESSION_EXPIRED` with no sign-in dialog (T-013 AC4). Fallback if a dialog appears: the DNR rule in the ADR-002 addendum.
 - **Claude Desktop runs the old server build** until it's restarted (`npm run build` done). Restart it before live checks (T-015).
