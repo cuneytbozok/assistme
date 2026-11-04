@@ -7,7 +7,6 @@
  */
 import '../csp.js';
 import { PROTOCOL_VERSION } from '@sn-mcp/shared';
-import { installDiagnosticsHandler } from './diagnostics-handler.js';
 import { chromeRegistryStorage, Registry } from './registry.js';
 
 const registry = new Registry(chromeRegistryStorage());
@@ -25,5 +24,3 @@ chrome.runtime.onInstalled.addListener((details) => {
 chrome.runtime.onStartup.addListener(() => {
   void reportState('startup');
 });
-
-if (__DEV_DIAGNOSTICS__) installDiagnosticsHandler(registry);

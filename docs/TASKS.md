@@ -14,7 +14,7 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 | T-002 | Shared protocol schemas                         | 001      | DONE        |
 | T-003 | Shared query module + attack corpus             | 002      | DONE        |
 | T-004 | MV3 extension skeleton + minimal registry       | 001      | DONE        |
-| T-005 | Live session hypothesis spike (H1–H8)           | 004      | IN_PROGRESS |
+| T-005 | Live session hypothesis spike (H1–H8)           | 004      | DONE        |
 | T-006 | Native host / authenticated broker              | 002      | TODO        |
 | T-007 | Extension ↔ host port, executor, minimal grants | 005, 006 | TODO        |
 | T-008 | Minimal MCP server                              | 006, 003 | TODO        |
@@ -166,7 +166,7 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
     - Structured relative-date ops are `within_last`/`older_than` instead of a single `relative`.
     - `123TEXTQUERY321` is accepted only with `allowTextSearch` and only as the first term.
   - Added dev dependency `@vitest/coverage-v8@5.1.0` and the shared script `coverage`.
-  - Unverified (live): that ServiceNow accepts `RELATIVEGE@unit@ago@n` and plain-date `BETWEEN a@b`. Both are checked in T-005, as planned.
+  - Unverified (live): that ServiceNow accepts `RELATIVEGE@unit@ago@n` and plain-date `BETWEEN a@b`. Both are checked in T-005, as planned. _Verified live in T-005 (2026-11-04): both work._
 
 ## Phase 1 — Live PoC (Milestone M1)
 
@@ -210,7 +210,7 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 
 ### T-005 — Live session hypothesis spike (H1–H8)
 
-- **Status:** IN_PROGRESS
+- **Status:** DONE
 - **Purpose:** Empirically decide the session access path (ADR-002).
 - **Dependencies:** T-004
 - **Deliverables:**
@@ -227,7 +227,25 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 - **Verification:** manual run against a real DEV instance; screenshots or console exports of the result statuses (redacted).
 - **DoD:** chosen path documented; the spike code is either promoted (cleaned) or removed.
 - **Blocker:** requires a reachable DEV instance (PDI OK) and a Chrome login.
-- **Evidence:** —
+- **Evidence (2026-11-04):**
+  - **Live run:**
+    - The user ran the dev-only diagnostics build in their own Chrome 156 against `dev469966.service-now.com` (PDI, DEV, local login) at 16:32–16:39 UTC.
+    - Three states were covered: logged in; logged out and back in; logged out.
+    - The spike code is in commit `08aa721` and was removed afterwards (DoD).
+  - **Results:** full results are in `docs/POC_RESULTS.md`.
+  - **Acceptance criteria:**
+    - AC1 ✔ H1, H2, H3, H4, H5, H7 and H8 are confirmed. H6 is untested (no SSO instance), with the reason recorded.
+    - AC2 ✔ Real JSON came back through the service-worker path (Path A): incident `INC0000060` (`X-Total-Count: 67`), `sys_db_object` (6,775 rows), and the Stats API (`count=67`).
+    - AC3 ✔ The spike never changed a tab URL: it used only `executeScript` (read `g_ck`, in-page fetch) and service-worker `fetch`. Observed UI side effect: on a logged-out session, Chrome's native HTTP-auth dialog appeared and blocked the request until cancelled. This is not navigation; it is recorded as a T-013 requirement.
+    - AC4 ✔ No `cookies` permission (manifest test; the diagnostics build was also checked).
+    - AC5 ✔ ADR-002 Accepted: Path A.
+  - **Also verified live (ADR-005/T-003):** `RELATIVEGE` and `RELATIVELT` are honored; plain-date `BETWEEN`, `>=` and `<` work. An invalid field name is silently ignored and returns all rows (6,775), which is the live justification for T-018.
+  - **Spike verification:** 67 extension tests passed while the spike existed, including one proving the release build has no diagnostics code. After removal: build, test (shared 240, server 1, extension 50) and lint all exit 0.
+  - **Unverified:**
+    - H6 (SSO).
+    - Token validity over hours.
+    - The instance platform build tag (not readable through the Table API).
+
 
 ### T-006 — Native host / authenticated broker
 
@@ -402,11 +420,13 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
   - `session.ts` per ADR-002: probe, token acquisition and refresh (if needed), mapping 401/redirect/HTML → `SESSION_EXPIRED`, no tab → `NO_INSTANCE_TAB`.
   - Popup status per instance: connected / no tab / expired / no permission.
   - `list_instances` connection states.
+  - **No credential prompts (from T-005):** suppress Chrome's native HTTP-auth dialog for the extension's requests on expired sessions, and make sure no request hangs on a prompt. Try first a header ServiceNow honors (e.g. `X-Requested-With: XMLHttpRequest`). Otherwise use `webRequest.onAuthRequired` cancellation, which is a manifest change and so needs user approval under change management. Record the result in ADR-002.
 - **Files:** `packages/extension/src/background/session.ts`, popup, tests
 - **Acceptance criteria:**
   1. Expired session → `SESSION_EXPIRED` for that instance only, token cleared, no retry elsewhere.
   2. After re-login, the next request succeeds without a new grant (if the grant is still valid).
   3. Status updates within 30 s of change or on the next request.
+  4. On a logged-out instance, connector requests return `SESSION_EXPIRED` without any browser sign-in dialog (live check in T-015).
 - **Verification:** unit tests with stubbed responses; live check deferred to T-015.
 - **DoD:** —
 - **Evidence:** —

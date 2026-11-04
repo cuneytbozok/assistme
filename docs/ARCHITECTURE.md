@@ -188,15 +188,19 @@ Values containing `^`, control characters, or newlines are rejected, as are `,` 
 
 The shared module (`packages/shared/query`) runs in the MCP server for friendly errors and in the extension for enforcement. The dictionary-aware checks run in the MCP server, and the extension re-runs the syntactic and safety checks.
 
-## 7. Session access (ADR-002 — Proposed; finalized by T-005)
+## 7. Session access (ADR-002 — Accepted: Path A, T-005)
 
-Hypotheses H1–H8 (see `DECISIONS.md` ADR-002) are tested live.
+Hypotheses H1–H8 were tested live (`docs/POC_RESULTS.md`). **Path A was chosen.**
 
-- **Path A** (preferred if H1 holds and the token is obtainable): the service worker's `fetch(credentials:'include')` plus `X-UserToken` if required. The token is read on demand via MAIN-world `executeScript` from a tab of the granted host and cached in memory only.
-- **Path B** (fallback): a MAIN-world `fetch` executed inside a tab of the granted host, with limits enforced in the injected function.
+- **Path A (chosen):** the service worker's `fetch(credentials:'include')` plus `X-UserToken` if required. The token is read on demand via MAIN-world `executeScript` from a tab of the granted host and cached in memory only.
+- **Path B** (works, not used; it runs inside the user's page): a MAIN-world `fetch` executed inside a tab of the granted host, with limits enforced in the injected function.
 - **Invariants:** no `cookies` permission; no credential values in any outbound message; no UI navigation.
 
-Session expiry (401, redirect, or HTML response) → `SESSION_EXPIRED`. The token is cleared and the popup status updated. Nothing is retried elsewhere.
+- **Errors:**
+  - A missing token or an expired session both return `401` JSON "User is not authenticated" (observed; no redirect or HTML).
+  - On `401`, the token is re-read from the tab and the request retried once. If it's still `401` → `SESSION_EXPIRED`: the token is cleared and the popup status updated. Nothing is retried elsewhere.
+  - No open tab of the granted host → `NO_INSTANCE_TAB`.
+- **Must not prompt (T-013):** on an expired session, Chrome can show its native HTTP-auth dialog for credentialed requests. The extension must suppress this, so requests never hang and the user is never asked for a password.
 
 ## 8. MCP tools, efficiency & ambiguity (ADR-006, ADR-011)
 

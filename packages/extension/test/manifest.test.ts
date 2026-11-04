@@ -80,7 +80,7 @@ describe('manifest.json', () => {
 });
 
 describe('entry points', () => {
-  it.each(['src/background/index.ts', 'src/popup/popup.ts', 'src/diagnostics/diagnostics.ts'])(
+  it.each(['src/background/index.ts', 'src/popup/popup.ts'])(
     '%s imports the CSP/zod setup first',
     (file) => {
       const src = readFileSync(join(root, file), 'utf8');

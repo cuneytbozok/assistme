@@ -31,7 +31,15 @@ Format: Status · Context · Decision · Alternatives considered · Consequences
 
 ## ADR-002 — Session access path
 
-- **Status:** **Proposed.** Finalized by T-005 using live results in `POC_RESULTS.md`.
+- **Status:** **Accepted (2026-11-04, T-005): Path A.** Live results are in `docs/POC_RESULTS.md` (H1–H5, H7, H8 confirmed; H6 untested; no SSO instance).
+- **Decision:**
+  - **Requests:** the service worker sends every ServiceNow request as `fetch(credentials:'include', redirect:'manual')` with `X-UserToken: <g_ck>`.
+  - **Token:** `g_ck` is read on demand via MAIN-world `executeScript` from an open tab of the granted host, and cached in service-worker memory only.
+  - **Error handling:**
+    - No tab of the host → `NO_INSTANCE_TAB`.
+    - `401` → re-read the token and retry once; if it's still `401` → `SESSION_EXPIRED`.
+  - **Path B** (in-tab fetch) works but is not used, because it runs inside the user's page.
+- **Open item (T-013):** while logged out, credentialed requests made Chrome show its native HTTP-auth sign-in dialog, and the request waited for the user. The connector must suppress this (e.g. a request header ServiceNow honors, or `webRequest.onAuthRequired` cancellation, which needs a manifest change and user approval). Verify live and record the result here.
 - **Context:** Only community sources describe how ServiceNow REST behaves under browser-session auth and how MV3 service-worker fetch handles cookies. None of it is authoritative, so it must be tested on a live instance.
 - **Hypotheses:**
 

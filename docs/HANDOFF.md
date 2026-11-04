@@ -1,6 +1,6 @@
 # Handoff
 
-_Last updated: 2026-11-04 (after T-004 and the ADR-011 efficiency revision)_
+_Last updated: 2026-11-04 (after T-005)_
 
 ## Current project state
 
@@ -39,35 +39,28 @@ _Last updated: 2026-11-04 (after T-004 and the ADR-011 efficiency revision)_
 ## Tasks
 
 - **Current task:** none (nothing IN_PROGRESS).
-- **Last completed task:** T-004 — MV3 extension skeleton + minimal registry (commit `T-004: MV3 extension skeleton and minimal registry`).
-- **Next task:** **T-005 — Live session hypothesis spike (H1–H8).** It depends on T-004 ✔ and needs a ServiceNow DEV instance (a PDI is fine), logged in, in the user's Chrome.
-  - **First step of T-005:** the user loads `packages/extension/dist` unpacked in their own Chrome and registers the DEV instance (this also checks the granted → saved path, unverified in T-004).
-- **Also eligible:** T-006 (native host/broker), which needs no instance.
+- **Last completed task:** T-005 — Live session hypothesis spike.
+  - Commits: `T-005: session diagnostics spike` (`08aa721`, spike code kept for history) and `T-005: live session results, ADR-002 accepted (Path A)`.
+- **Outcome:**
+  - **ADR-002 Accepted: Path A.** The service worker sends `fetch(credentials:'include')` with `X-UserToken` = `g_ck`, read via MAIN-world `executeScript` from an open tab of the granted host. See `docs/POC_RESULTS.md`.
+  - **New T-013 requirement:** suppress Chrome's native HTTP-auth dialog, which appeared on logged-out requests and blocked them until cancelled.
+- **Next task:** **T-006 — Native host / authenticated broker** (depends on T-002 ✔). No live instance is needed.
+- **T-007** needs T-005 ✔ and T-006.
 
 ## Files changed in last task
 
-- New:
-  - `packages/extension/{manifest.json,build.mjs,EXTENSION_ID,README.md}` and `scripts/gen-extension-key.mjs`.
-  - `src/csp.ts`, `src/background/{index,registry}.ts` and `src/popup/{popup.html,popup.css,popup.ts}`.
-  - `test/{manifest,registry}.test.ts`.
-- Removed: the placeholder `packages/extension/src/index.ts` and `test/index.test.ts`.
-- Modified:
-  - `packages/extension/package.json` (build = tsc + esbuild, `gen-key` script, deps `zod` and `esbuild`).
-  - Root `package.json` (`allowScripts.esbuild: false`) and the lock file.
-- Docs: TASKS (T-004 evidence), DECISIONS (ADR-007 T-004 addendum), HANDOFF.
+- New: `docs/POC_RESULTS.md`.
+- Spike (added, then removed; see `08aa721`): `packages/extension/src/background/{session,diagnostics-handler}.ts`, `src/diagnostics/*`, `src/globals.d.ts`, `test/session-spike.test.ts`, `build:diag` script.
+- Docs: DECISIONS (ADR-002 Accepted), ARCHITECTURE §7, TASKS (T-003 note, T-004 user confirmation, T-005 evidence, T-013 requirement), HANDOFF.
 
 ## Tests performed
 
-- Root `npm run build`, `npm test` (shared 238, server 1, extension 50) and `npm run lint`: all exit 0.
-- Mutation checks on the manifest and popup tests.
-- Live headless Chrome 156 load through DevTools `Extensions.loadUnpacked` in a throwaway profile:
-  - ENABLED, with no install warnings, manifest errors or runtime errors; the ID matches.
-  - The popup requested exactly one origin.
-  - Details are in the TASKS evidence.
+- Live: three diagnostic sessions on `dev469966.service-now.com` (Chrome 156), run by the user.
+- After removing the spike: root build, tests (shared 240, server 1, extension 50) and lint all exit 0.
 
 ## Open blockers
 
-- **Live ServiceNow DEV instance:** T-005, T-009, T-015, T-022 (manual part), T-034, and T-036 need a reachable DEV instance (a PDI is fine) with an active Chrome login. Not yet confirmed as available.
+- **Live ServiceNow DEV instance:** available: `dev469966.service-now.com` (alias `dev`, PDI, local login `admin`), registered in the user's Chrome extension. Live steps need the user to run them in their own Chrome, because Claude in Chrome can't open `chrome://` or extension pages.
 
 ## Important context to continue
 
