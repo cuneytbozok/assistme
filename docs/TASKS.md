@@ -26,7 +26,7 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 | T-014 | Bridge resilience                               | 012      | DONE        |
 | T-015 | Live scope acceptance (M2)                      | 013, 014 | BLOCKED     |
 | T-016 | Extension request builder hardening             | 007, 003 | DONE        |
-| T-017 | Metadata service                                | 012, 016 | TODO        |
+| T-017 | Metadata service                                | 012, 016 | DONE        |
 | T-018 | Dictionary-aware query validation & guards      | 017      | TODO        |
 | T-019 | Per-request safeguards & settings               | 016      | TODO        |
 | T-020 | Sensitive data protection                       | 017      | TODO        |
@@ -735,7 +735,7 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 
 ### T-017 — Metadata service
 
-- **Status:** TODO
+- **Status:** DONE
 - **Purpose:** Dictionary and table metadata for validation and tools.
 - **Dependencies:** T-012, T-016
 - **Deliverables:** `mcp/metadata.ts` that:
@@ -751,7 +751,21 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
   4. Unknown table → `NOT_FOUND` with close matches.
 - **Verification:** `npm test`.
 - **DoD:** —
-- **Evidence:** —
+- **Evidence (2026-11-04):**
+  - Implemented: `server/src/mcp/metadata.ts`.
+    - `MetadataService.table` (super_class chain; NOT_FOUND with close matches) and `.fields` (dictionary of the whole chain; the most specific definition wins; complete paging, no cap).
+    - `.resolvePath` (dot-walks; INVALID_FIELD with suggestions; non-reference walk refused) and `.choices` (most specific table with choices; active, English, in sequence order).
+    - TTL 15 min, single-flight, failures not cached, per-instance `invalidate`.
+    - Queries are built only with the shared `compileFilter`.
+  - Test support: `server/test/fake-sn.ts`, an in-memory Table API that evaluates encoded queries with the shared parser and follows reference dot-walks, plus a task/incident/sys_user/cmn_department dictionary fixture. Reusable by T-018 and T-023+.
+  - Root build → exit 0. `npm test` → shared 240, server 87, extension 255 passed. Lint → exit 0.
+  - **Acceptance criteria:**
+    - AC1 ✔ `incident` chain is `[incident, task]`. Its 9 fields include inherited ones, and `incident.state` overrides `task.state`; the collection row is excluded. 2,100 extra fields are read across 3 pages (offsets 0/1000/2000).
+    - AC2 ✔ `caller_id.department.name` → `cmn_department.name` via `[incident, sys_user, cmn_department]`. `assigned_to.manager.user_name` walks sys_user twice. A typo → INVALID_FIELD suggesting `caller_id.department`. Walking through a string field → refused.
+    - AC3 ✔ Repeated table, field and path lookups make no new fetches; TTL expiry refetches; instances are cached separately; 10 concurrent callers → one dictionary fetch; a failure isn't cached; `invalidate` hits one instance only.
+    - AC4 ✔ `incidnt` → `incident`, `incident_tsk` → `incident_task`, `sys_usr` → `sys_user` (first suggestion and in the hint); no match → hint to `discover_tables`.
+  - **Mutation checks** (each reverted): parent overriding child (1 failure), cache bypassed (3), failures cached (1).
+  - Not wired into a tool yet: T-018 (validation) and T-026 (`describe_table`) use it.
 
 ### T-018 — Dictionary-aware query validation & cost-aware defaults
 
