@@ -12,7 +12,7 @@ Run `npm run setup`, and copy the printed values into **Settings → MCP servers
 
 ## Mistral Vibe
 
-Run `npm run setup`, and add the printed block to `~/.vibe/config.toml`: see [INSTALL.md](INSTALL.md#mistral-vibe). Then start `vibe` and ask it to list your instances. This is already done on your Mac. In the first real run the model didn't show the approval code; the wording is now stronger, but this hasn't been re-tested. If a request appears in the popup and you can't see its code in Vibe, ask Vibe for the code and compare before approving, or deny it. It may release its access after each answer, so a follow-up question can ask for a new approval. Tell me if that gets in the way, or if a larger read goes wrong.
+Run `npm run setup`, and add the printed block to `~/.vibe/config.toml`: see [INSTALL.md](INSTALL.md#mistral-vibe). Then start `vibe` and ask it to list your instances. This is already done on your Mac. In the first real run the model didn't show the approval code. It did after the wording was strengthened, in one retest, but a model may still skip it. If a request appears in the popup and you can't see its code in Vibe, ask Vibe for the code and compare before approving, or deny it. Tell me if a larger read goes wrong, or if a follow-up question keeps asking for a new approval.
 
 ## Windows
 
