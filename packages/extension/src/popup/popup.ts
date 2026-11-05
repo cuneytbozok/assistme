@@ -666,7 +666,7 @@ function renderRequest(r: PopupState['pending'][number]): HTMLLIElement {
   const purpose = make(
     'div',
     { className: 'purpose' },
-    make('small', { text: 'Reason given by Claude (unverified)' }),
+    make('small', { text: 'Reason given by the AI assistant (unverified)' }),
     r.purpose.slice(0, 200),
   );
 
@@ -737,7 +737,7 @@ function renderRequest(r: PopupState['pending'][number]): HTMLLIElement {
       if (!res?.ok) setMessage(res?.message ?? 'Approval failed.', 'error');
       else {
         draft.delete(r.requestId);
-        setMessage(`Approved for ${ttlLabel(d.ttl ?? fallback)}. Claude can now use it.`, 'ok');
+        setMessage(`Approved for ${ttlLabel(d.ttl ?? fallback)}. It can now use it.`, 'ok');
       }
       (document.activeElement as HTMLElement | null)?.blur();
       void renderAccess();

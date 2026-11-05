@@ -5,7 +5,7 @@
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const MINIMUM_NODE = 22;
@@ -15,15 +15,20 @@ if (major < MINIMUM_NODE) {
   console.error(`sn-mcp needs Node ${MINIMUM_NODE} or newer; this is ${process.version}.`);
   process.exit(1);
 }
-if (process.platform !== 'darwin') {
-  console.error('sn-mcp setup supports macOS only for now.');
+if (process.platform !== 'darwin' && process.platform !== 'win32') {
+  console.error('sn-mcp setup supports macOS and Windows.');
   process.exit(1);
 }
 
 if (!process.argv.includes('--skip-build')) {
   console.log('Building…');
   try {
-    execFileSync('npm', ['run', 'build'], { cwd: ROOT, stdio: ['ignore', 'ignore', 'inherit'] });
+    // On Windows npm is a .cmd, which only a shell can start. The command is fixed text.
+    execFileSync('npm', ['run', 'build'], {
+      cwd: ROOT,
+      stdio: ['ignore', 'ignore', 'inherit'],
+      shell: process.platform === 'win32',
+    });
   } catch {
     console.error('The build failed. Did you run npm install?');
     process.exit(1);
@@ -31,11 +36,15 @@ if (!process.argv.includes('--skip-build')) {
 }
 
 // Imported only now: the build creates these files.
-const installer = join(ROOT, 'packages/server/dist/install/installer.js');
-const { applyInstall, defaultInstallPaths, InstallError, planInstall } = await import(installer);
+// As a URL: import() refuses a Windows path, reading "C:" as a URL scheme.
+const built = (file: string) => import(pathToFileURL(join(ROOT, file)).href);
+const { applyInstall, defaultInstallPaths, InstallError, planInstall } = await built(
+  'packages/server/dist/install/installer.js',
+);
+const { currentUid } = await built('packages/server/dist/native-host/auth.js');
 
 const hostScript = join(ROOT, 'packages/server/dist/bin/native-host.js');
-const uid = process.getuid?.() as number;
+const uid = currentUid();
 try {
   const plan = planInstall(defaultInstallPaths(hostScript), uid);
   applyInstall(plan);
@@ -50,6 +59,10 @@ try {
 
 const extensionId = readFileSync(join(ROOT, 'packages/extension/EXTENSION_ID'), 'utf8').trim();
 const server = join(ROOT, 'packages/server/dist/bin/mcp-server.js');
+const { chatGptDesktopConfig, renderConfigToml, renderStdioForm } = await built(
+  'packages/server/dist/install/client-config.js',
+);
+const chatgpt = chatGptDesktopConfig(ROOT);
 console.log(`
 Next steps (details in docs/INSTALL.md):
 
@@ -67,4 +80,19 @@ Next steps (details in docs/INSTALL.md):
      ${join(ROOT, 'packages/server/sn-mcp.mcpb')}
    Claude Code:
      claude mcp add --scope user sn-mcp --env SN_MCP_CLIENT_NAME="Claude Code" -- node "${server}"
+
+4. Or connect ChatGPT Desktop: Settings → MCP servers → add a server, with these values:
+
+${renderStdioForm(chatgpt)
+  .split('\n')
+  .map((line: string) => `     ${line}`)
+  .join('\n')}
+
+   Or add this to ~/.codex/config.toml, which also sets longer timeouts:
+
+${renderConfigToml(chatgpt)
+  .trimEnd()
+  .split('\n')
+  .map((line: string) => `     ${line}`)
+  .join('\n')}
 `);

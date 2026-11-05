@@ -1,14 +1,14 @@
 # Installing sn-mcp
 
-sn-mcp lets Claude read your ServiceNow instances through your own Chrome session. It has three parts: a Chrome extension, a small native host that Chrome starts, and an MCP server that Claude runs. It only reads, and it reaches an instance only after you approve a request in the extension.
+sn-mcp lets Claude or ChatGPT Desktop read your ServiceNow instances through your own Chrome session. It has three parts: a Chrome extension, a small native host that Chrome starts, and an MCP server that your AI client runs. It only reads, and it reaches an instance only after you approve a request in the extension.
 
 ## Requirements
 
-- macOS
+- macOS. Windows support is new and **hasn't been tested on a real Windows PC yet**: see [Windows](#windows)
 - Google Chrome
 - Node.js 22.18 or newer (`node --version`)
 - A ServiceNow instance you can sign in to
-- Claude Desktop or Claude Code
+- Claude Desktop, Claude Code or ChatGPT Desktop
 
 You don't need any API key, corporate credential or Docker.
 
@@ -48,9 +48,9 @@ Setup checks your Node version, builds everything, and installs the native host 
 
 Use **Other** for anything that isn't clearly development or test. It always gets production rules: shorter access, and you type the host name to approve.
 
-## 4. Connect Claude
+## 4. Connect your AI client
 
-Choose one, or both.
+Choose any of these.
 
 ### Claude Desktop
 
@@ -80,13 +80,32 @@ Start a new session and run `/mcp`: `sn-mcp` should be listed.
 
 Code sessions inside the Claude Desktop app use the Claude Desktop connector and need nothing extra. Don't also register it with `claude mcp add` if you use those sessions: they'd see two connectors, and access approved through one doesn't work with the other.
 
+### ChatGPT Desktop
+
+ChatGPT Desktop starts the same local server over STDIO, with no remote hosting or tunnel. `npm run setup` prints these values with the real paths for your machine.
+
+In **Settings → MCP servers**, add a server:
+
+| Field | Value |
+| ----- | ----- |
+| Name | `sn-mcp` |
+| Type | STDIO |
+| Command | Absolute path of Node, such as `/opt/homebrew/opt/node@24/bin/node`. Plain `node` may not be found, because desktop apps don't get your shell's PATH |
+| Arguments | `/ABSOLUTE/PATH/TO/AssistMe/packages/server/dist/bin/mcp-server.js` |
+| Environment variable | `SN_MCP_CLIENT_NAME` = `ChatGPT Desktop` |
+| Working directory | `/ABSOLUTE/PATH/TO/AssistMe` |
+
+Save, then restart ChatGPT Desktop. If you'd rather edit `~/.codex/config.toml`, setup prints a block for that too. It also sets longer timeouts: the 60-second default for one tool call can be too short for a long read of many pages.
+
+Each client has its own access: what you approve for ChatGPT doesn't work in Claude, and the other way round. The popup shows which client is asking. ChatGPT doesn't get the skills, only the tools.
+
 ## 5. Try it
 
-Ask Claude:
+Ask your AI client:
 
 > List my ServiceNow instances, then show me the five most recent incidents on dev.
 
-Claude requests access and gives you a code. Open the extension popup, check that the code matches, and approve it. Access ends when it expires, when you revoke it in the popup, or when Chrome restarts.
+It requests access and gives you a code. Open the extension popup, check that the code matches, and approve it. Access ends when it expires, when you revoke it in the popup, or when Chrome restarts.
 
 ## Optional: the troubleshooting skill
 
@@ -116,6 +135,15 @@ Then reload the extension on `chrome://extensions`, and restart Claude. For Clau
 
 After upgrading Node, run `npm run setup` again: the native host records which Node to use.
 
+## Windows
+
+**Not tested on a real Windows PC yet.** The steps are the same, in PowerShell:
+
+- Keep the project and Node where only you can write. Your home folder is fine. `C:\src` isn't, because every user can write to new folders under `C:\`, and setup refuses it. Node in `C:\Program Files\nodejs` is fine.
+- Setup registers the host for your user, under `HKCU\Software\Google\Chrome\NativeMessagingHosts`, and runtime files go in `%USERPROFILE%\AppData\Local\sn-mcp`.
+- Use the setup output for the ChatGPT Desktop and Claude Code values: the paths differ. For Claude Desktop, install the same bundle.
+- Google Chrome only, not Edge.
+
 ## Uninstalling
 
 ```bash
@@ -126,7 +154,7 @@ This stops the native host and removes its Chrome manifest, program files, socke
 
 ## Troubleshooting
 
-Logs are in `~/Library/Application Support/sn-mcp/broker.log`. They hold metadata only, never record content or credentials.
+Logs are in `~/Library/Application Support/sn-mcp/broker.log` (on Windows, `%USERPROFILE%\AppData\Local\sn-mcp\broker.log`). They hold metadata only, never record content or credentials.
 
 | What you see | What it means | What to do |
 | ------------ | ------------- | ---------- |
@@ -140,6 +168,7 @@ Logs are in `~/Library/Application Support/sn-mcp/broker.log`. They hold metadat
 | `TIMEOUT` | ServiceNow took too long | Ask Claude to narrow the query, or raise the timeout in the extension settings |
 | `RESPONSE_TOO_LARGE` | One value is larger than the per-request limit | Raise "Max response" in the extension settings |
 | `SCOPE_UNKNOWN` right after you approved, in a Code session inside Claude Desktop | That session has two connectors, usually the Desktop one plus a `claude mcp add` registration. Access approved through one doesn't work with the other | Remove the extra one with `claude mcp remove sn-mcp`, fully quit and reopen Claude Desktop (Cmd+Q), then start a new session |
+| ChatGPT Desktop can't start `sn-mcp` | Usually the Command is plain `node`, or Node was upgraded and the path changed | Run `npm run setup` again and copy the printed Command |
 | Tools are missing or out of date in Claude | Claude is running an old build | Fully quit and reopen Claude Desktop (Cmd+Q), or start a new Claude Code session |
 | You moved the project, and the extension still uses the old folder | Reloading doesn't change the folder | Remove the extension and use **Load unpacked** on the new folder, then add your instance again |
 | The extension shows a different ID | It was loaded from another folder or build | Remove it, and load `packages/extension/dist` again |

@@ -2,7 +2,7 @@
 
 ## Purpose
 
-A general-purpose, **read-only** connector that lets native Claude (Claude Desktop first, Claude Code also) investigate ServiceNow instances using the user's existing, authenticated Chrome session.
+A general-purpose, **read-only** connector that lets native Claude (Claude Desktop first, Claude Code also) investigate ServiceNow instances using the user's existing, authenticated Chrome session. ChatGPT Desktop can use the same server as a local STDIO client (ADR-014).
 
 **Product scope:** Native Claude + Local ServiceNow MCP Server + Chrome Session Bridge + Optional ServiceNow Skills.
 
@@ -60,6 +60,7 @@ We are not building another AI assistant. Claude provides the reasoning, MCP pro
 - `npm test` — unit + mocked integration tests (vitest)
 - `npm run lint` — Biome lint + format check
 - `npm run e2e:live -- --instance <alias>` — opt-in live tests against a real instance (T-034)
+- `npm run e2e:chatgpt -- --instance <alias>` (or `--discovery-only`) — live run through the engine inside ChatGPT Desktop (T-043)
 - `npm run setup` / `npm run uninstall` — local install of native host manifest etc. (T-037)
 - `npm run pack:mcpb` / `npm run pack:skill` — build the Claude Desktop bundle and the skill zip
 

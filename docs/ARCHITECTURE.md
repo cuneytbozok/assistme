@@ -57,7 +57,9 @@ ServiceNow Table API / Stats API  →  JSON
 | Extension ↔ ServiceNow   | Side-effecting endpoints, credential leakage       | GET-only fixed templates, param allowlist, redirect manual, denylist tables, password-field stripping                                                                 |
 | ServiceNow data ↔ Claude | Prompt injection inside records                    | Treated as data; it never affects policy, which is enforced in code                                                                                                   |
 
-Out of scope: malware running as the same macOS user (it can read Chrome's profile anyway). Documented in `SECURITY.md` (T-021).
+On Windows the socket is a named pipe and folder modes are an ACL (ADR-015).
+
+Out of scope: malware running as the same OS user (it can read Chrome's profile anyway). Documented in `SECURITY.md` (T-021).
 
 ## 4. Bridge & broker (ADR-001)
 

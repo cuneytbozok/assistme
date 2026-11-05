@@ -52,6 +52,8 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 | T-040 | Full acceptance matrix                          | 037      | DONE        |
 | T-041 | Recovery drill + install from scratch (M6)      | 040      | DONE        |
 | T-042 | Compare within one instance, and record versions | 032     | DONE        |
+| T-043 | ChatGPT Desktop as a local STDIO client         | 037      | IN_PROGRESS |
+| T-044 | Windows support                                 | 037      | BLOCKED     |
 
 ---
 
@@ -1487,3 +1489,39 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 - **Mock evidence:** `npm run build`, `npm run lint` and `npm run pack:mcpb` exit 0; `npm test`: 261, 460 and 311 passed. Bundle 0.1.4 at `packages/server/sn-mcp.mcpb`; `tools/list` 11,938 of 12,000 bytes. Mutation checks: same-record refusal off, `match_b` requirement off, payload expansion off, payload bookkeeping shown, repeated elements allowed, and the cut line's next call pointing at `payload.script` each fail tests.
 - **Still unverified:** a cut line live; payload forms beyond the 9 pairs checked; `compare_records` between two instances (AC-8). The skills weren't updated: the tool description and `docs/TOOLS.md` carry the usage, and a change would need another upload.
 - **Done by the user's decision (2026-11-05):** the user accepted AC2 on this evidence, without a live attempt to reach another instance. That check stays with T-015 and AC-6, AC-7 and AC-8. AC-8 stays open.
+
+### T-043 — ChatGPT Desktop as a local STDIO client
+
+- **Status:** IN_PROGRESS
+- **Purpose:** Let ChatGPT Desktop use the connector as a local STDIO client, reusing the server, broker and extension, with no remote hosting, tunnel or new transport. Requested by the user on 2026-11-05. Claude Desktop and Claude Code stay compatible.
+- **Dependencies:** T-037
+- **Deliverables:** `install/client-config.ts` (the exact values, printed by `npm run setup`), client-neutral wording in the extension, `packages/server/test/client-e2e.test.ts`, `test/e2e/chatgpt-client.ts` (`npm run e2e:chatgpt`), `docs/INSTALL.md`, ADR-014.
+- **Acceptance criteria:**
+  1. The values come from the real build and work with no shell PATH.
+  2. Tool discovery: all 14 tools in ChatGPT's own engine.
+  3. Broker connectivity through the real extension.
+  4. Per-client authorization, live: access approved for ChatGPT can't be claimed or used by another client.
+  5. Claude Desktop and Claude Code unaffected: the protocol, tools and authorization are unchanged, and existing tests pass.
+- **Verification:** `npm test`; `npm run e2e:chatgpt -- --instance <alias>`, which needs one approval from the user.
+- **Evidence so far (2026-11-05):**
+  - **Live, discovery only (`docs/evidence/T-043/discovery.json`):** the engine inside `/Applications/ChatGPT.app` (codex-cli 0.166.0-alpha.6), with a throwaway `CODEX_HOME` holding the printed values, started the built server, listed 14 tools all marked read-only, and `list_instances` returned 1 instance through the real broker and extension. No model and no sign-in were involved.
+  - **Mock:** `client-e2e.test.ts` runs the built server over real STDIO against the real broker and real `authz.ts`/`grants.ts`. Removing the client check from `claim` fails it.
+- **Still unverified:** AC4 live. Adding the server in ChatGPT Desktop's own settings window and using it from a chat: the engine is the app's, but the window and the model weren't exercised. Whether the app's chat surfaces all 14 tools the same way.
+
+### T-044 — Windows support
+
+- **Status:** BLOCKED
+- **Purpose:** Run the connector on Windows with the same security rules. Requested by the user on 2026-11-05.
+- **Dependencies:** T-037
+- **Deliverables:** `native-host/windows.ts`; named pipe in place of the socket; ACLs in place of modes; `.cmd` wrapper and registry entry in place of the macOS host manifest folder; setup, uninstall and `pack:skill` working on Windows; `win32` in the bundle manifest; `.github/workflows/windows.yml`; ADR-015.
+- **Acceptance criteria:**
+  1. `npm run setup` and `npm run uninstall` work on Windows, and setup refuses folders other users can write to.
+  2. Chrome starts the host through the registry entry and wrapper.
+  3. The runtime folder is limited to the current user.
+  4. The MCP server authenticates over the pipe.
+  5. A real instance reads live on Windows, in Chrome, from each client in use.
+  6. macOS behaviour is unchanged.
+- **Blocker:** this project has only been developed and run on a Mac, and no Windows machine is available. Nothing here has ever run on Windows. AC1 to AC4 need the CI job, which only runs once the workflow is pushed (the user's decision). AC5 needs a real Windows PC.
+- **Evidence:** —
+- **What was checked on the Mac (2026-11-05), which isn't evidence of Windows working:** the Windows logic in `windows.test.ts` (ACL decisions, pipe names, wrapper quoting, registry arguments), AC6 by the full test suite, and the live ChatGPT run going through the changed broker code.
+

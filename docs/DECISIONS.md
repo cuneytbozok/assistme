@@ -315,3 +315,27 @@ Format: Status · Context · Decision · Alternatives considered · Consequences
   - The task said to confirm the real fields and format live first. This was built first instead, because the live test is the user's, later. The first live run confirmed it for one script include (`mode: elements`, no assumed field missing). The second met a `sys_script` pair where one payload didn't parse, and the fallback worked: a less readable diff, not a wrong one.
   - **"One record" was wrong (third live run).** 21 of 25 pairs fell back to raw text, because a payload often holds other records after the main one (`sys_translated_text`, `sys_es_latest_script`). The main record is now the only one, or the one the root's `table` attribute names; with no way to tell, it's still raw text, never a guess. The others stay in the comparison as whole XML, so nothing is dropped. The fourth live run read all 9 pairs it checked by element.
   - Finding the versions takes a `query_records` call first.
+
+## ADR-014 — ChatGPT Desktop as a local STDIO client
+
+- **Status:** Accepted (2026-11-05). Requested by the user, including "no remote hosting, tunnels, or additional MCP transports".
+- **Context:** ChatGPT Desktop's settings can register a local server over STDIO. The app bundles the Codex engine and shares its `~/.codex/config.toml` format. OpenAI's help for ChatGPT on the web says it only connects to remote servers; that doesn't apply to this path.
+- **Decision:**
+  - Same server entry as Claude Code (`packages/server/dist/bin/mcp-server.js`), with `SN_MCP_CLIENT_NAME=ChatGPT Desktop`. No code path depends on the client.
+  - `npm run setup` prints the exact values. The command is an absolute Node path, since desktop apps don't get the shell's PATH, using the PATH entry where one exists, because Homebrew's resolved path names the version.
+  - Timeouts of 30 s and 360 s where they can be set (`config.toml`): the engine's 60 s tool default is shorter than a long paged read.
+  - The extension's wording says "AI assistant", not "Claude". The label stays self-reported display text; authorization is by per-process client key, as before.
+  - This registers no model provider and adds no chat or backend, so rule 10 is unaffected.
+- **Consequences:** Live testing can use the app's own engine through `app-server`, without a model or a sign-in. Skills aren't part of this: only the tools are available in ChatGPT.
+
+## ADR-015 — Windows support
+
+- **Status:** Accepted (2026-11-05), requested by the user. **Implemented without ever running on Windows** (T-044 is BLOCKED).
+- **Context:** The broker's protection relies on a 0700 folder, a 0600 socket file and owner checks, none of which exist on Windows.
+- **Decision:** Same broker, handshake and protocol, with these replacements:
+  - **Endpoint:** a named pipe named from a hash of the runtime folder. Node can't set a pipe's DACL, so the Windows default applies: full control for the creator, SYSTEM and administrators, read for others. A process can only use the pipe with write access, and it must then pass the mutual HMAC proof, whose key is in the protected folder. An impostor pipe learns only the `hello` metadata, as on macOS; libuv's first-instance flag makes the broker's own listen fail rather than share a name.
+  - **Runtime folder:** `%USERPROFILE%\AppData\Local\sn-mcp`, from the home folder rather than `%LOCALAPPDATA%`, because Chrome and AI clients pass different environments. `icacls` sets its ACL to the current user's SID at every start, failing closed (exit 78). It enforces rather than checks, and SIDs avoid localized names.
+  - **Install safety:** every folder above the node, host, wrapper and manifest paths is read through PowerShell's `Get-Acl`, by SID. Write access for anyone but the user, SYSTEM, administrators and TrustedInstaller refuses the install, the same rule as macOS. So does a failed check. The drive root is skipped.
+  - **Chrome:** `native-host.cmd` plus `HKCU\Software\Google\Chrome\NativeMessagingHosts\com.snmcp.bridge`, for this user only.
+- **Consequences:** A clone in `C:\src` or a Node in a shared tools folder is refused, since they inherit "Authenticated Users: Modify" from `C:\`. The code stays in the home folder, as on macOS. Chrome only; Edge has a separate registry path.
+

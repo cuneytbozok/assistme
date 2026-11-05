@@ -115,8 +115,8 @@ Principle: optimize *how* Claude retrieves information, not *how much* it may in
 
 ### FR-9 Local installation
 
-- macOS, Node ≥22.18 (developed on 24).
-- `npm run setup` builds the project and installs the native-host manifest. The user loads the unpacked extension and installs the `.mcpb` or registers in Claude Code.
+- macOS. Windows support is written but hasn't run on Windows yet (T-044). Node ≥22.18 (developed on 24).
+- `npm run setup` builds the project and installs the native-host manifest. The user loads the unpacked extension and installs the `.mcpb`, registers in Claude Code, or registers in ChatGPT Desktop (ADR-014).
 - No corporate credentials and no separate LLM API key are needed.
 
 ## 4. Security rules

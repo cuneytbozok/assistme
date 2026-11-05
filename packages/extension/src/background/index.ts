@@ -76,7 +76,7 @@ async function notifyRequest(requestId: string): Promise<void> {
     await chrome.notifications.create(`req:${r.requestId}`, {
       type: 'basic',
       iconUrl: chrome.runtime.getURL('icons/icon128.png'),
-      title: 'Claude is asking for ServiceNow access',
+      title: 'An AI assistant is asking for ServiceNow access',
       message: `${r.clientLabel.name.slice(0, 40)} → ${r.instances.join(' + ')} · code ${code}`,
       contextMessage: 'Click the extension icon to approve or deny.',
       priority: 2,

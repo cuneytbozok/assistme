@@ -1,0 +1,28 @@
+{
+  "at": "2026-11-05T12:19:42.204Z",
+  "engine_is_the_one_inside_the_app": true,
+  "mock": false,
+  "engine": "sn-mcp-e2e/0.166.0-alpha.6 (Mac OS 26.5.2; arm64) unknown (sn-mcp-e2e; 0)",
+  "checks": [
+    {
+      "name": "tool discovery: every tool, in the engine inside ChatGPT Desktop",
+      "pass": true,
+      "detail": {
+        "tools": 14,
+        "server_version": "0.1.5"
+      }
+    },
+    {
+      "name": "every tool is marked read-only",
+      "pass": true
+    },
+    {
+      "name": "broker connectivity: list_instances answers through the real extension",
+      "pass": true,
+      "detail": {
+        "instances": 1
+      }
+    }
+  ],
+  "passed": true
+}

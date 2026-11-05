@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * sn-mcp MCP server (stdio). Register it with Claude Desktop / Claude Code; see README.
+ * sn-mcp MCP server (stdio). Register it with a local MCP client; see docs/INSTALL.md.
  * stdout is the MCP channel, so diagnostics go to stderr only.
  */
 import { StdioServerTransport } from '@modelcontextprotocol/server/stdio';

@@ -6,10 +6,16 @@ _Current state only, rewritten on 2026-11-05. History is in `docs/TASKS.md` and 
 
 The connector is built, installed and working on the user's Mac, in Claude Desktop, against one developer instance.
 
-- **Tasks:** 40 DONE, 1 BLOCKED (T-015), 1 DROPPED (T-039).
+- **Tasks:** 40 DONE, 1 IN_PROGRESS (T-043), 2 BLOCKED (T-015, T-044), 1 DROPPED (T-039).
 - **Milestones:** M1, M3, M4, M5 and M6 achieved. M6 by the user's decision, with AC-6, AC-7 and AC-8 left open: not all 19 criteria are evidenced. M2 not achieved (T-015).
 - **Acceptance:** `docs/ACCEPTANCE.md`: 15 passed, 3 open, 1 out of scope, none failed.
-- **Next:** no task is eligible. Anything else that remains needs the user: see `docs/NEXT_STEPS.md`.
+- **Next:** finish T-043 with `npm run e2e:chatgpt -- --instance dev469966` (one approval from the user). T-044 needs a push for the CI job, then a real Windows PC. See `docs/NEXT_STEPS.md`.
+
+## T-043 and T-044
+
+**ChatGPT Desktop (T-043):** live through the engine inside `ChatGPT.app`, with a throwaway `CODEX_HOME`: discovery and broker connectivity. The per-client check on a real instance is pending. The app's own settings window and chats aren't exercised, and nothing is registered in the user's `~/.codex/config.toml`.
+
+**Windows (T-044):** the code is written and has **never run on Windows**. Only pure logic is tested on the Mac. Don't describe Windows as working until `windows.yml` and a real PC say so. `.github/workflows/windows.yml` hasn't been pushed, so it has never run and may need fixes.
 
 ## T-042: what it did and didn't show
 
@@ -37,8 +43,9 @@ Done by the user's decision. Live on `dev469966` (`docs/evidence/T-042/`): two r
 - **Instance:** `dev469966.service-now.com`, alias `dev469966`, environment dev. A personal developer instance, signed in as admin.
 - **Chrome:** unpacked extension from `packages/extension/dist`, ID `clipfeocpiljpcngmjpdbegciimchbol`.
 - **Native host:** installed by `npm run setup` from this folder. Runtime files are in `~/Library/Application Support/sn-mcp/`, which is 0700: `broker.sock`, `broker.key`, `broker.pid`, `broker.log` (metadata only). Exit codes: 64 bad origin, 78 unsafe path, 75 conflict.
-- **Claude Desktop:** the `.mcpb` bundle, version 0.1.2, named "ServiceNow (read-only)", plus both skills uploaded. Version 0.1.4 (T-042) is built at `packages/server/sn-mcp.mcpb`. It isn't known to be installed: until the user installs 0.1.3 or later, Desktop still refuses `compare_records` on a single-instance scope. The live test doesn't depend on that, because it starts the built server itself. `mcpServers` in `claude_desktop_config.json` is empty; the old entry's backup is `claude_desktop_config.json.before-sn-mcp-bundle`.
+- **Claude Desktop:** the `.mcpb` bundle, version 0.1.2, named "ServiceNow (read-only)", plus both skills uploaded. Version 0.1.5 is built at `packages/server/sn-mcp.mcpb`. It isn't known to be installed: until the user installs 0.1.3 or later, Desktop still refuses `compare_records` on a single-instance scope. The live test doesn't depend on that, because it starts the built server itself. `mcpServers` in `claude_desktop_config.json` is empty; the old entry's backup is `claude_desktop_config.json.before-sn-mcp-bundle`.
 - **Claude Code:** Code sessions inside the Desktop app use the Desktop connector and skills. Nothing is registered separately: the `sn-mcp` registration and plugin were removed, because two connectors in one session don't share scopes.
+- **ChatGPT Desktop:** installed, version 26.1029.61003, engine codex-cli 0.166.0-alpha.6. sn-mcp isn't registered in it yet: that's the user's step.
 - **Git:** `origin` is https://github.com/cuneytbozok/assistme (public). Commits use the no-reply address set in this repo's git config.
 
 ## After changing code

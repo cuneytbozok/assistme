@@ -100,6 +100,8 @@ Threat: prompt injection inside records.
 
 ### 3.8 Local runtime files
 
+On Windows, a named pipe and an ACL replace the socket file and modes. See ADR-015 for what differs, including the pipe's default DACL. None of it has run on Windows yet (T-044).
+
 - `~/Library/Application Support/sn-mcp/` (0700): `broker.sock` (0600), `broker.key` (0600, rotates per start), `broker.pid`, `broker.log` (0600, metadata only, rotated).
 - No database, no memory subsystem, no persisted ServiceNow data (ADR-010). Metadata and field caches are in-process only.
 - No secrets are committed to git.

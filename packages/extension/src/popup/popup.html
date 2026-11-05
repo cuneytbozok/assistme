@@ -17,7 +17,7 @@
         </div>
         <div>
           <h1>ServiceNow Bridge</h1>
-          <p class="tagline">Read-only access for Claude</p>
+          <p class="tagline">Read-only access for your AI assistant</p>
         </div>
       </div>
       <span id="bridge" class="pill" title="">
@@ -29,7 +29,7 @@
     <main>
       <section id="requests-section" hidden>
         <h2>Access requests</h2>
-        <p class="hint">Approve only if the code matches the one Claude showed you.</p>
+        <p class="hint">Approve only if the code matches the one your AI assistant showed you.</p>
         <ul id="requests" class="stack"></ul>
       </section>
 
@@ -79,7 +79,7 @@
         </form>
         <div id="empty" class="empty" hidden>
           <p><strong>No instances yet.</strong></p>
-          <p>Add the ServiceNow instance you want Claude to read from. Chrome will ask you to allow that one site.</p>
+          <p>Add the ServiceNow instance you want your AI assistant to read from. Chrome will ask you to allow that one site.</p>
         </div>
         <ul id="instances" class="card list"></ul>
 
@@ -87,7 +87,7 @@
       <section>
         <details id="settings" class="card settings">
           <summary>Settings</summary>
-          <p class="hint">Per-request safety limits. They apply equally to every environment and never limit how much Claude can read in total.</p>
+          <p class="hint">Per-request safety limits. They apply equally to every environment and never limit how much it can read in total.</p>
           <div id="settings-global" class="settings-grid"></div>
           <div id="settings-instances"></div>
           <label class="field">
@@ -103,7 +103,7 @@
       </section>
     </main>
 
-    <footer>Claude can only use instances you add and approve here.</footer>
+    <footer>AI assistants can only use instances you add and approve here.</footer>
     <div id="message" role="status" class="toast" hidden></div>
 
     <script type="module" src="popup.js"></script>

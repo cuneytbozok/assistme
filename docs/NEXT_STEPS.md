@@ -2,9 +2,17 @@
 
 The connector is installed and working in Claude Desktop, and every required step is done. All of these are optional.
 
-## 1. Install version 0.1.4
+## 1. Install version 0.1.5
 
-Comparing on one instance, and comparing record versions, passed live. To use them in Claude Desktop, install `packages/server/sn-mcp.mcpb` (version 0.1.4), then Cmd+Q and reopen. The extension doesn't need a reload.
+Comparing on one instance, and comparing record versions, passed live. To use them in Claude Desktop, install `packages/server/sn-mcp.mcpb` (version 0.1.5), then Cmd+Q and reopen.
+
+## ChatGPT Desktop
+
+Run `npm run setup`, and copy the printed values into **Settings → MCP servers**: see [INSTALL.md](INSTALL.md#chatgpt-desktop). Then ask it to list your instances.
+
+## Windows
+
+Windows support hasn't run on Windows yet. Two steps: push, so the Windows CI job runs; then try the install on a real PC, using [INSTALL.md](INSTALL.md#windows).
 
 ## 2. A second instance
 
