@@ -420,6 +420,46 @@ describe('a table that changes while it is read', () => {
     await h.close();
   });
 
+  it('rows whose sys_ids share an ending are never mistaken for repeats', async () => {
+    // Found live: real sys_ids often share a long suffix, and a slice of one dropped 3,225 rows.
+    const { sn } = logs(0);
+    const suffix = 'c0a80164ce9a8c0a7f3d21b5e0';
+    const all = Array.from({ length: 700 }, (_, i) => {
+      const sysId = i.toString(16).padStart(6, '0') + suffix;
+      expect(sysId).toHaveLength(32);
+      sn.insert('syslog', {
+        sys_id: sysId,
+        message: `event ${i}`,
+        sys_created_on: `2026-01-01 00:${String(Math.floor(i / 60)).padStart(2, '0')}:${String(i % 60).padStart(2, '0')}`,
+      });
+      return sysId;
+    });
+    const h = await harness({ sn });
+    const scope = await claim(h, 'dev');
+    const ids: string[] = [];
+    let hints = '';
+    let r = await h.call('query_records', {
+      scope_id: scope,
+      table: 'syslog',
+      fields: ['message'],
+      limit: 300,
+      max_chars: 4000,
+    });
+    for (;;) {
+      ids.push(...r.data.records.map((x: { sys_id: string }) => x.sys_id));
+      hints += (r.hints ?? []).join(' ');
+      if (!r.page.next_cursor) break;
+      r = await h.call('query_records', {
+        scope_id: scope,
+        cursor: r.page.next_cursor,
+        max_chars: 4000,
+      });
+    }
+    expect(ids.sort()).toEqual([...all].sort());
+    expect(hints).not.toMatch(/changed while being read/);
+    await h.close();
+  });
+
   it('a table that does not change says nothing, and the cursor stays small enough', async () => {
     const { sn } = logs(3000);
     const h = await harness({ sn });

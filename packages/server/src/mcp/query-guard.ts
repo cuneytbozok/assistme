@@ -245,7 +245,7 @@ export async function planQuery(
     const { selective, contains } = selectivity(parsed);
     if (!selective) {
       hints.push(
-        `No selective condition on ${req.table}. For faster reads add a time range (e.g. sys_created_on within_last), an exact key condition, or use aggregate_records for counts.`,
+        `No selective condition on ${req.table}. Start with a short time window (e.g. sys_created_on within_last a few minutes), or a filter from the user's issue, and widen only if needed. New rows can arrive faster than a long read can page, so it may repeat or miss rows. For counts, use aggregate_records.`,
       );
     }
     if (contains) {

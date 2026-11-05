@@ -65,9 +65,7 @@ Otherwise the connector runs twice. You can do this yourself, or tell me "B1 is 
 
 ## Latest update
 
-**Status:** done.
-
-Access now stays open for follow-up questions. To get that in Claude Desktop:
+Version 0.1.2 starts log searches small, and fixes a bug in reading long results. To get it in Claude Desktop:
 
 1. **Settings → Extensions:** remove the sn-mcp extension, then install this file again:
 

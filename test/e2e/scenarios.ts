@@ -197,6 +197,11 @@ export const SCENARIOS: {
       expectThat(ids.size === rows, `${rows - ids.size} duplicate rows`);
       // Is the table being written to while it's read? That's what moves rows between pages.
       const after = await countRows();
+      // Skipped rows must be real repeats. Far more than the table grew means rows are being lost.
+      expectThat(
+        moved <= after - before + 50,
+        `${moved} rows skipped as repeats, but the table grew by only ${after - before}`,
+      );
       return { rows, pages, rows_added_during_walk: after - before, rows_moved_and_skipped: moved };
     },
   },

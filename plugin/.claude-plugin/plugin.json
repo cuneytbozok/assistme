@@ -1,6 +1,6 @@
 {
   "name": "sn-mcp-skills",
   "description": "Two ServiceNow skills: read-only troubleshooting with the connector, and a development guide. Guidance only: they add no access.",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "author": { "name": "Cüneyt Bozok" }
 }

@@ -6,6 +6,7 @@
  * (default 20, no maximum), `include_total`, `max_chars`, or a `cursor` alone to continue.
  * Validation and defaults: query-guard (T-018). Paging and completeness: paginate/response (T-023).
  */
+import { createHash } from 'node:crypto';
 import type { McpServer } from '@modelcontextprotocol/server';
 import {
   type ErrorCode,
@@ -322,7 +323,13 @@ export function registerQueryRecords(server: McpServer, ctx: ToolContext): void 
         offset: state.offset,
         ...(state.skip ? { skip: state.skip } : {}),
         ...(state.recent ? { recent: state.recent.match(/.{10}/g) ?? [] } : {}),
-        rowId: (raw) => String(compactValue(raw.sys_id) ?? '').slice(-10),
+        // A hash of the whole id: real sys_ids often share long prefixes or suffixes, so a slice of one
+        // would make different rows look the same and drop them.
+        rowId: (raw) =>
+          createHash('sha256')
+            .update(String(compactValue(raw.sys_id) ?? ''))
+            .digest('hex')
+            .slice(0, 10),
         limit,
         pageSize: config.pageSize,
         budgetChars: maxChars - RESPONSE_OVERHEAD_CHARS,
@@ -382,7 +389,7 @@ export function registerQueryRecords(server: McpServer, ctx: ToolContext): void 
         hints.push(`Large records: the upstream page size was reduced to ${page.pageSize}.`);
       if (page.repeats > 0) {
         hints.push(
-          `This table changed while being read: ${page.repeats} row(s) moved back into this page and were left out, because you already have them. Rows added since the first page may not appear.`,
+          `This table changed while being read: ${page.repeats} row(s) moved back into this page and were left out, because you already have them. Rows added since the first page may not appear, and a long read of a busy table isn't reliable: use a short time window or a filter from the issue.`,
         );
       }
       if (page.error) hints.push(`Stopped early: ${page.error.code} — ${page.error.message}`);

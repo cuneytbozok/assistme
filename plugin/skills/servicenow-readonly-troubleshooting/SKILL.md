@@ -28,7 +28,7 @@ Be clear which instance you're on. Never move from one instance to another to ge
 1. **Pin down the symptom.** Which record, which user, what was expected, what happened, and when. Get the exact record with `get_record`. A match on several records returns `AMBIGUOUS_MATCH`, so choose one: the connector never guesses, and neither should you.
 2. **Build the timeline.** `get_record_history` shows who changed what and when, of any age. Compare it with the symptom's time.
 3. **Find what could act on it.** `search_code` for the field or table name, then read candidates whole with `get_field_content`. Check `get_related_records` for connected records.
-4. **Check the logs for that moment.** Query log tables with a narrow time range around the event.
+4. **Check the logs for that moment.** Query log tables with a narrow time range around the event, or for a live problem, the last few minutes. Add a filter from the issue. Widen only if you need to.
 5. **Form a hypothesis, then try to disprove it.** Look for evidence that would prove it wrong. Check that the script was active, that its condition held, and that nothing later overwrote the result.
 6. **Report.** What happened, the evidence, how sure you are, what you couldn't check, and what the user could do next.
 
@@ -37,7 +37,7 @@ Be clear which instance you're on. Never move from one instance to another to ge
 - Filter first, and name the fields you need. `aggregate_records` answers "how many" and "what's the distribution" without reading rows.
 - Start with `describe_table` on an unfamiliar table. It shows field types, references and inherited fields.
 - With `search_code`, pass `tables` when you can. A whole-instance search takes minutes, and it leaves "Part of the query has been ignored" banners in the user's ServiceNow session. They're harmless, but mention them if you run one.
-- On large log tables, add a time range and an exact key where you can. Prefer `starts_with` or `=` to `contains`.
+- On logs and other busy tables, start small: a time window of minutes, and an exact key where you can. A big instance can write hundreds of log rows a second, faster than a long read can page, so an open-ended walk may repeat or miss rows. Prefer `starts_with` or `=` to `contains`.
 - There's no limit on how much you may read. Continue with `page.next_cursor` when you need more, and follow the `next` calls in `omitted`.
 - A `TIMEOUT` means narrow the query, not give up.
 - An `ACL_DENIED` is an answer: the signed-in user can't read that. Tell the user, and don't look for another table to get around it.

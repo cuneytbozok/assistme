@@ -78,6 +78,31 @@ describe('tools/list', () => {
   });
 });
 
+describe('reading busy tables', () => {
+  it('tells Claude to start small, and warns on an open-ended read', async () => {
+    expect(INSTRUCTIONS).toMatch(/short recent time window/);
+    const sn = dictionaryFixture();
+    sn.insert('sys_db_object', { name: 'syslog', label: 'Log', super_class: '' });
+    sn.insert('sys_dictionary', {
+      name: 'syslog',
+      element: 'sys_created_on',
+      column_label: 'c',
+      internal_type: 'glide_date_time',
+      reference: '',
+      max_length: '40',
+      mandatory: 'false',
+      display: 'false',
+    });
+    const h = await harness({ sn });
+    const scope = await claim(h, 'dev');
+    const r = await h.call('query_records', { scope_id: scope, table: 'syslog' });
+    expect(r.hints.join(' ')).toMatch(/short time window.*may repeat or miss rows/);
+    // A broad read is still allowed: it warns, it doesn't refuse.
+    expect(r.ok).toBe(true);
+    await h.close();
+  });
+});
+
 describe('keeping access for follow-up questions', () => {
   it('tells Claude to keep the scope, and to release only when the user is finished', async () => {
     expect(INSTRUCTIONS).toMatch(/follow-up questions/);
