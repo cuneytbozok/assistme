@@ -2,6 +2,7 @@
  * Checks the logic of the T-034 live scenarios against the in-memory fake, so the first live run
  * tests the connector and not the script. A mock: never evidence of real connectivity (rule 11).
  */
+import { execFileSync } from 'node:child_process';
 import { describe, expect, it } from 'vitest';
 import { runScenarios, SCENARIOS } from '../../../test/e2e/scenarios.ts';
 import { dictionaryFixture, type FakeServiceNow } from './fake-sn.js';
@@ -125,6 +126,21 @@ function instance(
 }
 
 describe('T-034 scenario logic (mock)', () => {
+  it('the scenarios load in plain Node, as npm run e2e:live runs them', () => {
+    // Vitest compiles TypeScript that Node's strip-only mode refuses, so only this shows it.
+    const url = new URL('../../../test/e2e/scenarios.ts', import.meta.url).href;
+    const out = execFileSync(
+      process.execPath,
+      [
+        '--input-type=module',
+        '-e',
+        `const m = await import(${JSON.stringify(url)}); console.log(m.SCENARIOS.length);`,
+      ],
+      { encoding: 'utf8' },
+    );
+    expect(Number(out.trim())).toBe(SCENARIOS.length);
+  });
+
   it('every scenario passes against the fake, with no record content in the results', async () => {
     const h = await harness({ sn: instance() });
     const scope = await claim(h, 'dev');

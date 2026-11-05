@@ -29,12 +29,12 @@ export interface ScenarioResult {
 }
 
 class Check extends Error {}
+// No parameter properties here: `npm run e2e:live` runs this file in Node's strip-only mode.
 class Skip extends Error {
-  constructor(
-    message: string,
-    readonly metrics?: Record<string, unknown>,
-  ) {
+  metrics?: Record<string, unknown>;
+  constructor(message: string, metrics?: Record<string, unknown>) {
     super(message);
+    this.metrics = metrics;
   }
 }
 
