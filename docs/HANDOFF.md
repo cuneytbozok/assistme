@@ -6,9 +6,9 @@ _Last updated: 2026-11-05 (after T-039 preparation)_
 
 **All code that can be built and mock-tested is done. Everything left needs the user.**
 
-- **DONE:** T-001 to T-014, T-016 to T-034. All 14 MCP tools exist; 13 ran live on `dev469966` (T-034). `compare_records` is mock-only until a second instance exists.
+- **DONE:** T-001 to T-014, T-016 to T-034, T-038. All 14 MCP tools exist; 13 ran live on `dev469966` (T-034). `compare_records` is mock-only until a second instance exists.
 - **DROPPED by the user:** T-039 (official SDK skill).
-- **BLOCKED on the user, prepared as far as possible:** T-015, T-035, T-036, T-037, T-038. Each task's entry in TASKS lists what remains unverified.
+- **BLOCKED on the user, prepared as far as possible:** T-015, T-035, T-036, T-037. Each task's entry in TASKS lists what remains unverified.
 - **TODO, waiting on those:** T-040 (acceptance matrix), T-041 (recovery drill, install from scratch).
 - **Milestones:** M1, M3, M4 achieved. M2, M5, M6 not achieved.
 
@@ -17,7 +17,7 @@ _Last updated: 2026-11-05 (after T-039 preparation)_
 1. Done 2026-11-05: extension reloaded, T-034 live runs passed.
 2. Fully quit and reopen Claude Desktop: its `sn-mcp` server is still the old build.
 3. Claude Code: registered and skills installed for the user on 2026-11-05. In a fresh signed-in session: check `/mcp`, try a query, and ask something that should load a skill (T-035, T-038).
-4. Claude Desktop: the user installed the bundle (confirmed current: it has the filter check) and uploaded both zips. The old `sn-mcp` entry is removed from `claude_desktop_config.json` (backup: `claude_desktop_config.json.before-sn-mcp-bundle`). Next: quit and reopen, then try a query, a revoke, a logout, and Cowork (T-036, T-038).
+4. Done 2026-11-05: Claude Desktop. The bundle and skills are installed, and a real chat worked (user report). Only Cowork remains for T-036. Backup of the old config: `claude_desktop_config.json.before-sn-mcp-bundle`.
 6. Done 2026-11-05: the setup round trip on the real machine (T-037). It waits only on T-036.
 7. Dropped: the official SDK skill (T-039). The user's Claude Code has `fluent@servicenow`, and the user chose to keep it (2026-11-05). Don't ask again.
 8. A second instance for T-015, if one is available. That also allows a live `compare_records` run, which T-034 can't cover.

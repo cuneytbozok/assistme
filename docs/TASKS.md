@@ -47,7 +47,7 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 | T-035 | Claude Code registration                        | 034      | BLOCKED     |
 | T-036 | `.mcpb` Desktop Extension                       | 034      | BLOCKED     |
 | T-037 | Setup/uninstall + INSTALL.md (M5)               | 036      | BLOCKED     |
-| T-038 | Custom troubleshooting skill                    | 034      | BLOCKED     |
+| T-038 | Custom troubleshooting skill                    | 034      | DONE        |
 | T-039 | Official now-sdk skill evaluation               | 038      | DROPPED     |
 | T-040 | Full acceptance matrix                          | 037      | TODO        |
 | T-041 | Recovery drill + install from scratch (M6)      | 040      | TODO        |
@@ -1323,7 +1323,9 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 - **Blocker:** needs the user: installing the bundle in Claude Desktop, a scoped query in Desktop chat, and the Cowork result.
 - **Evidence so far (2026-11-05, not acceptance):**
   - Delivered: `packages/server/mcpb/manifest.json` (manifest 0.4), `packages/server/build.mjs` (one bundled file), `npm run pack:mcpb`, `test/mcpb.test.ts` (mock). Install steps in `docs/INSTALL.md`.
-  - Rebuilt on 2026-11-05 with the current rules. The user installed it (found in `Claude Extensions/local.mcpb.cneyt-bozok.sn-mcp`, with the filter check), and the old `sn-mcp` entry was then removed from `claude_desktop_config.json`, with a backup. Not yet used: the app hasn't been restarted.
+  - Rebuilt on 2026-11-05 with the current rules. The user installed it (found in `Claude Extensions/local.mcpb.cneyt-bozok.sn-mcp`, with the filter check), and the old `sn-mcp` entry was then removed from `claude_desktop_config.json`, with a backup. 
+  - **Used in Claude Desktop (2026-11-05, reported by the user):** after a restart, a new chat listed the instance and answered the INC0000060 question, with the user approving the code in the popup. Claude Desktop also asks for permission per tool: that is its own prompt, separate from the connector's approval code.
+  - **Only the Cowork result remains** (NEXT_STEPS part E). If the user doesn't use Cowork, record that and finish this task.
   - `npm run pack:mcpb` → `Manifest schema validation passes!`, `packages/server/sn-mcp.mcpb` at 288 kB, 2 files. Rebuilt after T-034.
   - The real bundle runs alone from an empty folder over stdio and lists the same 14 tools as the manifest. With no broker, `list_instances` gives `BRIDGE_UNAVAILABLE`.
   - **Deviation:** the task said `user_config` for log level only, but the server has no log level, and ADR-011/ARCHITECTURE §8.3 say result-shaping settings come through `user_config`. So it has four numeric shaping settings. No secrets; a test keeps it that way.
@@ -1359,7 +1361,7 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 
 ### T-038 — Custom troubleshooting skill
 
-- **Status:** BLOCKED
+- **Status:** DONE
 - **Purpose:** Optional expertise loaded on demand (FR-8.1).
 - **Dependencies:** T-034
 - **Deliverables:** `plugin/skills/servicenow-readonly-troubleshooting/SKILL.md` (frontmatter name and description; methodology; scope flow and approval code; discover → describe → narrow queries; scripts via `get_field_content`; untrusted-content reminder; freedom to investigate beyond the skill) and `references/` (logs-and-transactions, business-rule-execution, discovery-ecc, cmdb-ire, flow-designer, acl-debugging); `.claude-plugin/marketplace.json`; `npm run pack:skill` producing a Desktop-uploadable zip.
@@ -1367,8 +1369,7 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 - **Acceptance criteria:** installs in Claude Code via `/plugin marketplace add <repo>`; the zip uploads in Desktop; no reference instructs any write action; SKILL.md is ≤ 500 lines and loads references only on demand.
 - **Verification:** manual install in both clients.
 - **DoD:** —
-- **Blocker:** installing it needs the user: `/plugin marketplace add` in a signed-in Claude Code, and the zip upload in Claude Desktop.
-- **Evidence so far (2026-11-05, not acceptance):**
+- **Evidence (2026-11-05):**
   - Delivered: `plugin/skills/servicenow-readonly-troubleshooting/SKILL.md` and six `references/`, `plugin/.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`, `scripts/pack-skill.ts` + `npm run pack:skill`, `test/skill.test.ts`.
   - **Acceptance criteria that can be checked here:**
     - No write instructions ✔ test (a pattern list over all files, plus the stated ground rules). This is a text check, and the files were also written to be guidance only.
@@ -1381,7 +1382,9 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
   - **Installed in Claude Code for the user (2026-11-05):** `claude plugin marketplace add` and `claude plugin install sn-mcp-skills@sn-mcp` both succeeded, and `claude plugin list` shows it enabled.
   - **Bug found by installing:** with the plugin rooted at the repo, Claude Code copied the whole project into its cache (233 MB, including `node_modules`). The skills now live in `plugin/`, and the cache is 428 KB with both skills and no `node_modules`. A test keeps that folder to the manifest and skills.
   - After installing, the running Code session in the Desktop app listed both skills as `sn-mcp-skills:…`. `servicenow-readonly-troubleshooting` loaded there correctly (2026-11-05). After the restart it guided a real investigation of INC0000060 (timeline, then the scripts acting on `close_code`).
-  - **Unverified:** Claude actually using the skills in a signed-in session; uploading the zips in Desktop.
+  - **Claude Desktop:** the user uploaded both zips, and a later Code session in the app listed them as `anthropic-skills:servicenow-readonly-troubleshooting` and `anthropic-skills:servicenow-development-guide`.
+  - **Acceptance criteria:** installs in Claude Code ✔ (with `claude plugin marketplace add`, the CLI form of `/plugin marketplace add`); the zip uploads in Desktop ✔; no reference instructs a write ✔ (test); `SKILL.md` ≤ 500 lines, references on demand ✔.
+  - **Not shown:** a regular Desktop chat choosing a skill by itself, and a terminal session (NEXT_STEPS part D).
 
 ### T-039 — Official now-sdk skill evaluation
 
