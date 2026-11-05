@@ -1,0 +1,55 @@
+{
+  "at": "2026-11-05T12:29:03.106Z",
+  "engine_is_the_one_inside_the_app": true,
+  "mock": false,
+  "engine": "sn-mcp-e2e/0.166.0-alpha.6 (Mac OS 26.5.2; arm64) unknown (sn-mcp-e2e; 0)",
+  "second_conversation_shares_access": false,
+  "second_conversation_code": "SCOPE_UNKNOWN",
+  "checks": [
+    {
+      "name": "tool discovery: every tool, in the engine inside ChatGPT Desktop",
+      "pass": true,
+      "detail": {
+        "tools": 14,
+        "server_version": "0.1.5"
+      }
+    },
+    {
+      "name": "every tool is marked read-only",
+      "pass": true
+    },
+    {
+      "name": "broker connectivity: list_instances answers through the real extension",
+      "pass": true,
+      "detail": {
+        "instances": 1
+      }
+    },
+    {
+      "name": "the other client could not pick up the approval",
+      "pass": true
+    },
+    {
+      "name": "ChatGPT reads the instance with its approved access",
+      "pass": true,
+      "detail": {
+        "complete": true
+      }
+    },
+    {
+      "name": "the other client, given the same scope id, is refused",
+      "pass": true,
+      "detail": {
+        "code": "SCOPE_UNKNOWN"
+      }
+    },
+    {
+      "name": "after release the access is gone",
+      "pass": true,
+      "detail": {
+        "code": "SCOPE_UNKNOWN"
+      }
+    }
+  ],
+  "passed": true
+}

@@ -111,6 +111,15 @@ const check = (name: string, pass: boolean, detail?: unknown) => {
   );
 };
 
+/** The SDK answers bad input in plain text, not JSON. */
+const parseResult = (text = '{}') => {
+  try {
+    return JSON.parse(text);
+  } catch {
+    return { ok: false, error: { code: 'INVALID_INPUT', message: text.slice(0, 300) } };
+  }
+};
+
 const { child, rpc, notify } = startEngine();
 const other = new Client({ name: 'sn-mcp-isolation-check', version: '0' });
 let exitCode = 1;
@@ -156,7 +165,7 @@ try {
       tool,
       arguments: args,
     });
-    return JSON.parse(r.content?.[0]?.text ?? '{}');
+    return parseResult(r.content?.[0]?.text);
   };
 
   // Broker connectivity.
@@ -183,9 +192,9 @@ try {
     );
     const callOther = async (tool: string, args: Record<string, unknown> = {}) => {
       const r = await other.callTool({ name: tool, arguments: args });
-      return JSON.parse((r.content as { text: string }[])[0]?.text ?? '{}');
+      return parseResult((r.content as { text: string }[])[0]?.text);
     };
-    const count = { table: 'sys_user', group_by: [] as string[] };
+    const count = { table: 'sys_user' };
 
     const req = await callIn(threadA, 'request_scope', {
       instances: [alias],

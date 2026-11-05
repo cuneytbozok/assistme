@@ -12,7 +12,7 @@ Run `npm run setup`, and copy the printed values into **Settings → MCP servers
 
 ## Windows
 
-Windows support hasn't run on Windows yet. Two steps: push, so the Windows CI job runs; then try the install on a real PC, using [INSTALL.md](INSTALL.md#windows).
+Left for later, because you don't have a Windows PC. The code is written but has never run on Windows. When someone has a PC, they can try the install using [INSTALL.md](INSTALL.md#windows). Pushing also runs the Windows CI job, which needs no PC but doesn't cover real Chrome or a real instance.
 
 ## 2. A second instance
 

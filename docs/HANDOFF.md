@@ -6,16 +6,16 @@ _Current state only, rewritten on 2026-11-05. History is in `docs/TASKS.md` and 
 
 The connector is built, installed and working on the user's Mac, in Claude Desktop, against one developer instance.
 
-- **Tasks:** 40 DONE, 1 IN_PROGRESS (T-043), 2 BLOCKED (T-015, T-044), 1 DROPPED (T-039).
+- **Tasks:** 41 DONE, 2 BLOCKED (T-015, T-044), 1 DROPPED (T-039).
 - **Milestones:** M1, M3, M4, M5 and M6 achieved. M6 by the user's decision, with AC-6, AC-7 and AC-8 left open: not all 19 criteria are evidenced. M2 not achieved (T-015).
 - **Acceptance:** `docs/ACCEPTANCE.md`: 15 passed, 3 open, 1 out of scope, none failed.
-- **Next:** finish T-043 with `npm run e2e:chatgpt -- --instance dev469966` (one approval from the user). T-044 needs a push for the CI job, then a real Windows PC. See `docs/NEXT_STEPS.md`.
+- **Next:** no task is eligible. T-044 waits for someone with a Windows PC. Anything else that remains needs the user: see `docs/NEXT_STEPS.md`.
 
 ## T-043 and T-044
 
-**ChatGPT Desktop (T-043):** live through the engine inside `ChatGPT.app`, with a throwaway `CODEX_HOME`: discovery and broker connectivity. The per-client check on a real instance is pending. The app's own settings window and chats aren't exercised, and nothing is registered in the user's `~/.codex/config.toml`.
+**ChatGPT Desktop (T-043):** done, live through the engine inside `ChatGPT.app`, with a throwaway `CODEX_HOME`: discovery, broker connectivity and per-client authorization. Each conversation gets its own access. The app's own settings window and chats aren't exercised, and nothing is registered in the user's `~/.codex/config.toml`.
 
-**Windows (T-044):** the code is written and has **never run on Windows**. Only pure logic is tested on the Mac. Don't describe Windows as working until `windows.yml` and a real PC say so. `.github/workflows/windows.yml` hasn't been pushed, so it has never run and may need fixes.
+**Windows (T-044):** the user has no Windows PC and left this for the future. The code is written and has **never run on Windows**. Only pure logic is tested on the Mac. Don't describe Windows as working until `windows.yml` and a real PC say so. `.github/workflows/windows.yml` hasn't been pushed, so it has never run and may need fixes.
 
 ## T-042: what it did and didn't show
 
@@ -57,6 +57,7 @@ Done by the user's decision. Live on `dev469966` (`docs/evidence/T-042/`): two r
 
 ## Working notes
 
+- **ChatGPT live run:** `npm run e2e:chatgpt -- --instance dev469966`, about a minute, one approval. `--discovery-only` needs none.
 - **Live runs:** `npm run e2e:live -- --instance dev469966`, about 10 minutes, needs one approval from the user. `--only "a,b"` runs matching scenarios and saves to `results-partial.json`. `--dry-run` reads only the registry.
 - **Read the numbers, not just the pass count.** A live run passed while a bug dropped 3,225 rows; only the metrics showed it.
 - **Only the user approves scopes.** Don't click the approval, even if a browser tool could reach it (rule 4).

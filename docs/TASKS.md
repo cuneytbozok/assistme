@@ -52,7 +52,7 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 | T-040 | Full acceptance matrix                          | 037      | DONE        |
 | T-041 | Recovery drill + install from scratch (M6)      | 040      | DONE        |
 | T-042 | Compare within one instance, and record versions | 032     | DONE        |
-| T-043 | ChatGPT Desktop as a local STDIO client         | 037      | IN_PROGRESS |
+| T-043 | ChatGPT Desktop as a local STDIO client         | 037      | DONE        |
 | T-044 | Windows support                                 | 037      | BLOCKED     |
 
 ---
@@ -1492,7 +1492,7 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 
 ### T-043 — ChatGPT Desktop as a local STDIO client
 
-- **Status:** IN_PROGRESS
+- **Status:** DONE
 - **Purpose:** Let ChatGPT Desktop use the connector as a local STDIO client, reusing the server, broker and extension, with no remote hosting, tunnel or new transport. Requested by the user on 2026-11-05. Claude Desktop and Claude Code stay compatible.
 - **Dependencies:** T-037
 - **Deliverables:** `install/client-config.ts` (the exact values, printed by `npm run setup`), client-neutral wording in the extension, `packages/server/test/client-e2e.test.ts`, `test/e2e/chatgpt-client.ts` (`npm run e2e:chatgpt`), `docs/INSTALL.md`, ADR-014.
@@ -1503,10 +1503,15 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
   4. Per-client authorization, live: access approved for ChatGPT can't be claimed or used by another client.
   5. Claude Desktop and Claude Code unaffected: the protocol, tools and authorization are unchanged, and existing tests pass.
 - **Verification:** `npm test`; `npm run e2e:chatgpt -- --instance <alias>`, which needs one approval from the user.
-- **Evidence so far (2026-11-05):**
-  - **Live, discovery only (`docs/evidence/T-043/discovery.json`):** the engine inside `/Applications/ChatGPT.app` (codex-cli 0.166.0-alpha.6), with a throwaway `CODEX_HOME` holding the printed values, started the built server, listed 14 tools all marked read-only, and `list_instances` returned 1 instance through the real broker and extension. No model and no sign-in were involved.
+- **Evidence (2026-11-05, live, `dev469966`, one approval by the user, `docs/evidence/T-043/live-run.json`):** the engine inside `/Applications/ChatGPT.app` (codex-cli 0.166.0-alpha.6), with a throwaway `CODEX_HOME` holding the printed values, against the real broker (restarted on this build by the user's extension reload) and real extension. No model and no sign-in were involved; tools were called through `mcpServer/tool/call`.
+  - **AC2, AC3:** 14 tools, all marked read-only, server 0.1.5. `list_instances` returned 1 instance.
+  - **AC4:** a second client labelled "Claude Code" tried to claim first in every round and got nothing. ChatGPT then read a count of `sys_user` (`complete: true`). The second client, given the same scope id, got `SCOPE_UNKNOWN`. After release, so did ChatGPT.
+  - **A second conversation in the same engine, with the same scope id, also got `SCOPE_UNKNOWN`.** Each conversation has its own server process, so each needs its own approval, and access ends with the conversation's process.
+  - **AC5:** in this Code session, the real Claude Desktop connector's `list_instances` answered through the restarted broker (`connection: connected`). `npm test`: 261, 476 and 311 passed, 2 skipped (Windows CI only). `npm run lint` and `npm run pack:mcpb` exit 0.
+  - **AC1:** the command resolves to `/opt/homebrew/opt/node@24/bin/node`, not the versioned `Cellar` path, and the engine started it from a config with no shell involved.
   - **Mock:** `client-e2e.test.ts` runs the built server over real STDIO against the real broker and real `authz.ts`/`grants.ts`. Removing the client check from `claim` fails it.
-- **Still unverified:** AC4 live. Adding the server in ChatGPT Desktop's own settings window and using it from a chat: the engine is the app's, but the window and the model weren't exercised. Whether the app's chat surfaces all 14 tools the same way.
+  - **Earlier run:** `docs/evidence/T-043/discovery.json` is discovery only. A first attempt at this run stopped after the claim check on a bad argument in the test script, not the connector. Its approval was left unreleased, and unusable because its process ended, so the script's run needed a second approval.
+- **Still unverified:** adding the server in ChatGPT Desktop's own settings window, and using it from a chat. The engine is the app's, but the window and the model weren't exercised, so the form's field names come from OpenAI's docs and the user's description. Claude Desktop's data tools weren't re-run on this build.
 
 ### T-044 — Windows support
 
@@ -1521,7 +1526,7 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
   4. The MCP server authenticates over the pipe.
   5. A real instance reads live on Windows, in Chrome, from each client in use.
   6. macOS behaviour is unchanged.
-- **Blocker:** this project has only been developed and run on a Mac, and no Windows machine is available. Nothing here has ever run on Windows. AC1 to AC4 need the CI job, which only runs once the workflow is pushed (the user's decision). AC5 needs a real Windows PC.
+- **Blocker:** the user has no Windows PC (2026-11-05), and left this for someone who has one in the future. Nothing here has ever run on Windows. AC1 to AC4 need the CI job, which only runs once the workflow is pushed. AC5 needs a real Windows PC. Don't describe Windows as working until then.
 - **Evidence:** —
-- **What was checked on the Mac (2026-11-05), which isn't evidence of Windows working:** the Windows logic in `windows.test.ts` (ACL decisions, pipe names, wrapper quoting, registry arguments), AC6 by the full test suite, and the live ChatGPT run going through the changed broker code.
+- **What was checked on the Mac (2026-11-05), which isn't evidence of Windows working:** the Windows logic in `windows.test.ts` (ACL decisions, pipe names, wrapper quoting, registry arguments), AC6 by the full test suite, and the live T-043 run going through the changed broker code.
 
