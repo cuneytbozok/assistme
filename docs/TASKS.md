@@ -38,7 +38,7 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 | T-026 | `discover_tables` + `describe_table`            | 017, 023 | DONE        |
 | T-027 | `get_field_content`                             | 025      | DONE        |
 | T-028 | `aggregate_records`                             | 024      | DONE        |
-| T-029 | `get_related_records`                           | 026, 028 | TODO        |
+| T-029 | `get_related_records`                           | 026, 028 | DONE        |
 | T-030 | `get_record_history`                            | 025      | TODO        |
 | T-031 | `search_code`                                   | 026      | TODO        |
 | T-032 | `compare_records`                               | 025, 011 | TODO        |
@@ -1110,7 +1110,7 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 
 ### T-029 — `get_related_records`
 
-- **Status:** TODO
+- **Status:** DONE
 - **Purpose:** Reverse reference discovery without hard-coding.
 - **Dependencies:** T-026, T-028
 - **Deliverables:**
@@ -1123,7 +1123,21 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 - **Acceptance criteria:** a fixture CI with 25 relationships returns correct counts for all 25 across cursor pages; each relation's "list all" call works; denied tables appear in `omitted` with the reason.
 - **Verification:** `npm test`.
 - **DoD:** —
-- **Evidence:** —
+- **Evidence (2026-11-05):**
+  - Implemented: `tools/get-related-records.ts`, `MetadataService.referencesTo` (cached; references to the table or any ancestor).
+  - Tests: `test/get-related-records.test.ts` (7; mock). Root build, tests and lint exit 0.
+  - **Acceptance criteria:**
+    - 25 relationships ✔ a fixture server CI (half referencing `cmdb_ci_server`, half the parent `cmdb_ci`, with a decoy row per table) gives correct counts for all 25 across cursor pages at `max_chars` 4,000; each seen exactly once.
+    - "List all" ✔ each relation with records has a `query_records` call that, run as given, returns exactly those records, and the samples are among them.
+    - Denied tables ✔ in `omitted` with `reason: table_denied` and never queried. ACL-denied tables → `reason: acl_denied` with a retry call, and the other relations still work.
+    - `requests_used` ✔ reported; requests run with bounded parallelism (4) through the extension's queue.
+  - **Beyond the task:**
+    - Each call handles at most 60 relations (`reason: batch`, with a cursor), so one tool call stays well inside client timeouts on tables with hundreds of references. This shapes the response; it doesn't limit the total.
+    - `glide_list` fields are included and matched with `contains`.
+    - A missing record → `NOT_FOUND` instead of "no relations".
+    - A scope or session failure stops and reports; partial results keep a cursor.
+  - **Mutation checks** (each reverted): only the exact table (no ancestors), denied tables queried, list fields matched with `=`, cursor dropped on budget stop, fatal error swallowed, missing record ignored; all fail tests.
+  - **To verify live (T-034):** that `sys_dictionary.reference` filters by table name (T-017 reads it that way).
 
 ### T-030 — `get_record_history`
 

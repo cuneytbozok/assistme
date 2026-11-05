@@ -1,6 +1,6 @@
 # Handoff
 
-_Last updated: 2026-11-05 (after T-028)_
+_Last updated: 2026-11-05 (after T-029)_
 
 ## Current project state
 
@@ -57,7 +57,8 @@ _Last updated: 2026-11-05 (after T-028)_
 - **T-026 DONE:** `discover_tables`, `describe_table`; `beginTool` is the shared opening for data tools.
 - **T-027 DONE:** `get_field_content`, `field-cache.ts`, and the new `scope.check` message. **The extension must be reloaded** for it (old extensions fail closed).
 - **T-028 DONE:** `aggregate_records` (Stats API, all groups through cursors).
-- **Next task:** T-029 (`get_related_records`).
+- **T-029 DONE:** `get_related_records` (all reverse references via the dictionary, counts + samples, batches of 60 relations per call).
+- **Next task:** T-030 (`get_record_history`).
 - **Verify live in T-034:** `sysparm_offset` counts pre-ACL rows (ADR-011 addendum).
 - **Waiting on the user:** T-015 live run (second instance); `REQUEST_DENIED` vs `status: denied` (T-015 AC6); fail-closed dictionary validation (ADR-005 addendum).
 - **Role-agnostic (ADR-012, 2026-11-04):** no ServiceNow role handling of any kind. Don't add role checks, dedicated accounts or impersonation features.

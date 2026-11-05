@@ -60,6 +60,12 @@ export interface ChoiceInfo {
   sequence?: number;
 }
 
+export interface ReferencingField {
+  table: string;
+  field: string;
+  type: string;
+}
+
 export interface ResolvedPath {
   path: string;
   field: FieldInfo;
@@ -327,6 +333,31 @@ export class MetadataService {
       tables.push(current);
     }
     throw new MetadataError('INVALID_FIELD', 'Empty field path.');
+  }
+
+  /**
+   * Every dictionary field that references this table or one of its ancestors (a reference to
+   * cmdb_ci can point at a cmdb_ci_server record). Sorted by table, then field, so a cursor can
+   * walk the list.
+   */
+  referencesTo(ctx: MetaContext, table: string): Promise<ReferencingField[]> {
+    return this.cached(`${ctx.instanceKey}|referencesTo|${table}`, async () => {
+      const info = await this.table(ctx, table);
+      const rows = await this.rows(
+        ctx,
+        'sys_dictionary',
+        [
+          { field: 'reference', op: 'in', value: info.chain },
+          { field: 'element', op: 'is_not_empty' },
+        ],
+        ['name', 'element', 'internal_type'],
+        'name',
+      );
+      return rows
+        .map((r) => ({ table: str(r.name), field: str(r.element), type: str(r.internal_type) }))
+        .filter((r) => r.table && r.field)
+        .sort((a, b) => a.table.localeCompare(b.table) || a.field.localeCompare(b.field));
+    });
   }
 
   /**

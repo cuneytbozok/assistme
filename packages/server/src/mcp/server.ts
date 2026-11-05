@@ -39,6 +39,7 @@ import { registerDescribeTable } from './tools/describe-table.js';
 import { registerDiscoverTables } from './tools/discover-tables.js';
 import { registerGetFieldContent } from './tools/get-field-content.js';
 import { registerGetRecord } from './tools/get-record.js';
+import { registerGetRelatedRecords } from './tools/get-related-records.js';
 import { registerQueryRecords } from './tools/query-records.js';
 
 export { ScopeIdInput, UNTRUSTED_NOTE };
@@ -405,6 +406,7 @@ export function createMcpServer(
   registerDescribeTable(server, tools);
   registerGetFieldContent(server, tools);
   registerAggregateRecords(server, tools);
+  registerGetRelatedRecords(server, tools);
 
   return server;
 }
