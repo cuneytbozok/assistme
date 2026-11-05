@@ -161,7 +161,8 @@ describe.runIf(realWindows)('T-044 on real Windows (CI only)', () => {
     const dir = defaultRuntimeDir();
     const [folder] = readAcls([dir]);
     const sid = currentUserSid();
-    expect(folder?.aces.every((a) => a.sid === sid)).toBe(true);
+    expect(folder?.aces.filter((a) => a.sid !== sid)).toEqual([]);
+    expect(folder?.owner).toBe(sid);
     expect(aclProblem(folder as PathAcl, sid)).toBeUndefined();
 
     // The MCP server's real handshake, over the real pipe.
