@@ -1,0 +1,81 @@
+{
+  "note": "Live run against a real instance. Shapes, counts and sizes only; no record content.",
+  "started": "2026-11-05T12:04:49.873Z",
+  "finished": "2026-11-05T12:05:05.248Z",
+  "instance": "dev469966",
+  "env": "dev",
+  "tools": 14,
+  "tools_list_bytes": 11938,
+  "released": true,
+  "counts": {
+    "pass": 2,
+    "fail": 0,
+    "skip": 0
+  },
+  "results": [
+    {
+      "name": "compare_records: two records on one instance (T-042)",
+      "status": "pass",
+      "metrics": {
+        "pages": 4,
+        "script_diff_lines": 850,
+        "script_diff_applied": true,
+        "inline_fields": 1,
+        "lines_cut": 0
+      },
+      "measure": {
+        "calls": 14,
+        "max_result_chars": 15017,
+        "requests_used": 5
+      }
+    },
+    {
+      "name": "compare_records: two versions from sys_update_version (T-042)",
+      "status": "pass",
+      "metrics": {
+        "mode": "elements",
+        "versions_of_record": 2,
+        "record_table": "sys_script",
+        "assumed_fields_missing": [],
+        "payload_type": "compressed",
+        "payload_chars": [
+          2777,
+          2894
+        ],
+        "payload_lines": [
+          20,
+          20
+        ],
+        "payload_root": "record_update",
+        "payload_has_cdata": true,
+        "payload_elements": 46,
+        "pages": 1,
+        "diff_fields": 1,
+        "diffs_applied": 1,
+        "script_diff_lines": 9,
+        "inline_fields": 8,
+        "inline_field_names": [
+          "merge_base",
+          "payload_hash",
+          "source",
+          "source_table",
+          "state",
+          "sys_recorded_at",
+          "update_guid",
+          "update_guid_history"
+        ],
+        "only_on_one_side": 1,
+        "ignored_fields": 13,
+        "lines_cut": 0,
+        "pairs_checked": 9,
+        "pairs_raw": 0,
+        "raw_shapes": []
+      },
+      "measure": {
+        "calls": 39,
+        "max_result_chars": 13949,
+        "requests_used": 58
+      }
+    }
+  ]
+}

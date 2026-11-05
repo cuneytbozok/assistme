@@ -4,17 +4,9 @@ The connector is installed and working in Claude Desktop, and every required ste
 
 ## 1. The live test for T-042
 
-The third run showed a changed script's diff applying back exactly, but as raw XML: most payloads hold several records, which the code didn't expect. That's fixed, and the fix needs one more run. To finish:
+The fourth run showed what the task asked for: two versions of a script compared by element, and the diff applied back exactly. What remains is your decision on one criterion: that a single-instance scope can't reach another instance can't be tried live without a second instance. It rests on mock tests and the extension being unchanged.
 
-1. Run the test again. It needs one approval code in the extension popup.
-2. If it reports `SKIP`, none of them changed a script. In ServiceNow, change the script of a script include you can spare and save it, then run it again. That's your edit on your dev instance: the connector only reads.
-3. Tell me when it's done. I'll read the numbers, and record the result.
-
-```bash
-npm run e2e:live -- --instance dev469966 --only "compare_records"
-```
-
-To use this in Claude Desktop, install the new bundle `packages/server/sn-mcp.mcpb` (version 0.1.4), then Cmd+Q and reopen. The test doesn't need it, and the extension doesn't need a reload.
+To use this in Claude Desktop, install the new bundle `packages/server/sn-mcp.mcpb` (version 0.1.4), then Cmd+Q and reopen. The extension doesn't need a reload.
 
 ## 2. A second instance
 

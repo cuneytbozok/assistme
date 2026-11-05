@@ -5,8 +5,8 @@
  * Expected: `<record_update table="t"><t action="..."><field>value</field>...</t>...`, with scripts
  * in CDATA. Seen live (T-042): `t` is often followed by other records, such as
  * `sys_translated_text` and `sys_es_latest_script`, which are kept as whole XML under
- * `record:<name>`, so nothing is dropped. Whether the root always names its table is not yet seen
- * live: several records with no way to tell the main one return undefined. Anything else returns undefined, and the caller diffs the raw text instead, so another
+ * `record:<name>`, so nothing is dropped. The root named its table on all 9 pairs of one live run,
+ * but several records with no way to tell the main one return undefined. Anything else returns undefined, and the caller diffs the raw text instead, so another
  * form gives a less readable diff but never a wrong one.
  *
  * The content is untrusted: no DTDs or custom entities, one forward pass (no backtracking over the

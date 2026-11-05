@@ -9,17 +9,15 @@ The connector is built, installed and working on the user's Mac, in Claude Deskt
 - **Tasks:** 39 DONE, 2 BLOCKED (T-015, T-042), 1 DROPPED (T-039).
 - **Milestones:** M1, M3, M4, M5 and M6 achieved. M6 by the user's decision, with AC-6, AC-7 and AC-8 left open: not all 19 criteria are evidenced. M2 not achieved (T-015).
 - **Acceptance:** `docs/ACCEPTANCE.md`: 15 passed, 3 open, 1 out of scope, none failed.
-- **Next:** no task is eligible. T-042's parser changed after its third live run, so it needs a fourth, by the user. Anything else that remains needs the user: see `docs/NEXT_STEPS.md`.
+- **Next:** no task is eligible. T-042 passed its fourth live run, and waits only for the user's decision on AC2. Anything else that remains needs the user: see `docs/NEXT_STEPS.md`.
 
 ## T-042: what's unverified
 
-Three live runs on `dev469966`, 2026-11-05, each 2 of 2 passed (`docs/evidence/T-042/`). A fourth is needed, because the parser changed after the third.
+Four live runs on `dev469966`, 2026-11-05, each 2 of 2 passed (`docs/evidence/T-042/`). The fourth, on version 0.1.4's parser, is the one that counts.
 
-- **Confirmed live, on one instance:** two records compare (an 850-line script diff applied back exactly, with per-side errors), and `sys_update_version` has every assumed field. `payload` (dictionary type `compressed`) reads as `record_update` XML with CDATA. A changed script's diff applied back exactly as raw XML (AC3, third run).
-- **Found live:** 21 of 25 pairs were raw text, because payloads often hold other records after the main one: `sys_translated_text` with `delete_multiple`, and `sys_es_latest_script`. A version can also have action `DELETE`. "One record" was wrong.
-- **Not live yet (version 0.1.4):** the main record is the one the root's `table` attribute names, with the others kept as whole XML under `payload.record:<name>`. **Whether real roots carry that attribute hasn't been seen:** if not, these pairs stay raw text, and `raw_shapes` shows `root_table` missing.
-- **Also not live:** reaching another instance (no second instance exists; mock and the unchanged extension only), and an over-long line being cut.
-- After the next run, read `mode`, `script_diff_lines`, `diffs_applied`, `pairs_checked`, `pairs_raw`, `raw_shapes` and `lines_cut`.
+- **Confirmed live, on one instance:** two records compare (an 850-line script diff applied back exactly, with per-side errors). Two versions of a `sys_script` compare by element: `script_diff_lines` 9, `diffs_applied` 1, `pairs_raw` 0 of 9 pairs checked, 0 lines cut. `sys_update_version` has every assumed field, and `payload` (dictionary type `compressed`) reads as `record_update` XML with CDATA, often with other records after the main one.
+- **Waiting on the user's decision:** AC2 can't be tried live without a second instance. It rests on mock tests and no change under `packages/extension` or `packages/shared`.
+- **Not live:** an over-long line being cut. Forms beyond the 9 pairs checked may still come back as raw text.
 
 ## Decisions made by the user (2026-11-05)
 
