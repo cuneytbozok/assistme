@@ -2,9 +2,10 @@
  * Reads the XML copy of a record in `sys_update_version.payload` (T-042), so two versions can be
  * diffed element by element instead of as XML text.
  *
- * ASSUMED, NOT YET SEEN LIVE: `<record_update ...><table action="..."><field>value</field>...`
- * with one record, and scripts in CDATA. Anything else returns undefined, and the caller diffs the
- * raw text instead, so a wrong assumption gives a less readable diff but never a wrong one.
+ * Expected: `<record_update ...><table action="..."><field>value</field>...` with one record, and
+ * scripts in CDATA. Seen live on one instance, for one script include (T-042). Other record types
+ * are unseen. Anything else returns undefined, and the caller diffs the raw text instead, so another
+ * form gives a less readable diff but never a wrong one.
  *
  * The content is untrusted: no DTDs or custom entities, one forward pass (no backtracking over the
  * payload), and only the five standard entities and numeric references are decoded. It's a reader

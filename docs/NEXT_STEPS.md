@@ -4,17 +4,17 @@ The connector is installed and working in Claude Desktop, and every required ste
 
 ## 1. The live test for T-042
 
-The code is finished and tested against mocks only. Whenever you like:
+The first run passed, but the two versions it found had the same script, so the script diff itself hasn't been shown live. To finish:
 
-1. Install the new bundle `packages/server/sn-mcp.mcpb` (version 0.1.3) in Claude Desktop, then Cmd+Q and reopen. The extension doesn't need a reload: nothing in it changed.
-2. Run the test below. It needs one approval code in the extension popup, and should take a minute or two.
+1. Run the test again. It now looks through up to 25 records for a pair of versions with a changed script. It needs one approval code in the extension popup.
+2. If it reports `SKIP`, none of them changed a script. In ServiceNow, change the script of a script include you can spare and save it, then run it again. That's your edit on your dev instance: the connector only reads.
 3. Tell me when it's done. I'll read the numbers, and record the result.
 
 ```bash
 npm run e2e:live -- --instance dev469966 --only "compare_records"
 ```
 
-If it reports `SKIP` for versions, no record on the instance has two versions yet. Save a script include twice in ServiceNow, then run it again.
+To use this in Claude Desktop, install the new bundle `packages/server/sn-mcp.mcpb` (version 0.1.3), then Cmd+Q and reopen. The test doesn't need it, and the extension doesn't need a reload.
 
 ## 2. A second instance
 

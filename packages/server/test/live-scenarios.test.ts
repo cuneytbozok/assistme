@@ -174,6 +174,14 @@ describe('T-034 scenario logic (mock)', () => {
     expect(r?.metrics?.payload_elements).toBeUndefined();
   });
 
+  it('T-042 versions: versions with the same script are a skip, not a pass, with the metrics', async () => {
+    const r = await versions([xml('same\nscript'), xml('same\nscript').replace('true', 'false')]);
+    expect(r?.status).toBe('skip');
+    expect(r?.note).toMatch(/none changed a script/);
+    expect(r?.metrics).toMatchObject({ mode: 'elements', pairs_checked: 1, script_diff_lines: 0 });
+    expect(r?.metrics?.inline_field_names).toContain('payload.active');
+  });
+
   it('T-042 versions: no record with two versions is a skip that says what to do', async () => {
     const r = await versions([xml('only one')]);
     expect(r?.status).toBe('skip');

@@ -1,0 +1,68 @@
+{
+  "note": "Live run against a real instance. Shapes, counts and sizes only; no record content.",
+  "started": "2026-11-05T11:54:45.944Z",
+  "finished": "2026-11-05T11:54:50.844Z",
+  "instance": "dev469966",
+  "env": "dev",
+  "tools": 14,
+  "tools_list_bytes": 11938,
+  "released": true,
+  "counts": {
+    "pass": 2,
+    "fail": 0,
+    "skip": 0
+  },
+  "results": [
+    {
+      "name": "compare_records: two records on one instance (T-042)",
+      "status": "pass",
+      "metrics": {
+        "pages": 4,
+        "script_diff_lines": 850,
+        "script_diff_applied": true,
+        "inline_fields": 1,
+        "lines_cut": 0
+      },
+      "measure": {
+        "calls": 14,
+        "max_result_chars": 15017,
+        "requests_used": 5
+      }
+    },
+    {
+      "name": "compare_records: two versions from sys_update_version (T-042)",
+      "status": "pass",
+      "metrics": {
+        "mode": "elements",
+        "versions_of_record": 2,
+        "record_table": "sys_script_include",
+        "assumed_fields_missing": [],
+        "payload_type": "compressed",
+        "payload_chars": [
+          9905,
+          9895
+        ],
+        "payload_lines": [
+          188,
+          188
+        ],
+        "payload_root": "record_update",
+        "payload_has_cdata": true,
+        "payload_elements": 23,
+        "pages": 1,
+        "diff_fields": 0,
+        "diffs_applied": 0,
+        "script_diff_lines": 0,
+        "inline_fields": 7,
+        "only_on_one_side": 0,
+        "ignored_fields": 13,
+        "lines_cut": 0
+      },
+      "measure": {
+        "calls": 6,
+        "max_result_chars": 13949,
+        "requests_used": 9
+      }
+    }
+  ]
+}

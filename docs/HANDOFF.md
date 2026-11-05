@@ -9,15 +9,16 @@ The connector is built, installed and working on the user's Mac, in Claude Deskt
 - **Tasks:** 39 DONE, 2 BLOCKED (T-015, T-042), 1 DROPPED (T-039).
 - **Milestones:** M1, M3, M4, M5 and M6 achieved. M6 by the user's decision, with AC-6, AC-7 and AC-8 left open: not all 19 criteria are evidenced. M2 not achieved (T-015).
 - **Acceptance:** `docs/ACCEPTANCE.md`: 15 passed, 3 open, 1 out of scope, none failed.
-- **Next:** no task is eligible. T-042 is built and passes mock tests, and waits for the user's live test. Anything else that remains needs the user: see `docs/NEXT_STEPS.md`.
+- **Next:** no task is eligible. T-042 passed a first live run, but its version script diff (AC3) still needs one more live run by the user. Anything else that remains needs the user: see `docs/NEXT_STEPS.md`.
 
 ## T-042: what's unverified
 
-Nothing below has run against a real instance:
+First live run on `dev469966`, 2026-11-05: 2 of 2 passed (`docs/evidence/T-042/first-live-run.json`).
 
-- `compare_records` hasn't run live at all.
-- **`sys_update_version`'s real fields and payload format are assumed, from general knowledge of ServiceNow.** The code assumes `name` is `<table>_<sys_id>` and `payload` is `<record_update ...><table action="..."><field>…`, with one record. If that's wrong, `payload` is compared as raw text with a hint: less readable, still exact.
-- After the live run, read the metrics, not only the pass: `mode` ("elements" is what's assumed; "raw" passes, but means the assumption is wrong), `assumed_fields_missing`, `payload_root`, `payload_lines`, `diffs_applied`, `lines_cut`. Then update the assumption notes in `docs/TOOLS.md` and `update-payload.ts`, and T-042's status.
+- **Confirmed live, on one instance:** two records compare (an 850-line script diff applied back exactly, with per-side errors), and `sys_update_version` has every assumed field. Its `payload` (dictionary type `compressed`) reads as multi-line `record_update` XML with CDATA, and was compared by element.
+- **Not shown live:** a script diff between two versions (AC3). The pair found had no script change: `diff_fields` 0, `diffs_applied` 0. The scenario now searches up to 25 records and skips, rather than passes, if none changed a script. That rewrite hasn't run live.
+- **Also not live:** reaching another instance (no second instance exists; mock and the unchanged extension only), an over-long line being cut, and record types other than one script include.
+- After the next run, read `script_diff_lines`, `diffs_applied`, `pairs_checked`, `mode` and `lines_cut`.
 
 ## Decisions made by the user (2026-11-05)
 

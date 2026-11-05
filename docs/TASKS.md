@@ -1462,18 +1462,17 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 - **Decision (user, 2026-11-05):** no extra protection for `sys_update_version` payloads. They're XML copies of records, so field-level credential protection doesn't look inside them. The user accepts this. Don't add a guard, and don't describe payloads as credential-free.
 - **Verification:** `npm test`. Live scenario added to `test/e2e/scenarios.ts`; the **user will run the live test later**, in their own time, so leave it clearly pending.
 - **DoD:** bundle version bumped and rebuilt; record what remains unverified. AC-8 stays open until two real instances are compared.
-- **Blocked (2026-11-05):** the code and mock tests are finished, and this waits only for the user's live test (`docs/NEXT_STEPS.md`). No live run was started and no scope requested in this work. The task said to confirm the format live first; it was built first instead, on an assumption (ADR-013).
-- **Evidence so far (2026-11-05, mock only, so not connectivity evidence; rule 11):**
-  - `npm run build`, `npm run lint` and `npm run pack:mcpb` exit 0; `npm test`: 261, 442 and 311 passed. Bundle 0.1.3 at `packages/server/sn-mcp.mcpb`; `tools/list` 11,938 of 12,000 bytes. No change under `packages/extension` or `packages/shared`.
-  - AC1 (mock): two records on a single scope, with per-side `AMBIGUOUS_MATCH` and `NOT_FOUND`. A record compared with itself is refused.
-  - AC2 (mock): no read reaches the other instance's fake, `instance` isn't an input, and cursors from another instance or pair are refused.
-  - AC3 (mock): the `payload.script` diff applies back exactly, and so does a raw diff in 8 other payload forms.
-  - AC4 (mock): bookkeeping is listed in `ignored_fields`, an over-long line is reported with a read of the whole payload on each side, and which comparison was used is in `hints`.
-  - Mutation checks: same-record refusal off, `match_b` requirement off, payload expansion off, payload bookkeeping shown, repeated elements allowed, and the cut line's next call pointing at `payload.script` each fail tests.
-- **Unverified:**
-  - Nothing here has run live, including `compare_records` itself.
-  - **The real fields and payload format of `sys_update_version` have never been read.** Assumed: `name` is `<table>_<sys_id>`, and `payload` is `<record_update ...><table action="..."><field>…` with one record. A wrong format falls back to a raw text diff with a hint. The new scenario reports `mode`, `assumed_fields_missing`, `payload_root`, `payload_lines`, `payload_has_cdata`, `diffs_applied` and `lines_cut`: read those, not only the pass.
-  - Whether `sysparm_display_value=all` changes `payload` (mocked as equal). The code uses `value`.
-  - Whether a very large or multi-record payload behaves as mocked. Multi-record payloads fall back to raw text.
-  - The skills weren't updated: the tool description and `docs/TOOLS.md` carry the usage, and a change would need another upload.
-- **To finish:** the user runs the live test, then read the metrics, correct the assumptions if needed, and mark DONE only if all four criteria hold live.
+- **Blocked (2026-11-05):** a first live run passed, but AC3 wasn't shown live: the versions it compared had the same script. It needs one more live run by the user (`docs/NEXT_STEPS.md`). The task said to confirm the format live first; it was built first, on an assumption, which the run then confirmed for one script include (ADR-013).
+- **Live evidence (2026-11-05, `dev469966`, run by the user, one approval, `docs/evidence/T-042/first-live-run.json`):** 2 of 2 passed, scope released.
+  - **Two records:** 4 pages from one snapshot, 5 upstream requests on successful calls, an 850-line script diff that applied back exactly to both scripts as read separately, 0 lines cut. `AMBIGUOUS_MATCH` on side b, `NOT_FOUND` on side a, and the missing `match_b` and same-record refusals all held.
+  - **Versions:** `mode: elements`, `assumed_fields_missing: []`, `payload_root: record_update`, CDATA present, 188 lines, 23 elements, `record_table: sys_script_include`. `payload`'s dictionary type is `compressed`, not the `xml` the mock used, and it still reads as plain XML.
+  - **What that pass didn't show:** `diff_fields` 0, `diffs_applied` 0, `script_diff_lines` 0. The record's two versions differed in 7 short fields and not in the script, so no version diff was applied back. The scenario passed because it didn't require one, which was a weak check.
+- **Fix after that run (not live yet):** the scenario now looks through up to 25 records, and a pass needs a script diff that applied back; otherwise it skips, keeping its metrics. Its mock check caught the same record being compared once per prefix, now fixed.
+- **Acceptance criteria:**
+  1. ✔ Live and mock.
+  2. ◐ Live: both sides on one host. There's no second instance to try reaching: mock (no read reaches the other fake, cursors refused), and no change under `packages/extension` or `packages/shared`.
+  3. ✘ Not shown live; mock only (`payload.script` applies back, and so do raw diffs in 8 other payload forms).
+  4. ◐ Live: no incomplete result without an entry in `omitted`, and bookkeeping listed in `ignored_fields`. A cut line is mock only.
+- **Mock evidence:** `npm run build`, `npm run lint` and `npm run pack:mcpb` exit 0; `npm test`: 261, 443 and 311 passed. Bundle 0.1.3 at `packages/server/sn-mcp.mcpb`; `tools/list` 11,938 of 12,000 bytes. Mutation checks: same-record refusal off, `match_b` requirement off, payload expansion off, payload bookkeeping shown, repeated elements allowed, and the cut line's next call pointing at `payload.script` each fail tests.
+- **Still unverified:** a version script diff live; payloads of record types other than script includes, including multi-record ones, which fall back to raw text; a cut line live. The skills weren't updated: the tool description and `docs/TOOLS.md` carry the usage, and a change would need another upload.
+- **To finish:** the user runs the live test again. Read `script_diff_lines`, `diffs_applied`, `pairs_checked`, `mode` and `lines_cut`, and mark DONE only if AC3 holds live and the user accepts AC2's limit.

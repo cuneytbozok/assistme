@@ -29,7 +29,14 @@ export interface ScenarioResult {
 }
 
 class Check extends Error {}
-class Skip extends Error {}
+class Skip extends Error {
+  constructor(
+    message: string,
+    readonly metrics?: Record<string, unknown>,
+  ) {
+    super(message);
+  }
+}
 
 function expectThat(cond: unknown, message: string): asserts cond {
   if (!cond) throw new Check(message);
@@ -120,6 +127,7 @@ async function compareAll(call: Call, scope: string, first: Record<string, unkno
 }
 
 /** Field names the T-042 code and docs assume on sys_update_version: reported by the live run. */
+const MAX_VERSION_PAIRS = 25;
 const ASSUMED_VERSION_FIELDS = [
   'name',
   'payload',
@@ -781,8 +789,9 @@ export const SCENARIOS: {
     },
   },
   {
-    // The first read of this table's real fields and payload format: read the metrics. `mode`
-    // "raw" passes, because the connector falls back, but it means the assumed format is wrong.
+    // Read the metrics: `mode` "raw" passes, because the connector falls back, but it means the
+    // payload isn't in the expected format. A pass needs a script diff that applied back exactly:
+    // the first live run passed with none, because that record's two versions had the same script.
     name: 'compare_records: two versions from sys_update_version (T-042)',
     run: async (call, scope) => {
       const table = 'sys_update_version';
@@ -797,8 +806,99 @@ export const SCENARIOS: {
         expectThat(names.has(needed), `${table} has no ${needed} field`);
       }
 
-      let name: unknown;
-      let versions = 0;
+      const payloadInfo = dictionary.find((f) => f.name === 'payload');
+      const comparePair = async (name: unknown, versions: number) => {
+        const rows = ok(
+          await call('query_records', {
+            scope_id: scope,
+            table,
+            where: [{ field: 'name', op: '=', value: name }],
+            order_by: [{ field: 'sys_created_on', direction: 'desc' }],
+            fields: ['name'],
+            limit: 2,
+          }),
+          'versions',
+        ).data.records as { sys_id: string }[];
+        expectThat(rows.length === 2, `counted ${versions} versions, listed ${rows.length}`);
+        const older = (rows[1] as { sys_id: string }).sys_id;
+        const newer = (rows[0] as { sys_id: string }).sys_id;
+
+        const c = await compareAll(call, scope, {
+          table,
+          match_a: { sys_id: older },
+          match_b: { sys_id: newer },
+        });
+        const read = (sys_id: string) =>
+          readField(call, { scope_id: scope, table, sys_id, field: 'payload' });
+        const rawA = await read(older);
+        const rawB = await read(newer);
+        const a = parseUpdatePayload(rawA);
+        const b = parseUpdatePayload(rawB);
+
+        const compared = [...c.lines.keys(), ...c.inline.map((f) => f.field)];
+        const fromElements = (f: string) => f.startsWith('payload.');
+        const mode =
+          compared.some(fromElements) || [...c.ignored].some(fromElements)
+            ? 'elements'
+            : compared.includes('payload')
+              ? 'raw'
+              : 'payload_equal';
+        expectThat(
+          mode !== 'raw' || !a || !b || a.table !== b.table,
+          'the payloads parse here, but were compared as raw text',
+        );
+        expectThat(
+          mode !== 'elements' || (a !== undefined && b !== undefined),
+          'compared by element, but the payloads do not parse here',
+        );
+
+        // Every diff must rebuild the newer value from the older one. A cut line can't.
+        let applied = 0;
+        if (c.cut === 0) {
+          for (const [field, lines] of c.lines) {
+            const [before, after] =
+              field === 'payload'
+                ? [rawA, rawB]
+                : fromElements(field)
+                  ? [a?.fields.get(field.slice(8)), b?.fields.get(field.slice(8))]
+                  : [undefined, undefined];
+            if (before === undefined || after === undefined) continue;
+            expectThat(
+              applyUnified(before, lines) === after,
+              `the ${field} diff does not apply back`,
+            );
+            applied++;
+          }
+        }
+
+        const metrics = {
+          mode,
+          versions_of_record: versions,
+          record_table: a?.table,
+          assumed_fields_missing: missing,
+          payload_type: payloadInfo?.type,
+          payload_chars: [rawA.length, rawB.length],
+          payload_lines: [rawA.split('\n').length, rawB.split('\n').length],
+          payload_root: /^(?:<\?[^>]*\?>)?\s*<([\w.:-]+)/.exec(rawA)?.[1],
+          payload_has_cdata: rawA.includes('<![CDATA['),
+          payload_elements: a?.fields.size,
+          pages: c.pages,
+          diff_fields: c.lines.size,
+          diffs_applied: applied,
+          script_diff_lines: c.lines.get('payload.script')?.length ?? 0,
+          inline_fields: c.inline.length,
+          inline_field_names: c.inline.map((f) => f.field),
+          only_on_one_side: c.only.length,
+          ignored_fields: c.ignored.size,
+          lines_cut: c.cut,
+        };
+        const scriptDiff = c.lines.has('payload.script') || c.lines.has('payload');
+        return { metrics, proved: scriptDiff && applied > 0 };
+      };
+
+      const seen = new Set<unknown>();
+      let checked = 0;
+      let last: Record<string, unknown> | undefined;
       for (const prefix of ['sys_script_include_', 'sys_script_', 'sys_']) {
         const r = ok(
           await call('aggregate_records', {
@@ -809,101 +909,28 @@ export const SCENARIOS: {
           }),
           'versions per record',
         );
-        const top = r.data.groups[0];
-        if (top?.count >= 2) {
-          name = rawOf(top.group.name);
-          versions = top.count;
-          break;
+        // Largest first, so the first count under 2 ends this page's candidates.
+        for (const g of r.data.groups) {
+          if (g.count < 2 || checked >= MAX_VERSION_PAIRS) break;
+          const name = rawOf(g.group.name);
+          // A record under the first prefix is also under the wider ones.
+          if (seen.has(name)) continue;
+          seen.add(name);
+          const pair = await comparePair(name, g.count);
+          checked++;
+          last = pair.metrics;
+          if (pair.proved) return { ...pair.metrics, pairs_checked: checked };
         }
       }
-      if (name === undefined) {
+      if (!last) {
         throw new Skip(
           'No record has two versions yet. Save a script include twice on this instance, then run this again.',
         );
       }
-      const rows = ok(
-        await call('query_records', {
-          scope_id: scope,
-          table,
-          where: [{ field: 'name', op: '=', value: name }],
-          order_by: [{ field: 'sys_created_on', direction: 'desc' }],
-          fields: ['name'],
-          limit: 2,
-        }),
-        'versions',
-      ).data.records as { sys_id: string }[];
-      expectThat(rows.length === 2, `counted ${versions} versions, listed ${rows.length}`);
-      const older = (rows[1] as { sys_id: string }).sys_id;
-      const newer = (rows[0] as { sys_id: string }).sys_id;
-
-      const c = await compareAll(call, scope, {
-        table,
-        match_a: { sys_id: older },
-        match_b: { sys_id: newer },
-      });
-      const read = (sys_id: string) =>
-        readField(call, { scope_id: scope, table, sys_id, field: 'payload' });
-      const rawA = await read(older);
-      const rawB = await read(newer);
-      const a = parseUpdatePayload(rawA);
-      const b = parseUpdatePayload(rawB);
-
-      const compared = [...c.lines.keys(), ...c.inline.map((f) => f.field)];
-      const fromElements = (f: string) => f.startsWith('payload.');
-      const mode =
-        compared.some(fromElements) || [...c.ignored].some(fromElements)
-          ? 'elements'
-          : compared.includes('payload')
-            ? 'raw'
-            : 'payload_equal';
-      expectThat(
-        mode !== 'raw' || !a || !b || a.table !== b.table,
-        'the payloads parse here, but were compared as raw text',
+      throw new Skip(
+        `Compared the newest two versions of ${checked} records, and none changed a script. Change a script include's script on this instance, save it, then run this again.`,
+        { ...last, pairs_checked: checked },
       );
-      expectThat(
-        mode !== 'elements' || (a !== undefined && b !== undefined),
-        'compared by element, but the payloads do not parse here',
-      );
-
-      // Every diff must rebuild the newer value from the older one. A cut line can't.
-      let applied = 0;
-      if (c.cut === 0) {
-        for (const [field, lines] of c.lines) {
-          const [before, after] =
-            field === 'payload'
-              ? [rawA, rawB]
-              : fromElements(field)
-                ? [a?.fields.get(field.slice(8)), b?.fields.get(field.slice(8))]
-                : [undefined, undefined];
-          if (before === undefined || after === undefined) continue;
-          expectThat(
-            applyUnified(before, lines) === after,
-            `the ${field} diff does not apply back`,
-          );
-          applied++;
-        }
-      }
-      const payloadInfo = dictionary.find((f) => f.name === 'payload');
-      return {
-        mode,
-        versions_of_record: versions,
-        record_table: a?.table,
-        assumed_fields_missing: missing,
-        payload_type: payloadInfo?.type,
-        payload_chars: [rawA.length, rawB.length],
-        payload_lines: [rawA.split('\n').length, rawB.split('\n').length],
-        payload_root: /^(?:<\?[^>]*\?>)?\s*<([\w.:-]+)/.exec(rawA)?.[1],
-        payload_has_cdata: rawA.includes('<![CDATA['),
-        payload_elements: a?.fields.size,
-        pages: c.pages,
-        diff_fields: c.lines.size,
-        diffs_applied: applied,
-        script_diff_lines: c.lines.get('payload.script')?.length ?? 0,
-        inline_fields: c.inline.length,
-        only_on_one_side: c.only.length,
-        ignored_fields: c.ignored.size,
-        lines_cut: c.cut,
-      };
     },
   },
 ];
@@ -929,6 +956,7 @@ export async function runScenarios(
         name: s.name,
         status: skip ? 'skip' : 'fail',
         note: (e as Error).message.slice(0, 400),
+        ...(e instanceof Skip && e.metrics ? { metrics: e.metrics } : {}),
         measure,
       };
     }
