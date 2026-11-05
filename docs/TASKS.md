@@ -50,7 +50,7 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 | T-038 | Custom troubleshooting skill                    | 034      | DONE        |
 | T-039 | Official now-sdk skill evaluation               | 038      | DROPPED     |
 | T-040 | Full acceptance matrix                          | 037      | DONE        |
-| T-041 | Recovery drill + install from scratch (M6)      | 040      | TODO        |
+| T-041 | Recovery drill + install from scratch (M6)      | 040      | IN_PROGRESS |
 
 ---
 
@@ -1426,7 +1426,7 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 
 ### T-041 — Recovery drill + install from scratch (Milestone M6)
 
-- **Status:** TODO
+- **Status:** IN_PROGRESS
 - **Purpose:** Prove AC-18 and AC-19.
 - **Dependencies:** T-040
 - **Deliverables:** (a) a fresh Claude Code session with no prior chat context runs `show progress` and `review current task` using only the repository docs; record the result. (b) Clean install dry run following INSTALL.md (after `npm run uninstall`, fresh clone into a temp directory) through to a scoped query in Desktop.
