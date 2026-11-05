@@ -207,6 +207,7 @@ Seen on a live instance (T-034):
 
 - **`var__m_*` tables** hold Flow Designer variables. They're listed in the dictionary, but `sys_db_object` doesn't have them and the Stats API refuses them with "Aggregate Query Failed". `search_code` reports them as `not_found`, and `get_related_records` as `error`, each with a hint. Some have mixed-case field names, reported as `unsupported_name`. A whole-instance `search_code` is therefore normally `complete: false` on the pages that include them.
 - **`javascript:` in a filter** is refused, because ServiceNow would run it on the server. The word alone is fine. To find `javascript:` in scripts, search for `javascript` without the colon. Reading content that contains it is never affected.
+- **"Part of the query … has been ignored" banners:** when `search_code` filters on a field with a `query_range` ACL, ServiceNow adds that message to the user's browser session, so it can pop up in the instance UI. Nothing is changed. Despite the wording, the API refused these queries with `ACL_DENIED` on the tables tested (14 on one PDI, including `password_policy`, which has readable rows), so they're reported in `omitted` and no unfiltered rows came back. A whole-instance search triggers one per restricted field. Not shown for other instances or settings.
 - **Whole-instance `search_code`:** about 610 tables, 25 calls and 8 minutes on a developer instance. Pass `tables` when you can.
 
 ## Error catalog
