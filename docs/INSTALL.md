@@ -101,7 +101,7 @@ Save, then restart ChatGPT Desktop.
 
 If you'd rather edit `~/.codex/config.toml`, setup prints a block for that too. It also sets longer timeouts: the 60-second default for one tool call can be too short for a long read of many pages.
 
-Each client has its own access: what you approve for ChatGPT doesn't work in Claude, and the other way round. Each ChatGPT conversation also has its own, so a new conversation asks for a new approval. The popup shows which client is asking. ChatGPT doesn't get the skills, only the tools.
+Each client has its own access: what you approve for ChatGPT doesn't work in Claude, and the other way round. Each ChatGPT conversation also has its own, so a new conversation asks for a new approval. The popup shows which client is asking. To add the optional skills to Codex chats, run `npm run codex-skills`: see [SKILLS.md](SKILLS.md#in-codex).
 
 ## 5. Try it
 
@@ -113,7 +113,7 @@ It requests access and gives you a code. Open the extension popup, check that th
 
 ## Optional: the troubleshooting skill
 
-The skill gives Claude a method for investigating ServiceNow problems. It adds no access and can't change anything. See [SKILLS.md](SKILLS.md).
+The skill gives your AI client a method for investigating ServiceNow problems. It adds no access and can't change anything. See [SKILLS.md](SKILLS.md).
 
 ## Settings
 

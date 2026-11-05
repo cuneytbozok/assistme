@@ -63,6 +63,7 @@ We are not building another AI assistant. Claude provides the reasoning, MCP pro
 - `npm run e2e:chatgpt -- --instance <alias>` (or `--discovery-only`) — live run through the engine inside ChatGPT Desktop (T-043)
 - `npm run setup` / `npm run uninstall` — local install of native host manifest etc. (T-037)
 - `npm run pack:mcpb` / `npm run pack:skill` — build the Claude Desktop bundle and the skill zip
+- `npm run codex-skills` — copy the skills to `~/.agents/skills` for Codex (`-- --uninstall` removes them)
 
 ## Session start / recovery protocol
 

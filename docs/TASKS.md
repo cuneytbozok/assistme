@@ -54,6 +54,7 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 | T-042 | Compare within one instance, and record versions | 032     | DONE        |
 | T-043 | ChatGPT Desktop as a local STDIO client         | 037      | DONE        |
 | T-044 | Windows support                                 | 037      | BLOCKED     |
+| T-045 | Skills in Codex                                 | 043      | DONE        |
 
 ---
 
@@ -1531,4 +1532,18 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 - **First CI run (2026-11-05, run 42028030938, `windows-latest`):** 16 of 18 passed, including all of `client-e2e.test.ts`, so the real broker, named pipe, handshake and icacls ran on Windows, with the extension's authorization code and ServiceNow mocked. Both failures come from `readAcls`, whose cause isn't known. The second test never got to check a refusal, and the first stopped there, so the steps after it (the handshake through the installed wrapper, and uninstall) didn't run.
 - **Evidence:** —
 - **What was checked on the Mac (2026-11-05), which isn't evidence of Windows working:** the Windows logic in `windows.test.ts` (ACL decisions, pipe names, wrapper quoting, registry arguments), AC6 by the full test suite, and the live T-043 run going through the changed broker code.
+
+### T-045 — Skills in Codex
+
+- **Status:** DONE
+- **Purpose:** Make the project's two skills available in Codex chats. Requested by the user on 2026-11-05.
+- **Dependencies:** T-043
+- **Deliverables:** `scripts/codex-skills.ts` (`npm run codex-skills`), `packages/server/test/codex-skills.test.ts`, `docs/SKILLS.md`.
+- **Acceptance criteria:**
+  1. ChatGPT Desktop's engine finds both skills, with no loading errors.
+  2. Running it again is safe, and uninstalling leaves other skills alone.
+  3. A different folder with the same name is never replaced.
+- **Verification:** `npm test`; ask the engine with `skills/list`.
+- **Evidence (2026-11-05):** The engine inside `ChatGPT.app` (codex-cli 0.166.0-alpha.6), through `skills/list`, in a throwaway home and then with the real home: both skills `scope=user`, `enabled=true`, `errors: []`. Installed in the user's `~/.agents/skills`, next to their `find-skills` and `remotion-best-practices`, which weren't changed. `codex-skills.test.ts` covers AC2 and AC3 under a throwaway home.
+- **Still unverified:** a model choosing and following a skill in a real Codex chat, and the skills on Windows.
 

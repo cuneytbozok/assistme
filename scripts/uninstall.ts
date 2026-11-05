@@ -27,4 +27,4 @@ Only you can remove these:
 - Claude Desktop: Settings → Extensions → remove sn-mcp (or its entry in
   claude_desktop_config.json).
 - Claude Code: claude mcp remove sn-mcp
-- ChatGPT Desktop: Settings → MCP servers → remove sn-mcp.`);
+- ChatGPT Desktop: Settings → MCP servers → remove sn-mcp. Skills: npm run codex-skills -- --uninstall`);

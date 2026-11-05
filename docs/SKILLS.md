@@ -7,7 +7,7 @@
 
 They're separate on purpose: each loads only when its description fits the task, and the third-party one stays traceable to its source. `dist-skill/` is build output and isn't in git; the source is `plugin/skills/`.
 
-Skills give Claude expertise. They add no tools and no access: everything still goes through the read-only connector and the scopes you approve. All the skills here are optional.
+Skills give your AI client expertise. They work in Claude and in Codex chats, in the ChatGPT Desktop app or Codex itself. They add no tools and no access: everything still goes through the read-only connector and the scopes you approve. All the skills here are optional.
 
 ## `servicenow-readonly-troubleshooting` (ours)
 
@@ -38,6 +38,24 @@ It's by a third party ([Vanka07/servicenow-skill](https://github.com/Vanka07/ser
 - **It can't write through the connector.** It can suggest code that changes data, including background scripts. Those change real data if you run them yourself, so review them and try them in a development instance first.
 - **Its ServiceNow content hasn't been checked for accuracy.** It's a small project. The note added to it tells Claude to confirm table and field names against the instance.
 - **Installing:** in Claude Code, it comes with the plugin above. In Claude Desktop, upload `dist-skill/servicenow-development-guide.zip` after `npm run pack:skill`.
+
+## In Codex
+
+This copies both skills to `~/.agents/skills`, where Codex finds them. It's safe to run again, for example after updating the project:
+
+```bash
+npm run codex-skills
+```
+
+Then start a new Codex chat. They appear under **Skills** in the sidebar. To use one on purpose, mention it, as in `$servicenow-readonly-troubleshooting`. Normal ChatGPT chats don't use them, just as they don't use the connector.
+
+To remove them, which leaves your other skills alone:
+
+```bash
+npm run codex-skills -- --uninstall
+```
+
+The third-party skill's warnings above apply here too. Its note about compatibility mentions only Claude; that's the upstream text, and Codex loads it without errors.
 
 ## The official ServiceNow SDK skill: not used
 
