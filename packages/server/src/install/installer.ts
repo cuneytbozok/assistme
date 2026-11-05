@@ -5,18 +5,20 @@
  * (0644) whose `allowed_origins` has exactly this extension's origin. Refuses any path whose
  * directories another user could write to, since that user could swap the code Chrome runs.
  */
+import { execFileSync } from 'node:child_process';
 import {
   chmodSync,
   existsSync,
   lstatSync,
   mkdirSync,
+  readFileSync,
   realpathSync,
   renameSync,
   rmSync,
   writeFileSync,
 } from 'node:fs';
 import { homedir } from 'node:os';
-import { dirname, isAbsolute, join, parse } from 'node:path';
+import { basename, dirname, isAbsolute, join, parse } from 'node:path';
 import { EXTENSION_ORIGIN, NATIVE_HOST_NAME } from '@sn-mcp/shared';
 
 export interface InstallPaths {
@@ -152,4 +154,56 @@ export function uninstall(paths: Pick<InstallPaths, 'installDir' | 'manifestDir'
     }
   }
   return removed;
+}
+
+/** Node versions the project supports (FR-9). */
+export function nodeIsSupported(version: string, minimumMajor = 22): boolean {
+  const major = Number.parseInt(version.replace(/^v/, ''), 10);
+  return Number.isInteger(major) && major >= minimumMajor;
+}
+
+/** True only if `pid` is running and its command line is the sn-mcp native host. */
+function isOurHost(pid: number): boolean {
+  try {
+    process.kill(pid, 0);
+    const cmd = execFileSync('ps', ['-o', 'command=', '-p', String(pid)], { encoding: 'utf8' });
+    // Exactly our script: other programs have similar names (chrome-native-host).
+    return /\/native-host\.js(\s|$)/.test(cmd);
+  } catch {
+    return false;
+  }
+}
+
+async function stopHost(lockFile: string): Promise<boolean> {
+  if (!existsSync(lockFile)) return false;
+  const pid = Number.parseInt(readFileSync(lockFile, 'utf8').trim(), 10);
+  // A stale lock may name an unrelated process by now: never signal anything else.
+  if (!Number.isInteger(pid) || pid <= 1 || !isOurHost(pid)) return false;
+  process.kill(pid, 'SIGTERM');
+  for (let i = 0; i < 40 && isOurHost(pid); i++) {
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
+  return true;
+}
+
+/**
+ * Full removal (T-037): stops the running native host, then removes its Chrome manifest and the
+ * sn-mcp folder (wrapper, socket, key, lock, logs, any capture file). A symlink at the folder's
+ * path is removed as a link and never followed.
+ */
+export async function uninstallAll(
+  paths: Pick<InstallPaths, 'installDir' | 'manifestDir'>,
+  runtimeDir: string,
+): Promise<{ removed: string[]; stoppedHost: boolean }> {
+  if (basename(runtimeDir) !== 'sn-mcp') {
+    throw new InstallError(`Refusing to remove ${runtimeDir}: not an sn-mcp folder`);
+  }
+  // First the manifest, so Chrome can't start a new host while the old one stops.
+  const removed = uninstall(paths);
+  const stoppedHost = await stopHost(join(runtimeDir, 'broker.pid'));
+  if (existsSync(runtimeDir)) {
+    rmSync(runtimeDir, { recursive: true, force: true });
+    removed.push(runtimeDir);
+  }
+  return { removed, stoppedHost };
 }

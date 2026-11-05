@@ -46,7 +46,7 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 | T-034 | Live tool acceptance (M4)                       | 033      | BLOCKED     |
 | T-035 | Claude Code registration                        | 034      | BLOCKED     |
 | T-036 | `.mcpb` Desktop Extension                       | 034      | BLOCKED     |
-| T-037 | Setup/uninstall + INSTALL.md (M5)               | 036      | TODO        |
+| T-037 | Setup/uninstall + INSTALL.md (M5)               | 036      | BLOCKED     |
 | T-038 | Custom troubleshooting skill                    | 034      | TODO        |
 | T-039 | Official now-sdk skill evaluation               | 038      | TODO        |
 | T-040 | Full acceptance matrix                          | 037, 039 | TODO        |
@@ -1317,7 +1317,7 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 
 ### T-037 — Setup/uninstall + INSTALL.md (Milestone M5)
 
-- **Status:** TODO
+- **Status:** BLOCKED
 - **Purpose:** Simple local installation (AC-19).
 - **Dependencies:** T-036
 - **Deliverables:** `npm run setup` (checks Node version, builds, installs the native host manifest, prints the extension load steps and ID, and prints Claude Code and Desktop registration steps); `npm run uninstall` (removes the host manifest, socket directory, and logs); complete `docs/INSTALL.md` with troubleshooting (host not found, `BROKER_CONFLICT`, session expired, logs location).
@@ -1346,7 +1346,19 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 - **Acceptance criteria:** installs in Claude Code via `/plugin marketplace add <repo>`; the zip uploads in Desktop; no reference instructs any write action; SKILL.md is ≤ 500 lines and loads references only on demand.
 - **Verification:** manual install in both clients.
 - **DoD:** —
-- **Evidence:** —
+- **Blocker:** the last step needs the user: setup → uninstall → setup on the real install. It stops the running broker and interrupts Chrome's connection, so it wasn't run here unasked. It also depends on T-036.
+- **Evidence so far (2026-11-05, not acceptance):**
+  - Delivered: `scripts/setup.ts`, `scripts/uninstall.ts`, `npm run setup`, `npm run uninstall`, `uninstallAll` in `installer.ts`, complete `docs/INSTALL.md`, `test/setup-scripts.test.ts`.
+  - Tests run setup → setup → uninstall → uninstall → setup under a throwaway `HOME`, using the real scripts: 
+    - Idempotent ✔ the second setup leaves an identical manifest and the same file listing.
+    - No files left ✔ manifest, wrapper, socket, key, lock, log and capture file all gone, by listing.
+    - A running host is stopped ✔. A stale lock naming another process is never signalled, including a similarly named one (`chrome-native-host` runs on this machine).
+    - A folder not named `sn-mcp` is refused; a symlink is removed without touching its target.
+  - The docs test checks every required step and troubleshooting entry, and that each `npm run` in `INSTALL.md` exists.
+  - Confirmed afterward: the real manifest, runtime folder and broker were unchanged.
+  - **Unverified:** a run on the real install; a person following `INSTALL.md` from scratch (T-041).
+  - **Mutation checks** (each reverted): signalling without checking the process, a loose process name match, removing any folder; all fail tests.
+  - M5 is not achieved until this and T-036 are verified.
 
 ### T-039 — Official now-sdk skill evaluation
 

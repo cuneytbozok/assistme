@@ -11,16 +11,9 @@ node packages/server/dist/bin/mcp-server.js   # speaks MCP on stdin/stdout
 
 It needs the native host to be installed and Chrome to be running with the extension (see below). Without them, every bridge-backed tool returns `BRIDGE_UNAVAILABLE` within about 2 seconds.
 
-### Tools (PoC, T-008)
+### Tools
 
-| Tool | What it does |
-| --- | --- |
-| `list_instances` | Lists the instances you registered and this session's access state for each |
-| `request_scope` | Asks for access and returns an approval code for you to approve in the extension popup |
-| `claim_scope` | Returns a `scope_id` once you have approved |
-| `query_records` | Reads up to 5 records from a table (needs `scope_id`) |
-
-All of them are read-only. None accepts a URL, method or header.
+The full contracts are in [docs/TOOLS.md](../../docs/TOOLS.md). All tools are read-only, and none accepts a URL, method or header.
 
 ### Registering with Claude
 
