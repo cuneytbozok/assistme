@@ -1,7 +1,7 @@
 
 # sn-mcp: let Claude read your ServiceNow
 
-https://github.com/user-attachments/assets/f5aae9e6-fa2b-4dee-8cc1-92ce485d7431
+https://github.com/user-attachments/assets/7fcee793-bfbb-4c07-93be-21e29cacea2c
 
 Ask Claude questions about your ServiceNow instance, such as "why did this incident change?" or "which scripts touch this field?". Claude reads the answer through your own browser session.
 
