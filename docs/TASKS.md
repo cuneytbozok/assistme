@@ -44,8 +44,8 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 | T-032 | `compare_records`                               | 025, 011 | DONE        |
 | T-033 | Tool contract review + TOOLS.md                 | 024–032  | DONE        |
 | T-034 | Live tool acceptance (M4)                       | 033      | BLOCKED     |
-| T-035 | Claude Code registration                        | 034      | TODO        |
-| T-036 | `.mcpb` Desktop Extension                       | 034      | TODO        |
+| T-035 | Claude Code registration                        | 034      | BLOCKED     |
+| T-036 | `.mcpb` Desktop Extension                       | 034      | BLOCKED     |
 | T-037 | Setup/uninstall + INSTALL.md (M5)               | 036      | TODO        |
 | T-038 | Custom troubleshooting skill                    | 034      | TODO        |
 | T-039 | Official now-sdk skill evaluation               | 038      | TODO        |
@@ -1285,7 +1285,7 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 
 ### T-035 — Claude Code registration
 
-- **Status:** TODO
+- **Status:** BLOCKED
 - **Purpose:** Easy use from Claude Code (AC-1).
 - **Dependencies:** T-034
 - **Deliverables:** `.mcp.json.example`; `claude mcp add` instructions (user and project scope); verification that tools appear and work.
@@ -1304,7 +1304,7 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 
 ### T-036 — `.mcpb` Desktop Extension
 
-- **Status:** TODO
+- **Status:** BLOCKED
 - **Purpose:** One-click install in Claude Desktop (AC-1).
 - **Dependencies:** T-034
 - **Deliverables:** esbuild single-file server bundle; `packages/server/mcpb/manifest.json` (`server.type: node`, `entry_point`, `mcp_config` with `${__dirname}`, optional `user_config` for log level only, no secrets); `npm run pack:mcpb` using `@anthropic-ai/mcpb`; install via Settings → Extensions → Advanced → Install Extension; Cowork behavior tested and documented.
@@ -1312,7 +1312,8 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 - **Acceptance criteria:** the `.mcpb` installs, tools appear under Connectors, and a scoped query works in Desktop chat; the Cowork result (works or doesn't) is recorded.
 - **Verification:** manual, with screenshots in evidence.
 - **DoD:** —
-- **Evidence:** —
+- **Blocker:** the acceptance check needs the user: a fresh Claude Code session (the CLI here isn't signed in, and logging it in needs the user's credentials) and T-034 first.
+- **Evidence so far (2026-11-05, not acceptance):** `.mcp.json.example`; `claude mcp add` (user scope) and `.mcp.json` (project scope) instructions in `docs/INSTALL.md`. A test checks the example points at the built server. **Unverified:** AC, `/mcp` listing the server and a scoped query on DEV.
 
 ### T-037 — Setup/uninstall + INSTALL.md (Milestone M5)
 
@@ -1324,7 +1325,14 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 - **Acceptance criteria:** setup is idempotent; uninstall leaves no files behind (verified by listing); the docs cover every step.
 - **Verification:** run setup → uninstall → setup on this machine.
 - **DoD:** M5 marked achieved.
-- **Evidence:** —
+- **Blocker:** needs the user: installing the bundle in Claude Desktop, a scoped query in Desktop chat, and the Cowork result.
+- **Evidence so far (2026-11-05, not acceptance):**
+  - Delivered: `packages/server/mcpb/manifest.json` (manifest 0.4), `packages/server/build.mjs` (one bundled file), `npm run pack:mcpb`, `test/mcpb.test.ts` (mock). Install steps in `docs/INSTALL.md`.
+  - `npm run pack:mcpb` → `Manifest schema validation passes!`, `packages/server/sn-mcp.mcpb` at 288 kB, 2 files.
+  - The real bundle runs alone from an empty folder over stdio and lists the same 14 tools as the manifest. With no broker, `list_instances` gives `BRIDGE_UNAVAILABLE`.
+  - **Deviation:** the task said `user_config` for log level only, but the server has no log level, and ADR-011/ARCHITECTURE §8.3 say result-shaping settings come through `user_config`. So it has four numeric shaping settings. No secrets; a test keeps it that way.
+  - **Unverified:** the install itself, tools appearing under Connectors, a scoped query in Desktop chat, Cowork behaviour, and whether Claude Desktop substitutes unset optional settings (a test shows an unfilled placeholder falls back safely).
+  - `@anthropic-ai/mcpb` is a dev dependency. `npm audit --omit=dev`: 0 vulnerabilities. Full `npm audit`: 6 (3 high), all in dev packages.
 
 ## Phase 6 — Skills
 

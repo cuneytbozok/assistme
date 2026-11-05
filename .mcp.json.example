@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "sn-mcp": {
+      "command": "node",
+      "args": ["/ABSOLUTE/PATH/TO/AssistMe/packages/server/dist/bin/mcp-server.js"],
+      "env": { "SN_MCP_CLIENT_NAME": "Claude Code" }
+    }
+  }
+}

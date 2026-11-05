@@ -1,6 +1,6 @@
 # Handoff
 
-_Last updated: 2026-11-05 (T-034 runner written; run pending)_
+_Last updated: 2026-11-05 (after T-036)_
 
 ## Current project state
 
@@ -64,7 +64,8 @@ _Last updated: 2026-11-05 (T-034 runner written; run pending)_
 - **T-032 DONE:** `compare_records` (`line-diff.ts`, snapshot pages, per-side ambiguity).
 - **T-033 DONE:** `docs/TOOLS.md`, `lean()` compact schemas (`tools/list` under 12,000 bytes), server instructions hold the shared contract. Fixed: `paginate.ts` repeats with hidden rows; 49-field limit on `query_records`. Output schemas are the `{ok}` envelope only (full contract in TOOLS.md).
 - **T-034 BLOCKED:** the runner is written (`npm run e2e:live -- --instance dev469966`); the run needs the user to reload the extension and approve a scope. Dry run: real bridge connected, `tools/list` 11,798 bytes.
-- **Next task:** T-035 preparation (the user asked to continue with everything not needing them, leaving tests for the end).
+- **T-036 DONE:** Prepared, BLOCKED on the user: `.mcp.json.example` (T-035), `.mcpb` bundle and `npm run pack:mcpb` (T-036). `docs/INSTALL.md` written.
+- **Next task:** T-037 setup/uninstall.
 - **Verify live in T-034:** `sysparm_offset` counts pre-ACL rows (ADR-011 addendum).
 - **Waiting on the user:** T-015 live run (second instance); `REQUEST_DENIED` vs `status: denied` (T-015 AC6); fail-closed dictionary validation (ADR-005 addendum).
 - **Role-agnostic (ADR-012, 2026-11-04):** no ServiceNow role handling of any kind. Don't add role checks, dedicated accounts or impersonation features.

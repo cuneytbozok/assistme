@@ -1,0 +1,84 @@
+{
+  "$schema": "https://raw.githubusercontent.com/anthropics/mcpb/main/schemas/mcpb-manifest-v0.4.schema.json",
+  "manifest_version": "0.4",
+  "name": "sn-mcp",
+  "display_name": "ServiceNow (read-only)",
+  "version": "0.1.0",
+  "description": "Read-only access to ServiceNow instances through your own Chrome session.",
+  "long_description": "Lets Claude investigate ServiceNow instances you registered in the sn-mcp Chrome extension. It only reads, only uses your existing browser session, and only reaches an instance after you approve a request in the extension. Needs the sn-mcp native host and Chrome extension: see docs/INSTALL.md.",
+  "author": { "name": "Cüneyt Bozok" },
+  "server": {
+    "type": "node",
+    "entry_point": "server/index.mjs",
+    "mcp_config": {
+      "command": "node",
+      "args": ["${__dirname}/server/index.mjs"],
+      "env": {
+        "SN_MCP_CLIENT_NAME": "Claude Desktop",
+        "SN_MCP_RESPONSE_CHARS": "${user_config.response_chars}",
+        "SN_MCP_MAX_RESPONSE_CHARS": "${user_config.max_response_chars}",
+        "SN_MCP_PAGE_SIZE": "${user_config.page_size}",
+        "SN_MCP_FIELD_PREVIEW_CHARS": "${user_config.field_preview_chars}"
+      }
+    }
+  },
+  "tools": [
+    { "name": "list_instances", "description": "List the instances you registered" },
+    { "name": "request_scope", "description": "Ask you to approve access to an instance" },
+    { "name": "claim_scope", "description": "Pick up access you approved" },
+    { "name": "release_scope", "description": "End access" },
+    { "name": "query_records", "description": "Read records from a table" },
+    { "name": "get_record", "description": "Read exactly one record" },
+    { "name": "discover_tables", "description": "Find tables" },
+    { "name": "describe_table", "description": "List a table's fields" },
+    { "name": "get_field_content", "description": "Read a whole script, log or field" },
+    { "name": "aggregate_records", "description": "Count and summarize" },
+    { "name": "get_related_records", "description": "Find what references a record" },
+    { "name": "get_record_history", "description": "A record's full timeline" },
+    { "name": "search_code", "description": "Search scripts and conditions" },
+    { "name": "compare_records", "description": "Compare a record across two instances" }
+  ],
+  "user_config": {
+    "response_chars": {
+      "type": "number",
+      "title": "Result size (characters)",
+      "description": "Default size of one tool result. More data continues in the next call.",
+      "default": 24000,
+      "min": 1000,
+      "max": 1000000,
+      "required": false
+    },
+    "max_response_chars": {
+      "type": "number",
+      "title": "Largest result Claude may ask for (characters)",
+      "description": "Ceiling for one tool result.",
+      "default": 100000,
+      "min": 2000,
+      "max": 1000000,
+      "required": false
+    },
+    "page_size": {
+      "type": "number",
+      "title": "Rows per ServiceNow request",
+      "description": "Rows fetched in one request while paging.",
+      "default": 100,
+      "min": 1,
+      "max": 1000,
+      "required": false
+    },
+    "field_preview_chars": {
+      "type": "number",
+      "title": "Long-field preview (characters)",
+      "description": "How much of a long field appears in record lists. The rest stays readable in full.",
+      "default": 1000,
+      "min": 50,
+      "max": 100000,
+      "required": false
+    }
+  },
+  "compatibility": {
+    "platforms": ["darwin"],
+    "runtimes": { "node": ">=22.0.0" }
+  },
+  "license": "UNLICENSED"
+}
