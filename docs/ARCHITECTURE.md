@@ -384,7 +384,7 @@ packages/
               src/background/ (index.ts, port.ts, registry.ts, grants.ts, authz.ts, request-builder.ts,
                                executor.ts, session.ts, budgets.ts)
               src/popup/ (popup.html, popup.ts, popup.css)
-skills/servicenow-readonly-troubleshooting/ (SKILL.md, references/*.md)
+plugin/skills/servicenow-readonly-troubleshooting/ (SKILL.md, references/*.md)
 .claude-plugin/marketplace.json
 test/e2e/ (live, opt-in)
 ```

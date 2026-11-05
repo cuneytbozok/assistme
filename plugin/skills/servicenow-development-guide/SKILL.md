@@ -140,21 +140,21 @@ gs.info(user.getValue('email'));
 
 ```bash
 # Generate queries
-python3 skills/servicenow-development-guide/scripts/snow_helper.py query "find active incidents assigned to me"
-python3 skills/servicenow-development-guide/scripts/snow_helper.py query "find all work orders in state Dispatch Pending"
+python3 plugin/skills/servicenow-development-guide/scripts/snow_helper.py query "find active incidents assigned to me"
+python3 plugin/skills/servicenow-development-guide/scripts/snow_helper.py query "find all work orders in state Dispatch Pending"
 
 # Generate templates
-python3 skills/servicenow-development-guide/scripts/snow_helper.py template business-rule --table incident --when before --insert --update
-python3 skills/servicenow-development-guide/scripts/snow_helper.py template scripted-rest-api --table incident
-python3 skills/servicenow-development-guide/scripts/snow_helper.py template flow-script-action --table incident
-python3 skills/servicenow-development-guide/scripts/snow_helper.py template atf-server-test --table incident
-python3 skills/servicenow-development-guide/scripts/snow_helper.py template integrationhub-action --table incident
+python3 plugin/skills/servicenow-development-guide/scripts/snow_helper.py template business-rule --table incident --when before --insert --update
+python3 plugin/skills/servicenow-development-guide/scripts/snow_helper.py template scripted-rest-api --table incident
+python3 plugin/skills/servicenow-development-guide/scripts/snow_helper.py template flow-script-action --table incident
+python3 plugin/skills/servicenow-development-guide/scripts/snow_helper.py template atf-server-test --table incident
+python3 plugin/skills/servicenow-development-guide/scripts/snow_helper.py template integrationhub-action --table incident
 
 # Lint a script
-python3 skills/servicenow-development-guide/scripts/snow_helper.py lint < myscript.js
+python3 plugin/skills/servicenow-development-guide/scripts/snow_helper.py lint < myscript.js
 
 # Validate the skill package and bundled references
-python3 skills/servicenow-development-guide/scripts/snow_helper.py validate-skill skills/servicenow-development-guide
+python3 plugin/skills/servicenow-development-guide/scripts/snow_helper.py validate-skill plugin/skills/servicenow-development-guide
 ```
 
 ## Examples

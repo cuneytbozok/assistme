@@ -15,7 +15,7 @@ for (const skill of ['servicenow-readonly-troubleshooting', 'servicenow-developm
   const zip = join(out, `${skill}.zip`);
   rmSync(zip, { force: true });
   execFileSync('zip', ['-q', '-r', '-X', zip, skill, '-x', '*.DS_Store', '-x', '*__pycache__*'], {
-    cwd: join(ROOT, 'skills'),
+    cwd: join(ROOT, 'plugin/skills'),
     stdio: 'inherit',
   });
   console.log(`Wrote ${zip}`);

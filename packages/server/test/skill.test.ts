@@ -14,7 +14,7 @@ import { loadConfig } from '../src/config.js';
 import { createMcpServer } from '../src/mcp/server.js';
 
 const REPO = join(dirname(fileURLToPath(import.meta.url)), '../../..');
-const SKILL = join(REPO, 'skills/servicenow-readonly-troubleshooting');
+const SKILL = join(REPO, 'plugin/skills/servicenow-readonly-troubleshooting');
 const skillMd = readFileSync(join(SKILL, 'SKILL.md'), 'utf8');
 const refs = readdirSync(join(SKILL, 'references'));
 const refText = (f: string) => readFileSync(join(SKILL, 'references', f), 'utf8');
@@ -88,9 +88,12 @@ describe('T-038 skill', () => {
 
   it('the plugin files agree, and pack:skill makes a zip with SKILL.md in a named folder', () => {
     const market = JSON.parse(readFileSync(join(REPO, '.claude-plugin/marketplace.json'), 'utf8'));
-    const plugin = JSON.parse(readFileSync(join(REPO, '.claude-plugin/plugin.json'), 'utf8'));
+    const plugin = JSON.parse(
+      readFileSync(join(REPO, 'plugin/.claude-plugin/plugin.json'), 'utf8'),
+    );
     expect(market.plugins[0].name).toBe(plugin.name);
-    expect(market.plugins[0].source).toBe('./');
+    // Not './': Claude Code copies the plugin folder, and the repo root is hundreds of MB.
+    expect(market.plugins[0].source).toBe('./plugin');
     expect(existsSync(join(SKILL, 'SKILL.md'))).toBe(true);
 
     const out = mkdtempSync(join(tmpdir(), 'sn-skill-'));
@@ -121,7 +124,7 @@ describe('T-038 skill', () => {
 });
 
 describe('the third-party development guide skill', () => {
-  const DIR = join(REPO, 'skills/servicenow-development-guide');
+  const DIR = join(REPO, 'plugin/skills/servicenow-development-guide');
   const walk = (dir: string): string[] =>
     readdirSync(dir, { withFileTypes: true }).flatMap((e) =>
       e.isDirectory() ? walk(join(dir, e.name)) : [join(dir, e.name)],
@@ -171,13 +174,23 @@ describe('the third-party development guide skill', () => {
 
 describe('skill names', () => {
   it('each folder matches its skill name, and the plugin ships exactly these two', () => {
-    const found = readdirSync(join(REPO, 'skills'))
-      .filter((d) => existsSync(join(REPO, 'skills', d, 'SKILL.md')))
+    const found = readdirSync(join(REPO, 'plugin/skills'))
+      .filter((d) => existsSync(join(REPO, 'plugin/skills', d, 'SKILL.md')))
       .sort();
     expect(found).toEqual(['servicenow-development-guide', 'servicenow-readonly-troubleshooting']);
     for (const d of found) {
-      const text = readFileSync(join(REPO, 'skills', d, 'SKILL.md'), 'utf8');
+      const text = readFileSync(join(REPO, 'plugin/skills', d, 'SKILL.md'), 'utf8');
       expect(text.startsWith(`---\nname: ${d}\n`), d).toBe(true);
     }
+  });
+});
+
+describe('plugin folder', () => {
+  it('holds only the plugin manifest and the skills', () => {
+    expect(
+      readdirSync(join(REPO, 'plugin'))
+        .filter((f) => f !== '.DS_Store')
+        .sort(),
+    ).toEqual(['.claude-plugin', 'skills']);
   });
 });

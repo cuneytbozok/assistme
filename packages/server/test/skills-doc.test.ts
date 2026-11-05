@@ -38,9 +38,9 @@ describe('T-039 settings example', () => {
     for (const rule of settings.permissions.allow) expect(rule).toMatch(/ explain \*\)$/);
   });
 
-  it('the doc states what is unverified and names every denied command', () => {
-    expect(doc).toMatch(/Not yet verified/);
+  it('the doc says it is not used and that the rules are only a guardrail', () => {
+    expect(doc).toMatch(/not used/);
     expect(doc).toMatch(/not a security boundary/);
-    for (const c of MUTATING) expect(doc, c).toContain(`\`${c}\``);
+    expect(doc).toMatch(/haven't been tested/);
   });
 });

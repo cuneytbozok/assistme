@@ -1,6 +1,0 @@
-{
-  "name": "sn-mcp-skills",
-  "description": "Read-only ServiceNow troubleshooting guidance for the sn-mcp connector.",
-  "version": "0.1.0",
-  "author": { "name": "Cüneyt Bozok" }
-}

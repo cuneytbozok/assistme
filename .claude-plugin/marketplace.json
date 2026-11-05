@@ -1,11 +1,16 @@
 {
   "name": "sn-mcp",
-  "owner": { "name": "Cüneyt Bozok" },
+  "owner": {
+    "name": "Cüneyt Bozok"
+  },
   "plugins": [
     {
       "name": "sn-mcp-skills",
-      "source": "./",
-      "description": "Read-only ServiceNow troubleshooting guidance for the sn-mcp connector."
+      "source": "./plugin",
+      "description": "Two ServiceNow skills: read-only troubleshooting with the connector, and a development guide. Guidance only: they add no access."
     }
-  ]
+  ],
+  "metadata": {
+    "description": "Read-only ServiceNow troubleshooting and development guidance for the sn-mcp connector."
+  }
 }

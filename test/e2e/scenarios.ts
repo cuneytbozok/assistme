@@ -75,7 +75,7 @@ async function walk(
   return { pages, last: r };
 }
 
-/** Tables named in skills/servicenow-readonly-troubleshooting/references (T-038). */
+/** Tables named in plugin/skills/servicenow-readonly-troubleshooting/references (T-038). */
 const SKILL_TABLES = [
   'syslog',
   'syslog_transaction',

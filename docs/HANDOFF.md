@@ -98,7 +98,7 @@ _Last updated: 2026-11-05 (after T-039 preparation)_
 - **T-037 DONE:** Prepared, BLOCKED on the user: `npm run setup`, `npm run uninstall`, `docs/INSTALL.md`. Tested under a throwaway HOME only; the real machine run stops the live broker, so it is left to the user.
 - **T-038, T-039 prepared, BLOCKED on the user.**
 - **T-037 real-machine run passed:** the extension reconnects by itself after uninstall and setup.
-- **Third-party skill added (user decision):** `skills/servicenow-development-guide`, pinned; see its `PROVENANCE.md`.
+- **Third-party skill added (user decision):** `plugin/skills/servicenow-development-guide`, pinned; see its `PROVENANCE.md`.
 - **T-034 DONE (live):** 14 of 14 scenarios on `dev469966`; M4 achieved.
 - **Next task:** the checklist at the top of this file.
 - **Verify live in T-034:** `sysparm_offset` counts pre-ACL rows (ADR-011 addendum).
