@@ -129,6 +129,7 @@ To remove it, run `vibe mcp remove sn-mcp`. That leaves a line reading `mcp_serv
 Tested with Vibe 3.1.0 on a Mac. Some things work differently here:
 
 - **Two different approvals.** Vibe asks before it runs each tool, including the ones that only read. That prompt controls what Vibe may run. It doesn't give access to an instance: only the popup does that, so choosing "always allow" in Vibe doesn't skip it. While the model waits for your approval it calls `claim_scope` repeatedly, so that tool is the one most worth allowing.
+- **Check you can see the code.** A model may not show the approval code, even though it's told to: this happened in a real run. If a request appears in the popup with no code in Vibe, ask Vibe for the code and compare before approving, or deny it.
 - **Use an interactive session.** The model has to show you the approval code and wait. In `vibe -p`, you see only the final answer, and the access ends when that run ends.
 - **Each `vibe` you start has its own access**, which ends when you exit it. So `vibe --continue` asks for a new approval. Sessions served by one Vibe process, as in an editor using `vibe-acp`, share one connection, as conversations in Claude Desktop do.
 - **Where your data goes.** What the tools return goes to the model Vibe is set to use, which is Mistral's service unless you've set up another. Vibe also keeps it in its session files under `~/.vibe/logs/session`, readable only by you, so that a large result can be read back from a file there.

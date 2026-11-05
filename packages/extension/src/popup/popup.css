@@ -502,6 +502,10 @@ input[type="text"]:focus {
     monospace;
   letter-spacing: 3px;
 }
+.code-check {
+  font-weight: 600;
+  font-size: 12px;
+}
 .req-meta {
   font-size: 11.5px;
   color: var(--muted);

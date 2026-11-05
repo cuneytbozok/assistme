@@ -282,10 +282,14 @@ describe('AC4: request → approve → claim → query (mock extension)', () => 
       approval_code: 'K7QF-2M',
       status: 'pending',
     });
-    expect(req.body.data.next_step).toMatch(/approve.*K7QF-2M/);
+    // T-046: a real model kept the code in its reasoning and carried on polling.
+    expect(req.body.data.next_step).toMatch(/K7QF-2M.*approve/);
+    expect(req.body.data.next_step).toMatch(/can't see this result or your reasoning/);
+    expect(req.body.data.next_step).toMatch(/Before any other tool call, write a message/);
 
     const pending = await call('claim_scope', { request_id: REQ });
     expect(pending.body.data).toMatchObject({ status: 'pending' });
+    expect(pending.body.data.next_step).toMatch(/approval code in a message/);
     expect(pending.body.data.scope_id).toBeUndefined();
 
     if (state) state.approved = true; // the user clicks Approve in the popup

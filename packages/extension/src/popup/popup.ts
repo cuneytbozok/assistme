@@ -673,6 +673,10 @@ function renderRequest(r: PopupState['pending'][number]): HTMLLIElement {
   const parts: Node[] = [
     head,
     make('div', {
+      className: 'code-check',
+      text: "Approve only if your AI chat shows this same code. If it doesn't, ask it for the code, or deny.",
+    }),
+    make('div', {
       className: 'hint',
       text:
         r.mode === 'compare'

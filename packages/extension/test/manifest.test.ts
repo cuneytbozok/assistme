@@ -83,6 +83,11 @@ describe('manifest.json', () => {
 });
 
 describe('entry points', () => {
+  it('tells the user to approve only a code their AI chat shows (T-046)', () => {
+    const src = readFileSync(join(root, 'src/popup/popup.ts'), 'utf8');
+    expect(src).toContain('Approve only if your AI chat shows this same code');
+  });
+
   it.each(['src/background/index.ts', 'src/popup/popup.ts'])(
     '%s imports the CSP/zod setup first',
     (file) => {

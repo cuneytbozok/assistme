@@ -2,9 +2,9 @@
 
 The connector is installed and working in Claude Desktop, and every required step is done. All of these are optional.
 
-## 1. Install version 0.1.6
+## 1. Install version 0.1.7
 
-Comparing on one instance, and comparing record versions, passed live. To use them in Claude Desktop, install `packages/server/sn-mcp.mcpb` (version 0.1.6), then Cmd+Q and reopen.
+Comparing on one instance, and comparing record versions, passed live. To use them in Claude Desktop, install `packages/server/sn-mcp.mcpb` (version 0.1.7), then Cmd+Q and reopen.
 
 ## ChatGPT Desktop
 
@@ -12,7 +12,7 @@ Run `npm run setup`, and copy the printed values into **Settings → MCP servers
 
 ## Mistral Vibe
 
-Run `npm run setup`, and add the printed block to `~/.vibe/config.toml`: see [INSTALL.md](INSTALL.md#mistral-vibe). Then start `vibe` and ask it to list your instances. This is already done on your Mac, and it worked in one real run, so the only thing left is to use it. It may release its access after each answer, so a follow-up question can ask for a new approval. Tell me if that gets in the way, or if a larger read goes wrong.
+Run `npm run setup`, and add the printed block to `~/.vibe/config.toml`: see [INSTALL.md](INSTALL.md#mistral-vibe). Then start `vibe` and ask it to list your instances. This is already done on your Mac. In the first real run the model didn't show the approval code; the wording is now stronger, but this hasn't been re-tested. If a request appears in the popup and you can't see its code in Vibe, ask Vibe for the code and compare before approving, or deny it. It may release its access after each answer, so a follow-up question can ask for a new approval. Tell me if that gets in the way, or if a larger read goes wrong.
 
 ## Windows
 

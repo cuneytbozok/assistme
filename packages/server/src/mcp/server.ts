@@ -49,14 +49,14 @@ import { registerSearchCode } from './tools/search-code.js';
 export { ScopeIdInput, UNTRUSTED_NOTE };
 
 export const SERVER_NAME = 'sn-mcp';
-export const SERVER_VERSION = '0.1.6';
+export const SERVER_VERSION = '0.1.7';
 
 export const INSTRUCTIONS = `Read-only access to ServiceNow instances through the user's own browser session.
 
 Access flow (required before reading data):
 1. list_instances — see the instances the user registered (alias, environment).
 2. request_scope — ask for access to one instance (or two, to compare). It returns an approval code.
-3. Tell the user the approval code and ask them to approve it in the sn-mcp Chrome extension popup. Only the user can approve; you cannot.
+3. Write the approval code in a message to the user, before any other tool call: they can't see tool results or your reasoning. Ask them to approve it in the sn-mcp Chrome extension popup, only if it matches. Only the user can approve; you cannot.
 4. claim_scope with the request_id until it returns a scope_id (status "approved").
 5. Pass scope_id to data tools. If a scope expires or is unknown, request a new one. Never guess or reuse another conversation's scope. Keep using your scope_id for follow-up questions in this conversation: it lasts as long as the user chose when approving, so don't release it after answering or request a new one while it's valid. Call release_scope only when the user says they're finished.
 
@@ -294,7 +294,7 @@ export function createMcpServer(
           status: 'pending',
           mode: list.length === 2 ? 'compare' : 'single',
           expires_in_seconds: res.expiresInSeconds,
-          next_step: `Ask the user to open the sn-mcp extension popup in Chrome and approve the request with code ${code} (only if it matches). Then call claim_scope with request_id.`,
+          next_step: `The user can't see this result or your reasoning. Before any other tool call, write a message to the user with the code ${code}, and ask them to approve the request in the sn-mcp extension popup in Chrome, only if the code matches. Then call claim_scope with request_id.`,
         },
       });
     },
@@ -339,7 +339,8 @@ export function createMcpServer(
         });
       }
       const next: Record<string, string> = {
-        pending: 'The user has not approved yet. Wait for them, then call claim_scope again.',
+        pending:
+          "The user has not approved yet. If you haven't shown them the approval code in a message, do it now: they can't see tool results or your reasoning. Wait for them, then call claim_scope again.",
         denied: 'The user denied the request. Do not retry unless the user asks.',
         expired:
           'The request expired or is unknown. Call request_scope again if the user still wants access.',
