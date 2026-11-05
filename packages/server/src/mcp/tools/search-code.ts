@@ -200,7 +200,15 @@ export function registerSearchCode(server: McpServer, ctx: ToolContext): void {
       }
       // The pattern goes through the same value validation as any filter.
       const probe = compileFilter({ where: [{ field: 'sys_id', op: 'contains', value: pattern }] });
-      if (!probe.ok) return toolError(probe.error.code, probe.error.message);
+      if (!probe.ok) {
+        return toolError(
+          probe.error.code,
+          probe.error.message,
+          /javascript/i.test(pattern)
+            ? 'Search for "javascript" without the colon: it finds those lines too, and the snippets show them.'
+            : undefined,
+        );
+      }
 
       const explicit = state?.tables ?? args.tables;
       const limit = args.limit ?? state?.limit ?? DEFAULT_LIMIT;

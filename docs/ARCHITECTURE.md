@@ -202,7 +202,7 @@ Values containing `^`, control characters, or newlines are rejected, as are `,` 
 
 - Tokenize on `^NQ`, `^OR`, `^`, then `ORDERBY`/`ORDERBYDESC`. Each term must parse as `<field><allowlisted op><value>`, with ops matched longest-first. Anything else is rejected.
 - Rejected: `DYNAMIC`, `RLQUERY`, `SUBQUERY`, `JOIN`, `123TEXTQUERY321`, `GOTO`, `EQ` tricks, unknown operators.
-- Values are normalized (NFKC, zero-width characters stripped, URL-decoded ≤2 passes, lowercased for matching). After that, these patterns are rejected: `javascript`, `gs.`, `${`, `new `, `eval(`.
+- Values are normalized (NFKC, zero-width characters stripped, URL-decoded ≤2 passes, lowercased for matching). After that, these patterns are rejected: `javascript:` (the word followed by a colon, with any separators; the word alone is allowed), `gs.`, `${`, `new `, `eval(`.
 - Limits: ≤20 terms, ≤3 `^NQ` groups, ≤2 KB.
 
 ### 6.3 Anti-broadening

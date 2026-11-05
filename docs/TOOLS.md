@@ -185,7 +185,7 @@ A record's whole timeline, any age: `sys_audit` and `sys_journal_field` merged b
 
 ### `search_code`
 
-Which scripts and conditions contain text: every field of type `script`, `script_plain`, `script_server`, `conditions`, `condition_string`, `email_script` or `html_script` in the dictionary. Inputs: `pattern`, `tables`, `limit` (default 20 records), `cursor`, `instance`, `max_chars`. Returns `data.matches` (`{table, sys_id, name, hits: [{field, matches, snippets}]}`), `tables_searched`, `tables_remaining`, `tables_total`. Snippets have ±3 lines, at most 3 per field. One call searches at most 25 tables (`reason: batch`). `complete` is true only after the last table. A pattern containing `javascript:` is refused by the query validator.
+Which scripts and conditions contain text: every field of type `script`, `script_plain`, `script_server`, `conditions`, `condition_string`, `email_script` or `html_script` in the dictionary. Inputs: `pattern`, `tables`, `limit` (default 20 records), `cursor`, `instance`, `max_chars`. Returns `data.matches` (`{table, sys_id, name, hits: [{field, matches, snippets}]}`), `tables_searched`, `tables_remaining`, `tables_total`. Snippets have ±3 lines, at most 3 per field. One call searches at most 25 tables (`reason: batch`). `complete` is true only after the last table. A pattern containing `javascript:` is refused: search for `javascript` without the colon.
 
 ```json example
 { "scope_id": "$SCOPE", "pattern": "u_close_code", "tables": ["incident"] }
@@ -206,7 +206,7 @@ Pages come from one snapshot held in memory, after the extension confirms the sc
 Seen on a live instance (T-034):
 
 - **`var__m_*` tables** hold Flow Designer variables. They're listed in the dictionary, but `sys_db_object` doesn't have them and the Stats API refuses them with "Aggregate Query Failed". `search_code` reports them as `not_found`, and `get_related_records` as `error`, each with a hint. Some have mixed-case field names, reported as `unsupported_name`. A whole-instance `search_code` is therefore normally `complete: false` on the pages that include them.
-- **A name containing "javascript"** can't be used in a query value, because the validator rejects that word in any disguise (ADR-005). So a table such as `automation_pipeline_transformer_javascript` can't be read, and a `search_code` for that word is refused.
+- **`javascript:` in a filter** is refused, because ServiceNow would run it on the server. The word alone is fine. To find `javascript:` in scripts, search for `javascript` without the colon. Reading content that contains it is never affected.
 - **Whole-instance `search_code`:** about 610 tables, 25 calls and 8 minutes on a developer instance. Pass `tables` when you can.
 
 ## Error catalog
@@ -217,7 +217,7 @@ Seen on a live instance (T-034):
 | `SCOPE_UNKNOWN` | The scope was revoked, released, or issued before a restart | Request a new scope; the user approves again |
 | `SCOPE_EXPIRED` | The scope's time ran out | Request a new scope |
 | `SCOPE_NOT_APPROVED` | The request is still pending | Ask the user to approve the code |
-| `REQUEST_DENIED` | The user denied the request or let it expire | Don't retry without asking |
+| `REQUEST_DENIED` | Reserved. A denied request comes back from `claim_scope` as `status: "denied"`, not as this error | Don't retry without asking |
 | `INSTANCE_NOT_REGISTERED` | No such alias, or its host permission was removed | Call `list_instances`; only the user registers instances |
 | `INSTANCE_NOT_IN_SCOPE` | The scope doesn't cover that instance | Request a scope for it |
 | `BRIDGE_UNAVAILABLE` | The Chrome extension can't be reached | Ask the user to open Chrome with the extension on |

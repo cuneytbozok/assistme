@@ -507,6 +507,30 @@ export const SCENARIOS: {
     },
   },
   {
+    name: 'the word javascript works: a table named with it, and searching for it (ADR-005)',
+    run: async (call, scope) => {
+      const d = await call('describe_table', {
+        scope_id: scope,
+        table: 'automation_pipeline_transformer_javascript',
+        max_chars: 4000,
+      });
+      // The table comes with a plugin; NOT_FOUND on another instance isn't a failure.
+      if (d?.error?.code !== 'NOT_FOUND') ok(d, 'describe');
+      const found = ok(
+        await call('search_code', {
+          scope_id: scope,
+          pattern: 'javascript',
+          tables: ['sys_script_include'],
+          limit: 5,
+        }),
+        'search',
+      );
+      const refused = await call('search_code', { scope_id: scope, pattern: 'javascript:' });
+      expectThat(refused?.error?.code === 'UNSAFE_QUERY', 'javascript: must stay refused');
+      return { table_described: d?.ok === true, matches: found.data.matches.length };
+    },
+  },
+  {
     name: 'unsafe and broadening queries are refused before any read (AC-14)',
     run: async (call, scope) => {
       const cases: [Record<string, unknown>, string][] = [

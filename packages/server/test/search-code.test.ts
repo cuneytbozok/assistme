@@ -401,6 +401,41 @@ describe('T-031 search_code', () => {
     await h.close();
   });
 
+  it('the word javascript is searchable, finds javascript: lines, and the prefix is refused', async () => {
+    const sn = fixture();
+    sn.insert('sys_script', {
+      name: 'Qualifier',
+      script: 'x\nvar q = "javascript:gs.getUserID()";\ny',
+    });
+    const h = await harness({ sn });
+    const scope = await claim(h, 'dev');
+    const r = await h.call('search_code', { scope_id: scope, pattern: 'javascript' });
+    expect(r.ok).toBe(true);
+    expect(r.data.matches[0].name).toBe('Qualifier');
+    expect(r.data.matches[0].hits[0].snippets[0].lines.join('\n')).toContain('javascript:gs');
+    const refused = await h.call('search_code', { scope_id: scope, pattern: 'javascript:' });
+    expect(refused.error.code).toBe('UNSAFE_QUERY');
+    expect(refused.error.hint).toMatch(/without the colon/);
+    await h.close();
+  });
+
+  it('a table named with javascript can be searched and described', async () => {
+    const sn = fixture();
+    scriptTable(sn, 'automation_pipeline_transformer_javascript');
+    sn.insert('automation_pipeline_transformer_javascript', { name: 'T', script: 'needle' });
+    const h = await harness({ sn });
+    const scope = await claim(h, 'dev');
+    const r = await h.call('search_code', { scope_id: scope, pattern: 'needle' });
+    expect(r.complete).toBe(true);
+    expect(r.data.matches[0].table).toBe('automation_pipeline_transformer_javascript');
+    const d = await h.call('describe_table', {
+      scope_id: scope,
+      table: 'automation_pipeline_transformer_javascript',
+    });
+    expect(d.ok).toBe(true);
+    await h.close();
+  });
+
   it('hitting the limit exactly on the last match is complete, with no empty extra call', async () => {
     const h = await harness({ sn: fixture() });
     const scope = await claim(h, 'dev');

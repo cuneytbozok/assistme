@@ -211,5 +211,35 @@
     "profiles": ["enforce", "strict"],
     "allowTextSearch": true,
     "referencedFields": ["active"]
+  },
+  {
+    "query": "name=automation_pipeline_transformer_javascript",
+    "profiles": ["enforce", "strict"],
+    "allowTextSearch": false,
+    "referencedFields": ["name"]
+  },
+  {
+    "query": "scriptLIKEjavascript",
+    "profiles": ["enforce", "strict"],
+    "allowTextSearch": false,
+    "referencedFields": ["script"]
+  },
+  {
+    "query": "short_descriptionLIKEJavaScript error at 10:30",
+    "profiles": ["enforce", "strict"],
+    "allowTextSearch": false,
+    "referencedFields": ["short_description"]
+  },
+  {
+    "query": "textLIKEjavascript and more: details",
+    "profiles": ["enforce", "strict"],
+    "allowTextSearch": false,
+    "referencedFields": ["text"]
+  },
+  {
+    "query": "nameINjavascript_a,javascript_b",
+    "profiles": ["enforce", "strict"],
+    "allowTextSearch": false,
+    "referencedFields": ["name"]
   }
 ]

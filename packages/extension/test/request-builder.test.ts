@@ -323,3 +323,32 @@ describe('the builder is the only URL constructor', () => {
     }
   });
 });
+
+describe('javascript in query values (ADR-005 addendum, T-034)', () => {
+  const op = (query: string) => ({
+    kind: 'table.list',
+    table: 'incident',
+    query,
+    limit: 1,
+    offset: 0,
+    displayValue: 'false',
+    noCount: true,
+  });
+
+  it('the word alone is allowed; the extension builds the request', () => {
+    for (const q of ['scriptLIKEjavascript', 'name=automation_pipeline_transformer_javascript']) {
+      expect(buildPath(op(q))).toContain('/api/now/table/incident');
+    }
+  });
+
+  it('the prefix is refused here too, in any disguise', () => {
+    for (const q of [
+      'scriptLIKEjavascript:gs.x()',
+      'scriptLIKEjava script :gs.x()',
+      'scriptLIKEjavascript%3Ags.x()',
+      'scriptLIKEjavascript&colon;gs.x()',
+    ]) {
+      expect(() => buildPath(op(q)), q).toThrow();
+    }
+  });
+});

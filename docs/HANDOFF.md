@@ -22,7 +22,7 @@ _Last updated: 2026-11-05 (after T-039 preparation)_
 7. Install the official SDK plugin with the deny rules; check `explain` and that denied commands are blocked (T-039).
 8. A second instance for T-015, if one is available. That also allows a live `compare_records` run, which T-034 can't cover.
 
-**Open decisions for the user:** whether exact table names containing "javascript" may be looked up (they fail closed today; found in T-034); dictionary validation fails closed when the user can't read `sys_dictionary` (ADR-005 addendum); `REQUEST_DENIED` vs `status: denied` (T-015 AC6).
+**Decisions made 2026-11-05 by the user:** the word "javascript" is allowed and only the `javascript:` prefix is refused (ADR-005 addendum); dictionary validation stays fail-closed, with Claude telling the user what they can't read; a denied request stays `status: "denied"` (T-015 AC6 changed).
 
 **Known deviations:**
 

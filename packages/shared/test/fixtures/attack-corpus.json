@@ -92,35 +92,35 @@
   },
   {
     "name": "js fullwidth (NFKC)",
-    "query": "sys_id=\uff4a\uff41\uff56\uff41\uff53\uff43\uff52\uff49\uff50\uff54:gs.getUserID()",
+    "query": "sys_id=ｊａｖａｓｃｒｉｐｔ:gs.getUserID()",
     "expect": "UNSAFE_QUERY",
     "profile": "enforce",
     "allowTextSearch": false
   },
   {
     "name": "js zero-width space",
-    "query": "sys_id=java\u200bscript:gs.getUserID()",
+    "query": "sys_id=java​script:gs.getUserID()",
     "expect": "UNSAFE_QUERY",
     "profile": "enforce",
     "allowTextSearch": false
   },
   {
     "name": "js soft hyphen",
-    "query": "sys_id=java\u00adscript:gs.getUserID()",
+    "query": "sys_id=java­script:gs.getUserID()",
     "expect": "UNSAFE_QUERY",
     "profile": "enforce",
     "allowTextSearch": false
   },
   {
     "name": "js bidi override",
-    "query": "sys_id=java\u202escript:gs.getUserID()",
+    "query": "sys_id=java‮script:gs.getUserID()",
     "expect": "UNSAFE_QUERY",
     "profile": "enforce",
     "allowTextSearch": false
   },
   {
     "name": "js BOM inside",
-    "query": "sys_id=java\ufeffscript:gs.getUserID()",
+    "query": "sys_id=java﻿script:gs.getUserID()",
     "expect": "UNSAFE_QUERY",
     "profile": "enforce",
     "allowTextSearch": false
@@ -627,6 +627,90 @@
     "query": "scriptLIKEnew GlideRecord",
     "expect": "UNSAFE_QUERY",
     "profile": "strict",
+    "allowTextSearch": false
+  },
+  {
+    "name": "js space before colon",
+    "query": "sys_id=javascript :gs.getUserID()",
+    "expect": "UNSAFE_QUERY",
+    "profile": "enforce",
+    "allowTextSearch": false
+  },
+  {
+    "name": "js spaces everywhere",
+    "query": "sys_id=j a v a s c r i p t : gs.getUserID()",
+    "expect": "UNSAFE_QUERY",
+    "profile": "enforce",
+    "allowTextSearch": false
+  },
+  {
+    "name": "js double-encoded colon",
+    "query": "sys_id=javascript%253Ags.getUserID()",
+    "expect": "UNSAFE_QUERY",
+    "profile": "enforce",
+    "allowTextSearch": false
+  },
+  {
+    "name": "js decimal entity colon",
+    "query": "sys_id=javascript&#58;gs.getUserID()",
+    "expect": "UNSAFE_QUERY",
+    "profile": "enforce",
+    "allowTextSearch": false
+  },
+  {
+    "name": "js hex entity colon",
+    "query": "sys_id=javascript&#x3A;gs.getUserID()",
+    "expect": "UNSAFE_QUERY",
+    "profile": "enforce",
+    "allowTextSearch": false
+  },
+  {
+    "name": "js unicode escape colon",
+    "query": "sys_id=javascript\\u003ags.getUserID()",
+    "expect": "UNSAFE_QUERY",
+    "profile": "enforce",
+    "allowTextSearch": false
+  },
+  {
+    "name": "js fullwidth colon",
+    "query": "sys_id=javascript：gs.getUserID()",
+    "expect": "UNSAFE_QUERY",
+    "profile": "enforce",
+    "allowTextSearch": false
+  },
+  {
+    "name": "js small colon",
+    "query": "sys_id=javascript﹕gs.getUserID()",
+    "expect": "UNSAFE_QUERY",
+    "profile": "enforce",
+    "allowTextSearch": false
+  },
+  {
+    "name": "js zero-width before colon",
+    "query": "sys_id=javascript​:gs.getUserID()",
+    "expect": "UNSAFE_QUERY",
+    "profile": "enforce",
+    "allowTextSearch": false
+  },
+  {
+    "name": "js mid-value",
+    "query": "short_descriptionLIKEhello javascript:gs.getUserID()",
+    "expect": "UNSAFE_QUERY",
+    "profile": "enforce",
+    "allowTextSearch": false
+  },
+  {
+    "name": "js after a word",
+    "query": "short_descriptionLIKEnotjavascript:gs.getUserID()",
+    "expect": "UNSAFE_QUERY",
+    "profile": "enforce",
+    "allowTextSearch": false
+  },
+  {
+    "name": "js in list after harmless word",
+    "query": "sys_idINjavascript,javascript:gs.getUserID()",
+    "expect": "UNSAFE_QUERY",
+    "profile": "enforce",
     "allowTextSearch": false
   }
 ]

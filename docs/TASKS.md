@@ -685,7 +685,7 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
   3. Revoking mid-session blocks the next call.
   4. PROD TTL expiry blocks calls.
   5. A second Claude client can't use the first client's `scope_id`.
-  6. Denying a request (or a mismatched code) yields `REQUEST_DENIED`.
+  6. Denying a request (or a mismatched code) yields `status: "denied"` from `claim_scope`, and Claude tells the user. (Changed 2026-11-05 by the user's decision: was `REQUEST_DENIED`.)
   7. Logging out of ServiceNow → `SESSION_EXPIRED`; logging back in → recovery.
 - **Verification:** manual and scripted live run; evidence in `docs/evidence/T-015/`.
 - **DoD:** M2 marked achieved.
@@ -693,7 +693,6 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 - **Blocked (2026-11-04):** the user has no second instance to register as PROD, and the registry refuses the same host twice, so the PDI can't also be registered under a PROD alias. Resume when a second instance exists, or if the user approves a test-only duplicate-host exception.
   - Before the run: reload the extension and restart Claude Desktop (both run older builds).
   - Must include T-013 AC4: log out in the user's own profile → `SESSION_EXPIRED` with no sign-in dialog. Fallback: the DNR rule in the ADR-002 addendum.
-  - Open question for AC6: `claim_scope` returns status `denied` as a normal result, not a `REQUEST_DENIED` error. Decide whether to change it.
 - **Evidence:** —
 
 ## Phase 3 — Read-only & query hardening (Milestone M3)
@@ -1311,7 +1310,8 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
     - `compare_records` live: it needs a second instance (T-015). The T-034 scenario list doesn't include it; AC-8 stays mock-only.
     - `sysparm_offset` counting pre-ACL rows (ADR-011 addendum): the user is an admin, so little was hidden.
     - 22 tables refused `ACL_DENIED` even for admin, reported as such; not investigated further.
-    - A table named with "javascript" can't be read (fails closed): an **open decision for the user**.
+    - A table named with "javascript" couldn't be read at the time. The user chose to allow the word (ADR-005 addendum): see the re-check below.
+  - **Change after the run (2026-11-05, user decision):** only the `javascript:` prefix is refused now, not the word (ADR-005 addendum). 102 attack cases, 12 of them new and aimed at hiding the prefix, are all refused in the shared validator, and 4 disguises are checked against the extension's real builder. A new live scenario checks the named table and a search for the word. **Not yet run live:** it needs an extension reload and one approval.
   - **DoD ✔** M4 achieved.
 
 ### T-035 — Claude Code registration

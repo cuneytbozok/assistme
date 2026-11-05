@@ -46,10 +46,12 @@ export function normalizeForInspection(value: string): string {
   return s.toLowerCase();
 }
 
-/** Letters only — defeats separators/whitespace inserted inside keywords ("java\tscript"). */
-function lettersOnly(normalized: string): string {
-  return normalized.replace(/[^a-z]/g, '');
-}
+/**
+ * `javascript` then a colon, with anything but letters and digits allowed between the characters:
+ * defeats separators inserted to hide it ("java script:", "j.a.v.a:", "javascript :").
+ */
+const SCRIPT_PREFIX_RE =
+  /j[^a-z0-9]*a[^a-z0-9]*v[^a-z0-9]*a[^a-z0-9]*s[^a-z0-9]*c[^a-z0-9]*r[^a-z0-9]*i[^a-z0-9]*p[^a-z0-9]*t[^a-z0-9]*:/;
 
 export function hasControlChars(value: string): boolean {
   return CONTROL_RE.test(value);
@@ -57,11 +59,12 @@ export function hasControlChars(value: string): boolean {
 
 /**
  * Enforced everywhere (server + extension): ServiceNow evaluates `javascript:` values
- * server-side, so the word is rejected in any disguise, in any value.
+ * server-side, so that prefix is rejected in any disguise, anywhere in any value. The word alone
+ * runs nothing, and it is common in table names and in text people search for (ADR-005 addendum).
  */
 export function containsScriptMarker(value: string): boolean {
   const n = normalizeForInspection(value);
-  return lettersOnly(n).includes('javascript') || hasControlChars(n);
+  return SCRIPT_PREFIX_RE.test(n) || hasControlChars(n);
 }
 
 /**

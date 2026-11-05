@@ -120,7 +120,14 @@ describe('normalization', () => {
   it('detects script markers without false positives on ordinary text', () => {
     expect(containsScriptMarker('Java runtime update')).toBe(false);
     expect(containsScriptMarker('scripting guide')).toBe(false);
-    expect(containsScriptMarker('JavaScript guide')).toBe(true); // documented false positive
+    // The word alone is fine; only the prefix runs script (ADR-005 addendum).
+    expect(containsScriptMarker('JavaScript guide')).toBe(false);
+    expect(containsScriptMarker('automation_pipeline_transformer_javascript')).toBe(false);
+    expect(containsScriptMarker('javascript error at 10:30')).toBe(false);
+    expect(containsScriptMarker('JavaScript: the good parts')).toBe(true); // can't tell it apart
+    // Separators other than spaces before the colon are still caught.
+    expect(containsScriptMarker('javascript.:x')).toBe(true);
+    expect(containsScriptMarker('javascript-_:x')).toBe(true);
     expect(containsScriptLikePattern('settings.json')).toBe(false);
     expect(containsScriptLikePattern('renew license')).toBe(false);
     expect(containsScriptLikePattern('new laptop')).toBe(true);
