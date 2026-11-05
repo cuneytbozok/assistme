@@ -8,11 +8,11 @@ Comparing on one instance, and comparing record versions, passed live. To use th
 
 ## ChatGPT Desktop
 
-Run `npm run setup`, and copy the printed values into **Settings → MCP servers**: see [INSTALL.md](INSTALL.md#chatgpt-desktop). Then ask it to list your instances.
+Run `npm run setup`, and copy the printed values into **Settings → MCP servers**: see [INSTALL.md](INSTALL.md#chatgpt-desktop). Then ask it to list your instances, in a Codex chat: normal chats don't use local servers.
 
 ## Windows
 
-Left for later, because you don't have a Windows PC. The code is written but has never run on Windows. When someone has a PC, they can try the install using [INSTALL.md](INSTALL.md#windows). Pushing also runs the Windows CI job, which needs no PC but doesn't cover real Chrome or a real instance.
+Left for later, because you don't have a Windows PC. The first Windows CI run passed 16 of 18 tests and found a problem that isn't fixed: setup's check of folder permissions may not work. Nobody should rely on Windows until that's fixed. After that, someone with a PC can try the install using [INSTALL.md](INSTALL.md#windows). The CI job doesn't cover real Chrome or a real instance.
 
 ## 2. A second instance
 

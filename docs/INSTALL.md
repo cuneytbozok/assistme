@@ -95,7 +95,11 @@ In **Settings → MCP servers**, add a server:
 | Environment variable | `SN_MCP_CLIENT_NAME` = `ChatGPT Desktop` |
 | Working directory | `/ABSOLUTE/PATH/TO/AssistMe` |
 
-Save, then restart ChatGPT Desktop. If you'd rather edit `~/.codex/config.toml`, setup prints a block for that too. It also sets longer timeouts: the 60-second default for one tool call can be too short for a long read of many pages.
+Save, then restart ChatGPT Desktop.
+
+**Use a Codex chat.** The tools work in the app's Codex chats, not in its normal chats: a normal chat doesn't start local servers, and it will say it can't find your instances.
+
+If you'd rather edit `~/.codex/config.toml`, setup prints a block for that too. It also sets longer timeouts: the 60-second default for one tool call can be too short for a long read of many pages.
 
 Each client has its own access: what you approve for ChatGPT doesn't work in Claude, and the other way round. Each ChatGPT conversation also has its own, so a new conversation asks for a new approval. The popup shows which client is asking. ChatGPT doesn't get the skills, only the tools.
 
@@ -137,7 +141,7 @@ After upgrading Node, run `npm run setup` again: the native host records which N
 
 ## Windows
 
-**Not tested on a real Windows PC yet.** The steps are the same, in PowerShell:
+**Not tested on a real Windows PC yet, and the first automated run found a problem that isn't fixed: setup's check of folder permissions may not work.** The steps are the same, in PowerShell:
 
 - Keep the project and Node where only you can write. Your home folder is fine. `C:\src` isn't, because every user can write to new folders under `C:\`, and setup refuses it. Node in `C:\Program Files\nodejs` is fine.
 - Setup registers the host for your user, under `HKCU\Software\Google\Chrome\NativeMessagingHosts`, and runtime files go in `%USERPROFILE%\AppData\Local\sn-mcp`.
@@ -168,6 +172,7 @@ Logs are in `~/Library/Application Support/sn-mcp/broker.log` (on Windows, `%USE
 | `TIMEOUT` | ServiceNow took too long | Ask Claude to narrow the query, or raise the timeout in the extension settings |
 | `RESPONSE_TOO_LARGE` | One value is larger than the per-request limit | Raise "Max response" in the extension settings |
 | `SCOPE_UNKNOWN` right after you approved, in a Code session inside Claude Desktop | That session has two connectors, usually the Desktop one plus a `claude mcp add` registration. Access approved through one doesn't work with the other | Remove the extra one with `claude mcp remove sn-mcp`, fully quit and reopen Claude Desktop (Cmd+Q), then start a new session |
+| ChatGPT Desktop says it can't find your instances, and no approval code appears | It's a normal chat, which doesn't use local servers | Ask in a Codex chat |
 | ChatGPT Desktop can't start `sn-mcp` | Usually the Command is plain `node`, or Node was upgraded and the path changed | Run `npm run setup` again and copy the printed Command |
 | Tools are missing or out of date in Claude | Claude is running an old build | Fully quit and reopen Claude Desktop (Cmd+Q), or start a new Claude Code session |
 | You moved the project, and the extension still uses the old folder | Reloading doesn't change the folder | Remove the extension and use **Load unpacked** on the new folder, then add your instance again |

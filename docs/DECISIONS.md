@@ -326,7 +326,7 @@ Format: Status · Context · Decision · Alternatives considered · Consequences
   - Timeouts of 30 s and 360 s where they can be set (`config.toml`): the engine's 60 s tool default is shorter than a long paged read.
   - The extension's wording says "AI assistant", not "Claude". The label stays self-reported display text; authorization is by per-process client key, as before.
   - This registers no model provider and adds no chat or backend, so rule 10 is unaffected.
-- **Consequences:** The engine runs one server process per conversation, so each conversation needs its own approval, which is stricter, not looser. Live testing can use the app's own engine through `app-server`, without a model or a sign-in. Skills aren't part of this: only the tools are available in ChatGPT.
+- **Consequences:** **Only Codex chats can use it (the user's test, 2026-11-05).** In the same app, a normal chat with the server registered said it had no such connection, and the engine's logs and the broker saw nothing from it. OpenAI's docs don't describe this split, so it may change. The engine runs one server process per conversation, so each conversation needs its own approval, which is stricter, not looser. Live testing can use the app's own engine through `app-server`, without a model or a sign-in. Skills aren't part of this: only the tools are available in ChatGPT.
 
 ## ADR-015 — Windows support
 

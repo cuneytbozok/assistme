@@ -1511,7 +1511,8 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
   - **AC1:** the command resolves to `/opt/homebrew/opt/node@24/bin/node`, not the versioned `Cellar` path, and the engine started it from a config with no shell involved.
   - **Mock:** `client-e2e.test.ts` runs the built server over real STDIO against the real broker and real `authz.ts`/`grants.ts`. Removing the client check from `claim` fails it.
   - **Earlier run:** `docs/evidence/T-043/discovery.json` is discovery only. A first attempt at this run stopped after the claim check on a bad argument in the test script, not the connector. Its approval was left unreleased, and unusable because its process ended, so the script's run needed a second approval.
-- **Still unverified:** adding the server in ChatGPT Desktop's own settings window, and using it from a chat. The engine is the app's, but the window and the model weren't exercised, so the form's field names come from OpenAI's docs and the user's description. Claude Desktop's data tools weren't re-run on this build.
+- **The user's test in the app (2026-11-05):** the user registered it through the settings window. **It worked in a Codex chat. It didn't in a normal chat,** which said it had no such connection, while the engine's logs had no thread and the broker no request. The broker log backs the Codex chat: a client labelled `ChatGPT Desktop` authenticated at 12:38:11 UTC and its `registry.get` succeeded. It only read the registry, so this doesn't show the app's chat reading records.
+- **Still unverified:** Claude Desktop's data tools weren't re-run on this build.
 
 ### T-044 — Windows support
 
@@ -1526,7 +1527,8 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
   4. The MCP server authenticates over the pipe.
   5. A real instance reads live on Windows, in Chrome, from each client in use.
   6. macOS behaviour is unchanged.
-- **Blocker:** the user has no Windows PC (2026-11-05), and left this for someone who has one in the future. Nothing here has ever run on Windows. AC1 to AC4 need the CI job, which only runs once the workflow is pushed. AC5 needs a real Windows PC. Don't describe Windows as working until then.
+- **Blocker:** two things. `readAcls` returns nothing on Windows, and the install check treats that as safe, so it **fails open**; fixing it needs a push to re-run CI, which is the user's decision. AC5 needs a real Windows PC, and the user has none (2026-11-05). Don't describe Windows as working.
+- **First CI run (2026-11-05, run 42028030938, `windows-latest`):** 16 of 18 passed, including all of `client-e2e.test.ts`, so the real broker, named pipe, handshake and icacls ran on Windows, with the extension's authorization code and ServiceNow mocked. Both failures come from `readAcls`, whose cause isn't known. The second test never got to check a refusal, and the first stopped there, so the steps after it (the handshake through the installed wrapper, and uninstall) didn't run.
 - **Evidence:** —
 - **What was checked on the Mac (2026-11-05), which isn't evidence of Windows working:** the Windows logic in `windows.test.ts` (ACL decisions, pipe names, wrapper quoting, registry arguments), AC6 by the full test suite, and the live T-043 run going through the changed broker code.
 

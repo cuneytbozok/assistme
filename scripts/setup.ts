@@ -81,7 +81,8 @@ Next steps (details in docs/INSTALL.md):
    Claude Code:
      claude mcp add --scope user sn-mcp --env SN_MCP_CLIENT_NAME="Claude Code" -- node "${server}"
 
-4. Or connect ChatGPT Desktop: Settings → MCP servers → add a server, with these values:
+4. Or connect ChatGPT Desktop, for use in its Codex chats (normal chats don't use local
+   servers): Settings → MCP servers → add a server, with these values:
 
 ${renderStdioForm(chatgpt)
   .split('\n')
