@@ -25,11 +25,23 @@ You don't need an API key or Docker. Your ServiceNow account needs to be able to
 
 It takes about 10 minutes, and has four parts.
 
+https://github.com/user-attachments/assets/c9b03ae5-326e-464f-9f9d-b0b40fcf1e20
+
+https://github.com/user-attachments/assets/37596d70-43bd-4bbb-a264-7425771eae15
+
+https://github.com/user-attachments/assets/fd284e54-ec30-462a-a574-84326f9fabc0
+
+https://github.com/user-attachments/assets/455b587b-0641-4317-947b-46867763c03e
+
 ### 1. Install
 
 Open Terminal, go to this project's folder, and run:
 
+
 ```bash
+
+
+
 npm install
 ```
 
