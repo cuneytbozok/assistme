@@ -197,11 +197,29 @@ describe('T-034 scenario logic (mock)', () => {
     expect(r?.metrics?.payload_elements).toBeUndefined();
   });
 
+  /** Several records, and a root that doesn't say which is the main one. */
   const twoRecords = (script: string) =>
-    xml(script).replace(
-      '</record_update>',
-      '<sys_translated_text action="delete_multiple" query="SECRET_VALUE"/></record_update>',
-    );
+    xml(script)
+      .replace(' table="sys_script_include"', '')
+      .replace(
+        '</record_update>',
+        '<sys_translated_text action="delete_multiple" query="SECRET_VALUE"/></record_update>',
+      );
+
+  it('T-042 versions: the several-record form seen live is read by element', async () => {
+    const seenLive = (script: string, extra = '') =>
+      xml(script).replace(
+        '</record_update>',
+        `${extra}<sys_es_latest_script action="INSERT_OR_UPDATE"><id>x</id></sys_es_latest_script></record_update>`,
+      );
+    const r = await versions([
+      seenLive('var v = 1;\nend'),
+      seenLive('var v = 2;\nend', '<sys_translated_text action="delete_multiple" query="q"/>'),
+    ]);
+    expect(r?.status).toBe('pass');
+    expect(r?.metrics).toMatchObject({ mode: 'elements', pairs_raw: 0, only_on_one_side: 1 });
+    expect(Number(r?.metrics?.script_diff_lines)).toBeGreaterThan(0);
+  });
 
   it('T-042 versions: a raw diff with a script change passes, and says why it was raw', async () => {
     const r = await versions([twoRecords('var v = 1;\nend'), twoRecords('var v = 2;\nend')]);

@@ -672,6 +672,51 @@ describe('T-042 two versions of a record (assumed payload format; mock only)', (
     await h.close();
   });
 
+  it('other records in a payload, as seen live, are compared whole and never dropped', async () => {
+    const withOthers = (script: string, ...others: string[]) =>
+      payload(script).replace('</record_update>', `${others.join('')}</record_update>`);
+    const es = (id: string) =>
+      `<sys_es_latest_script action="INSERT_OR_UPDATE"><id>${id}</id></sys_es_latest_script>`;
+    const translated = '<sys_translated_text action="delete_multiple" query="documentkey=abc"/>';
+    const { h, scope, first } = await compare(
+      [
+        { payload: withOthers(scriptA, es('1')) },
+        { payload: withOthers(scriptB, translated, es('2')) },
+      ],
+      { fields: ['payload'] },
+    );
+    const r = await h.call('compare_records', { scope_id: scope, ...first });
+    expect(r.complete).toBe(true);
+    const diff = r.data.diffs.find((d: { field: string }) => d.field === 'payload.script');
+    expect(applyUnified(scriptA, diff.lines)).toBe(scriptB);
+    expect(r.data.only_on_b).toEqual([
+      { field: 'payload.record:sys_translated_text', value: translated },
+    ]);
+    expect(r.data.different_fields).toEqual([
+      { field: 'payload.record:sys_es_latest_script', a: es('1'), b: es('2') },
+    ]);
+    expect(r.hints.join(' ')).toMatch(/whole XML/);
+    await h.close();
+  });
+
+  it('a version that deletes the record shows it, beside its other records', async () => {
+    const del = payload(scriptA)
+      .replace('INSERT_OR_UPDATE', 'DELETE')
+      .replace(
+        '</record_update>',
+        '<sys_translated_text action="delete_multiple" query="q"/></record_update>',
+      );
+    const { h, scope, first } = await compare([{ payload: payload(scriptA) }, { payload: del }], {
+      fields: ['payload'],
+    });
+    const r = await h.call('compare_records', { scope_id: scope, ...first });
+    expect(r.data.different_fields).toEqual([
+      { field: 'payload.@action', a: 'INSERT_OR_UPDATE', b: 'DELETE' },
+    ]);
+    expect(r.data.only_on_b[0].field).toBe('payload.record:sys_translated_text');
+    await h.close();
+  });
+
   it('naming payload in fields gives the same element diff, and only that', async () => {
     const { h, scope, first } = await compare(
       [{ payload: payload(scriptA) }, { payload: payload(scriptB) }],
@@ -866,6 +911,31 @@ describe('parseUpdatePayload', () => {
   const wrap = (inner: string, attrs = ' action="INSERT"') =>
     `<record_update table="t"><t${attrs}>${inner}</t></record_update>`;
   const fieldsOf = (xml: string) => Object.fromEntries(parseUpdatePayload(xml)?.fields ?? []);
+
+  it('finds the record the root names among several, and keeps the others whole', () => {
+    const xml =
+      '<record_update table="t"><o a="1">x &amp; y</o><t action="U"><a>1</a></t><o/><p action="D" query="q"/></record_update>';
+    const parsed = parseUpdatePayload(xml);
+    expect(parsed?.table).toBe('t');
+    expect(Object.fromEntries(parsed?.fields ?? [])).toEqual({
+      '@action': 'U',
+      a: '1',
+      'record:o': '<o a="1">x &amp; y</o>',
+      'record:o:2': '<o/>',
+      'record:p': '<p action="D" query="q"/>',
+    });
+    expect(describePayload(xml)).toMatchObject({ root_table: 't', elements: 1 });
+    expect(describePayload(xml).failed_at).toBeUndefined();
+  });
+
+  it.each([
+    ['no root table', '<record_update><t><a>1</a></t><u/></record_update>'],
+    ['a root table that is absent', '<record_update table="z"><t><a>1</a></t><u/></record_update>'],
+    ['the named record twice', '<record_update table="t"><t/><t/></record_update>'],
+  ])('with several records, %s is not guessed', (_name, xml) => {
+    expect(parseUpdatePayload(xml)).toBeUndefined();
+    expect(describePayload(xml).failed_at).toBe('records');
+  });
 
   it('reads the assumed shape, with or without line breaks and a declaration', () => {
     const multi = `<?xml version="1.0"?>\n<record_update sys_domain="global" table="t">\n  <t action="INSERT">\n    <a>1</a>\n    <b/>\n    <c></c>\n  </t>\n</record_update>\n`;

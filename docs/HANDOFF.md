@@ -9,17 +9,17 @@ The connector is built, installed and working on the user's Mac, in Claude Deskt
 - **Tasks:** 39 DONE, 2 BLOCKED (T-015, T-042), 1 DROPPED (T-039).
 - **Milestones:** M1, M3, M4, M5 and M6 achieved. M6 by the user's decision, with AC-6, AC-7 and AC-8 left open: not all 19 criteria are evidenced. M2 not achieved (T-015).
 - **Acceptance:** `docs/ACCEPTANCE.md`: 15 passed, 3 open, 1 out of scope, none failed.
-- **Next:** no task is eligible. T-042 passed two live runs, but its version script diff (AC3) still needs another live run by the user. Anything else that remains needs the user: see `docs/NEXT_STEPS.md`.
+- **Next:** no task is eligible. T-042's parser changed after its third live run, so it needs a fourth, by the user. Anything else that remains needs the user: see `docs/NEXT_STEPS.md`.
 
 ## T-042: what's unverified
 
-Two live runs on `dev469966`, 2026-11-05, each 2 of 2 passed (`docs/evidence/T-042/first-live-run.json`, `second-live-run.json`). A third is needed.
+Three live runs on `dev469966`, 2026-11-05, each 2 of 2 passed (`docs/evidence/T-042/`). A fourth is needed, because the parser changed after the third.
 
-- **Confirmed live, on one instance:** two records compare (an 850-line script diff applied back exactly, with per-side errors), and `sys_update_version` has every assumed field. A script include's `payload` (dictionary type `compressed`) was compared by element.
-- **Not shown live:** a version diff with a changed script (AC3). The first pair had no script change. The second pair, on `sys_script`, was `mode: raw`: side a parsed with 46 elements, and side b or the pair as a whole didn't, for a reason the metrics don't show. Its raw diff applied back, but nothing shows the script changed.
-- **The scenario now** needs a script that really changed, prefers an element diff, and reports `raw_shapes` (names only). That rewrite hasn't run live. **Whether the parser should handle that `sys_script` form is undecided until `raw_shapes` shows what it is.**
+- **Confirmed live, on one instance:** two records compare (an 850-line script diff applied back exactly, with per-side errors), and `sys_update_version` has every assumed field. `payload` (dictionary type `compressed`) reads as `record_update` XML with CDATA. A changed script's diff applied back exactly as raw XML (AC3, third run).
+- **Found live:** 21 of 25 pairs were raw text, because payloads often hold other records after the main one: `sys_translated_text` with `delete_multiple`, and `sys_es_latest_script`. A version can also have action `DELETE`. "One record" was wrong.
+- **Not live yet (version 0.1.4):** the main record is the one the root's `table` attribute names, with the others kept as whole XML under `payload.record:<name>`. **Whether real roots carry that attribute hasn't been seen:** if not, these pairs stay raw text, and `raw_shapes` shows `root_table` missing.
 - **Also not live:** reaching another instance (no second instance exists; mock and the unchanged extension only), and an over-long line being cut.
-- After the next run, read `mode`, `script_diff_lines`, `raw_script_changed`, `diffs_applied`, `pairs_checked`, `pairs_raw`, `raw_shapes` and `lines_cut`.
+- After the next run, read `mode`, `script_diff_lines`, `diffs_applied`, `pairs_checked`, `pairs_raw`, `raw_shapes` and `lines_cut`.
 
 ## Decisions made by the user (2026-11-05)
 
@@ -42,7 +42,7 @@ Two live runs on `dev469966`, 2026-11-05, each 2 of 2 passed (`docs/evidence/T-0
 - **Instance:** `dev469966.service-now.com`, alias `dev469966`, environment dev. A personal developer instance, signed in as admin.
 - **Chrome:** unpacked extension from `packages/extension/dist`, ID `clipfeocpiljpcngmjpdbegciimchbol`.
 - **Native host:** installed by `npm run setup` from this folder. Runtime files are in `~/Library/Application Support/sn-mcp/`, which is 0700: `broker.sock`, `broker.key`, `broker.pid`, `broker.log` (metadata only). Exit codes: 64 bad origin, 78 unsafe path, 75 conflict.
-- **Claude Desktop:** the `.mcpb` bundle, version 0.1.2, named "ServiceNow (read-only)", plus both skills uploaded. Version 0.1.3 (T-042) is built at `packages/server/sn-mcp.mcpb` but not installed: until the user installs it, Desktop still refuses `compare_records` on a single-instance scope. The live test doesn't depend on that, because it starts the built server itself. `mcpServers` in `claude_desktop_config.json` is empty; the old entry's backup is `claude_desktop_config.json.before-sn-mcp-bundle`.
+- **Claude Desktop:** the `.mcpb` bundle, version 0.1.2, named "ServiceNow (read-only)", plus both skills uploaded. Version 0.1.4 (T-042) is built at `packages/server/sn-mcp.mcpb`. It isn't known to be installed: until the user installs 0.1.3 or later, Desktop still refuses `compare_records` on a single-instance scope. The live test doesn't depend on that, because it starts the built server itself. `mcpServers` in `claude_desktop_config.json` is empty; the old entry's backup is `claude_desktop_config.json.before-sn-mcp-bundle`.
 - **Claude Code:** Code sessions inside the Desktop app use the Desktop connector and skills. Nothing is registered separately: the `sn-mcp` registration and plugin were removed, because two connectors in one session don't share scopes.
 - **Git:** `origin` is https://github.com/cuneytbozok/assistme (public). Commits use the no-reply address set in this repo's git config.
 

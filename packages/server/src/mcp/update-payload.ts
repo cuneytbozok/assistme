@@ -2,9 +2,11 @@
  * Reads the XML copy of a record in `sys_update_version.payload` (T-042), so two versions can be
  * diffed element by element instead of as XML text.
  *
- * Expected: `<record_update ...><table action="..."><field>value</field>...` with one record, and
- * scripts in CDATA. Seen live for a script include, and for one of two `sys_script` versions; the
- * other's form isn't known yet (T-042). Anything else returns undefined, and the caller diffs the raw text instead, so another
+ * Expected: `<record_update table="t"><t action="..."><field>value</field>...</t>...`, with scripts
+ * in CDATA. Seen live (T-042): `t` is often followed by other records, such as
+ * `sys_translated_text` and `sys_es_latest_script`, which are kept as whole XML under
+ * `record:<name>`, so nothing is dropped. Whether the root always names its table is not yet seen
+ * live: several records with no way to tell the main one return undefined. Anything else returns undefined, and the caller diffs the raw text instead, so another
  * form gives a less readable diff but never a wrong one.
  *
  * The content is untrusted: no DTDs or custom entities, one forward pass (no backtracking over the
@@ -15,7 +17,10 @@
 export interface UpdatePayload {
   /** The record's element name, normally its table. */
   table: string;
-  /** Element name → text. `@action` holds the record's action attribute, when present. */
+  /**
+   * Element name → text. `@action` holds the record's action attribute, when present, and
+   * `record:<name>` (`:2` for a repeat) the whole XML of any other record in the payload.
+   */
   fields: Map<string, string>;
 }
 
@@ -24,6 +29,9 @@ interface Element {
   attrs: string;
   start: number;
   end: number;
+  /** The whole element, tags included. */
+  outerStart: number;
+  outerEnd: number;
 }
 
 const OPEN_TAG = /<([A-Za-z_][\w.:-]*)((?:\s+[\w.:-]+\s*=\s*(?:"[^"]*"|'[^']*'))*)\s*(\/?)>/y;
@@ -108,14 +116,21 @@ function children(
     const after = i + tag[0].length;
     if (after > end) return undefined;
     if (tag[3] === '/') {
-      out.push({ name, attrs, start: after, end: after });
+      out.push({ name, attrs, start: after, end: after, outerStart: i, outerEnd: after });
       seen.push(name);
       i = after;
       continue;
     }
     const closed = findClose(s, name, after, end);
     if (!closed) return undefined;
-    out.push({ name, attrs, start: after, end: closed.close });
+    out.push({
+      name,
+      attrs,
+      start: after,
+      end: closed.close,
+      outerStart: i,
+      outerEnd: closed.after,
+    });
     seen.push(name);
     i = closed.after;
   }
@@ -152,6 +167,7 @@ export interface PayloadShape {
   /** Where parsing stops. Undefined means the payload parses. */
   failed_at?: 'root' | 'root_content' | 'records' | 'record_content' | 'repeated';
   roots?: string[];
+  root_table?: string;
   records?: { name: string; action?: string }[];
   elements?: number;
   /** The last element read before `record_content` failed, or the repeated one. */
@@ -160,10 +176,21 @@ export interface PayloadShape {
 
 const MAX_SHAPE_RECORDS = 20;
 
-function actionOf(attrs: string): string | undefined {
-  const m = /\saction\s*=\s*(?:"([^"]*)"|'([^']*)')/.exec(attrs);
-  const value = m?.[1] ?? m?.[2];
+function attr(attrs: string, name: 'action' | 'table'): string | undefined {
+  const m = new RegExp(`\\s${name}\\s*=\\s*(?:"([^"]*)"|'([^']*)')`).exec(attrs);
+  return m?.[1] ?? m?.[2];
+}
+
+function nameLike(value: string | undefined): string | undefined {
   return value !== undefined && /^[\w-]{1,40}$/.test(value) ? value : undefined;
+}
+
+/** The record a payload is about: its only one, or the one its root names. Never a guess. */
+function mainRecord(root: Element, records: Element[]): Element | undefined {
+  if (records.length === 1) return records[0];
+  const table = attr(root.attrs, 'table');
+  const named = records.filter((r) => r.name === table);
+  return named.length === 1 ? named[0] : undefined;
 }
 
 /** For diagnosis in the live scenarios, so a fallback can be explained without record content. */
@@ -177,15 +204,17 @@ export function describePayload(xml: string): PayloadShape {
   }
   const records = children(xml, root.start, root.end);
   if (!records) return { failed_at: 'root_content', roots: names };
+  const rootTable = nameLike(attr(root.attrs, 'table'));
   const shape: PayloadShape = {
     roots: names,
+    ...(rootTable ? { root_table: rootTable } : {}),
     records: records.slice(0, MAX_SHAPE_RECORDS).map((r) => {
-      const action = actionOf(r.attrs);
+      const action = nameLike(attr(r.attrs, 'action'));
       return { name: r.name, ...(action ? { action } : {}) };
     }),
   };
-  const record = records[0];
-  if (records.length !== 1 || !record) return { ...shape, failed_at: 'records' };
+  const record = mainRecord(root, records);
+  if (!record) return { ...shape, failed_at: 'records' };
   const seen: string[] = [];
   const elements = children(xml, record.start, record.end, seen);
   if (!elements) {
@@ -213,17 +242,26 @@ export function parseUpdatePayload(xml: string): UpdatePayload | undefined {
   const root = roots?.[0];
   if (roots?.length !== 1 || root?.name !== 'record_update') return undefined;
   const records = children(xml, root.start, root.end);
-  const record = records?.[0];
-  if (records?.length !== 1 || !record) return undefined;
+  const record = records && mainRecord(root, records);
+  if (!records || !record) return undefined;
   const elements = children(xml, record.start, record.end);
   if (!elements) return undefined;
   const fields = new Map<string, string>();
-  const action = /\saction\s*=\s*(?:"([^"]*)"|'([^']*)')/.exec(record.attrs);
-  if (action) fields.set('@action', action[1] ?? action[2] ?? '');
+  const action = attr(record.attrs, 'action');
+  if (action !== undefined) fields.set('@action', action);
   for (const e of elements) {
-    // Repeated elements (a record with related records) can't be keyed by name without losing one.
+    // Repeated elements can't be keyed by name without losing one.
     if (fields.has(e.name)) return undefined;
     fields.set(e.name, textOf(xml, e.start, e.end));
+  }
+  const counts = new Map<string, number>();
+  for (const other of records) {
+    if (other === record) continue;
+    const n = (counts.get(other.name) ?? 0) + 1;
+    counts.set(other.name, n);
+    const key = `record:${other.name}${n > 1 ? `:${n}` : ''}`;
+    if (fields.has(key)) return undefined;
+    fields.set(key, xml.slice(other.outerStart, other.outerEnd));
   }
   return { table: record.name, fields };
 }

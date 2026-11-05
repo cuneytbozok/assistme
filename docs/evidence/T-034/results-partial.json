@@ -1,7 +1,7 @@
 {
   "note": "Live run against a real instance. Shapes, counts and sizes only; no record content.",
-  "started": "2026-11-05T11:58:37.746Z",
-  "finished": "2026-11-05T11:58:44.373Z",
+  "started": "2026-11-05T12:01:32.937Z",
+  "finished": "2026-11-05T12:02:05.987Z",
   "instance": "dev469966",
   "env": "dev",
   "tools": 14,
@@ -39,12 +39,12 @@
         "assumed_fields_missing": [],
         "payload_type": "compressed",
         "payload_chars": [
-          2113,
-          2203
+          2777,
+          2894
         ],
         "payload_lines": [
-          9,
-          9
+          20,
+          20
         ],
         "payload_root": "record_update",
         "payload_has_cdata": true,
@@ -53,9 +53,8 @@
         "diff_fields": 1,
         "diffs_applied": 1,
         "script_diff_lines": 0,
-        "inline_fields": 9,
+        "inline_fields": 8,
         "inline_field_names": [
-          "action",
           "merge_base",
           "payload_hash",
           "source",
@@ -68,12 +67,190 @@
         "only_on_one_side": 0,
         "ignored_fields": 7,
         "lines_cut": 0,
-        "pairs_checked": 2
+        "raw_script_changed": true,
+        "pairs_checked": 25,
+        "pairs_raw": 21,
+        "raw_shapes": [
+          [
+            {
+              "roots": [
+                "record_update"
+              ],
+              "records": [
+                {
+                  "name": "sys_script",
+                  "action": "INSERT_OR_UPDATE"
+                }
+              ],
+              "elements": 45
+            },
+            {
+              "roots": [
+                "record_update"
+              ],
+              "records": [
+                {
+                  "name": "sys_script",
+                  "action": "DELETE"
+                },
+                {
+                  "name": "sys_translated_text",
+                  "action": "delete_multiple"
+                }
+              ],
+              "failed_at": "records"
+            }
+          ],
+          [
+            {
+              "roots": [
+                "record_update"
+              ],
+              "records": [
+                {
+                  "name": "sys_script",
+                  "action": "INSERT_OR_UPDATE"
+                },
+                {
+                  "name": "sys_es_latest_script",
+                  "action": "INSERT_OR_UPDATE"
+                }
+              ],
+              "failed_at": "records"
+            },
+            {
+              "roots": [
+                "record_update"
+              ],
+              "records": [
+                {
+                  "name": "sys_script",
+                  "action": "INSERT_OR_UPDATE"
+                },
+                {
+                  "name": "sys_translated_text",
+                  "action": "delete_multiple"
+                },
+                {
+                  "name": "sys_es_latest_script",
+                  "action": "INSERT_OR_UPDATE"
+                }
+              ],
+              "failed_at": "records"
+            }
+          ],
+          [
+            {
+              "roots": [
+                "record_update"
+              ],
+              "records": [
+                {
+                  "name": "sys_script",
+                  "action": "INSERT_OR_UPDATE"
+                }
+              ],
+              "elements": 45
+            },
+            {
+              "roots": [
+                "record_update"
+              ],
+              "records": [
+                {
+                  "name": "sys_script",
+                  "action": "DELETE"
+                },
+                {
+                  "name": "sys_translated_text",
+                  "action": "delete_multiple"
+                }
+              ],
+              "failed_at": "records"
+            }
+          ],
+          [
+            {
+              "roots": [
+                "record_update"
+              ],
+              "records": [
+                {
+                  "name": "sys_script",
+                  "action": "INSERT_OR_UPDATE"
+                },
+                {
+                  "name": "sys_translated_text",
+                  "action": "delete_multiple"
+                },
+                {
+                  "name": "sys_es_latest_script",
+                  "action": "INSERT_OR_UPDATE"
+                }
+              ],
+              "failed_at": "records"
+            },
+            {
+              "roots": [
+                "record_update"
+              ],
+              "records": [
+                {
+                  "name": "sys_script",
+                  "action": "INSERT_OR_UPDATE"
+                },
+                {
+                  "name": "sys_es_latest_script",
+                  "action": "INSERT_OR_UPDATE"
+                }
+              ],
+              "failed_at": "records"
+            }
+          ],
+          [
+            {
+              "roots": [
+                "record_update"
+              ],
+              "records": [
+                {
+                  "name": "sys_script",
+                  "action": "INSERT_OR_UPDATE"
+                },
+                {
+                  "name": "sys_translated_text",
+                  "action": "delete_multiple"
+                },
+                {
+                  "name": "sys_es_latest_script",
+                  "action": "INSERT_OR_UPDATE"
+                }
+              ],
+              "failed_at": "records"
+            },
+            {
+              "roots": [
+                "record_update"
+              ],
+              "records": [
+                {
+                  "name": "sys_script",
+                  "action": "INSERT_OR_UPDATE"
+                },
+                {
+                  "name": "sys_es_latest_script",
+                  "action": "INSERT_OR_UPDATE"
+                }
+              ],
+              "failed_at": "records"
+            }
+          ]
+        ]
       },
       "measure": {
-        "calls": 11,
-        "max_result_chars": 13949,
-        "requests_used": 16
+        "calls": 104,
+        "max_result_chars": 22728,
+        "requests_used": 146
       }
     }
   ]

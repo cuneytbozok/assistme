@@ -145,7 +145,7 @@ function expandPayloads(
     return unchanged;
   }
   hints.push(
-    `\`${PAYLOAD}\` was compared element by element, as \`${PAYLOAD_PREFIX}<element>\`, without element attributes other than the record's action. For the XML itself, use get_field_content with field "${PAYLOAD}".`,
+    `\`${PAYLOAD}\` was compared element by element, as \`${PAYLOAD_PREFIX}<element>\`, without element attributes other than the record's action. Other records in it are compared as whole XML, as \`${PAYLOAD_PREFIX}record:<name>\`. For the XML itself, use get_field_content with field "${PAYLOAD}".`,
   );
   const expand = (row: Record<string, unknown>, fields: Map<string, string>) => {
     const { [PAYLOAD]: _payload, ...rest } = row;
