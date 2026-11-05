@@ -47,8 +47,8 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 | T-035 | Claude Code registration                        | 034      | BLOCKED     |
 | T-036 | `.mcpb` Desktop Extension                       | 034      | BLOCKED     |
 | T-037 | Setup/uninstall + INSTALL.md (M5)               | 036      | BLOCKED     |
-| T-038 | Custom troubleshooting skill                    | 034      | TODO        |
-| T-039 | Official now-sdk skill evaluation               | 038      | TODO        |
+| T-038 | Custom troubleshooting skill                    | 034      | BLOCKED     |
+| T-039 | Official now-sdk skill evaluation               | 038      | BLOCKED     |
 | T-040 | Full acceptance matrix                          | 037, 039 | TODO        |
 | T-041 | Recovery drill + install from scratch (M6)      | 040      | TODO        |
 
@@ -1338,7 +1338,7 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 
 ### T-038 — Custom troubleshooting skill
 
-- **Status:** TODO
+- **Status:** BLOCKED
 - **Purpose:** Optional expertise loaded on demand (FR-8.1).
 - **Dependencies:** T-034
 - **Deliverables:** `skills/servicenow-troubleshooting/SKILL.md` (frontmatter name and description; methodology; scope flow and approval code; discover → describe → narrow queries; scripts via `get_field_content`; untrusted-content reminder; freedom to investigate beyond the skill) and `references/` (logs-and-transactions, business-rule-execution, discovery-ecc, cmdb-ire, flow-designer, acl-debugging); `.claude-plugin/marketplace.json`; `npm run pack:skill` producing a Desktop-uploadable zip.
@@ -1362,7 +1362,7 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 
 ### T-039 — Official now-sdk skill evaluation
 
-- **Status:** TODO
+- **Status:** BLOCKED
 - **Purpose:** Use official guidance safely (AC-17).
 - **Dependencies:** T-038
 - **Deliverables:** install `servicenow-sdk@claude-plugins-official` in Claude Code; verify `explain` works without `now-sdk auth`; `.claude/settings.json` example deny rules for `npx @servicenow/sdk` `auth|init|build|install|deploy|transform|dependencies|download` (and the `now-sdk` binary equivalents); document the findings (license status, version requirements, Desktop unsupported).
@@ -1370,7 +1370,16 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 - **Acceptance criteria:** `explain` works with no credentials; denied commands are blocked by Claude Code permissions (demonstrated); no write path is introduced.
 - **Verification:** manual in Claude Code, with a transcript in evidence.
 - **DoD:** —
-- **Evidence:** —
+- **Blocker:** installing it needs the user: `/plugin marketplace add` in a signed-in Claude Code, and the zip upload in Claude Desktop.
+- **Evidence so far (2026-11-05, not acceptance):**
+  - Delivered: `skills/servicenow-troubleshooting/SKILL.md` and six `references/`, `.claude-plugin/{plugin,marketplace}.json`, `scripts/pack-skill.ts` + `npm run pack:skill`, `test/skill.test.ts`.
+  - **Acceptance criteria that can be checked here:**
+    - No write instructions ✔ test (a pattern list over all files, plus the stated ground rules). This is a text check, and the files were also written to be guidance only.
+    - `SKILL.md` ≤ 500 lines ✔; references are separate files, linked and loaded on demand ✔.
+    - Every tool named exists, and every filter example passes the real schemas ✔ test.
+    - The zip contains `servicenow-troubleshooting/SKILL.md` ✔ test.
+  - `claude plugin validate .` (Claude Code 2.1.317, already installed) → exit 0, "Validation passed with warnings"; the warnings are optional plugin-directory checks, which don't apply as this isn't being submitted.
+  - **Unverified:** installing in Claude Code, uploading in Desktop, and whether each table named exists (written from general ServiceNow knowledge, with a note to confirm names). The T-034 run reports any missing table.
 
 ## Phase 7 — Acceptance (Milestone M6)
 
@@ -1384,7 +1393,12 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 - **Acceptance criteria:** all 19 criteria pass with evidence, or any failure is recorded with a follow-up task.
 - **Verification:** full test + live run.
 - **DoD:** —
-- **Evidence:** —
+- **Blocker:** needs the user in a signed-in Claude Code: installing the plugin, running `explain`, and showing that denied commands are blocked. An attempt to run the SDK in a sandbox here was refused by the session's permission system, and wasn't retried.
+- **Evidence so far (2026-11-05, not acceptance):**
+  - Delivered: `docs/SKILLS.md` (with a table of what is checked and what isn't), `.claude/settings.example.json` (deny rules for all 8 commands across 5 spellings, allow `explain`), `test/skills-doc.test.ts` (checks the rules as text only).
+  - Checked: `npm view @servicenow/sdk` on 2026-11-05: 4.14.0, MIT, Node ≥20.18, binaries `sdk`, `now-sdk`, `now-sdk-debug`.
+  - **Acceptance criteria:** none met yet. `explain` with no credentials and enforcement of the deny rules are both unverified. No write path is added: nothing here changes the connector.
+  - Plugin facts from web search only are marked as such in `docs/SKILLS.md`.
 
 ### T-041 — Recovery drill + install from scratch (Milestone M6)
 

@@ -1,6 +1,36 @@
 # Handoff
 
-_Last updated: 2026-11-05 (after T-037)_
+_Last updated: 2026-11-05 (after T-039 preparation)_
+
+## Where things stand (read this first)
+
+**All code that can be built and mock-tested is done. Everything left needs the user.**
+
+- **DONE:** T-001 to T-014, T-016 to T-033. All 14 MCP tools exist and are mock-tested; none has been run live with its new code yet, apart from the T-034 dry run.
+- **BLOCKED on the user, prepared as far as possible:** T-015, T-034, T-035, T-036, T-037, T-038, T-039. Each task's entry in TASKS lists what remains unverified.
+- **TODO, waiting on those:** T-040 (acceptance matrix), T-041 (recovery drill, install from scratch).
+- **Milestones:** M1 and M3 achieved. M2, M4, M5, M6 not achieved.
+
+**The user's checklist, in order:**
+
+1. Reload the extension on `chrome://extensions`, which also restarts the broker. Required: the new `scope.check` message needs both. Until then, reads from the local field copy fail closed.
+2. `npm run e2e:live -- --instance dev469966`, then approve the code in the popup (T-034). It writes `docs/evidence/T-034/results.json`.
+3. Claude Code: start a fresh signed-in session, register per `docs/INSTALL.md`, check `/mcp` and a scoped query (T-035).
+4. `npm run pack:mcpb`, install `packages/server/sn-mcp.mcpb` in Claude Desktop, remove the old `sn-mcp` entry from `claude_desktop_config.json`, try a scoped query and Cowork (T-036).
+5. `npm run setup`, `npm run uninstall`, `npm run setup`, then reload the extension (T-037). This stops the live broker.
+6. Install the skill in Claude Code and upload the zip to Desktop (T-038).
+7. Install the official SDK plugin with the deny rules; check `explain` and that denied commands are blocked (T-039).
+8. A second instance for T-015, if one is available. That also allows a live `compare_records` run, which T-034 can't cover.
+
+**Open decisions for the user:** dictionary validation fails closed when the user can't read `sys_dictionary` (ADR-005 addendum); `REQUEST_DENIED` vs `status: denied` (T-015 AC6).
+
+**Known deviations:**
+
+- Output schemas are the `{ok}` envelope only (the 12 KB limit); the full contract is in `docs/TOOLS.md`.
+- The `.mcpb` `user_config` has four numeric shaping settings rather than a log level (the server has no log level).
+- `scope.check` was added to the protocol (ADR-003 addendum).
+- `sysparm_offset` counting pre-ACL rows can't be shown live with an admin user.
+- `npm audit`: 0 for production dependencies; 6 in dev packages, nested in `@anthropic-ai/mcpb`.
 
 ## Current project state
 
@@ -49,9 +79,7 @@ _Last updated: 2026-11-05 (after T-037)_
 ## Tasks
 
 - **Current task:** none (nothing IN_PROGRESS).
-- **Last completed task:** T-016 — Extension request builder hardening (commit `T-016: request builder hardening`).
 - **Blocked:** T-015 (live scope acceptance, M2) has no second instance for PROD checks (see TASKS T-015).
-- **Last completed task:** T-023 — Response shaping, automatic pagination, completeness contract. `query_records` now paginates with cursors, supports `fields:["*"]` and `max_chars`, and never drops rows silently (ACL-hidden rows handled via the count).
 - **T-024 DONE:** `query_records` is complete (filters, raw query, text, order, display mode, cursors). Tools now live in `server/src/mcp/tools/` with a shared `ToolContext`; tests use `test/mcp-harness.ts`.
 - **T-025 DONE:** `get_record` with `tools/support.ts` (`SnClient`, budget), `tools/record-lookup.ts`, `dataResponse`, signed composite cursor state.
 - **T-026 DONE:** `discover_tables`, `describe_table`; `beginTool` is the shared opening for data tools.
@@ -66,16 +94,14 @@ _Last updated: 2026-11-05 (after T-037)_
 - **T-034 BLOCKED:** the runner is written (`npm run e2e:live -- --instance dev469966`); the run needs the user to reload the extension and approve a scope. Dry run: real bridge connected, `tools/list` 11,798 bytes.
 - **T-036 DONE:** Prepared, BLOCKED on the user: `.mcp.json.example` (T-035), `.mcpb` bundle and `npm run pack:mcpb` (T-036). `docs/INSTALL.md` written.
 - **T-037 DONE:** Prepared, BLOCKED on the user: `npm run setup`, `npm run uninstall`, `docs/INSTALL.md`. Tested under a throwaway HOME only; the real machine run stops the live broker, so it is left to the user.
-- **Next task:** T-038 (custom skill).
+- **T-038, T-039 prepared, BLOCKED on the user.**
+- **Next task:** the checklist at the top of this file.
 - **Verify live in T-034:** `sysparm_offset` counts pre-ACL rows (ADR-011 addendum).
-- **Waiting on the user:** T-015 live run (second instance); `REQUEST_DENIED` vs `status: denied` (T-015 AC6); fail-closed dictionary validation (ADR-005 addendum).
 - **Role-agnostic (ADR-012, 2026-11-04):** no ServiceNow role handling of any kind. Don't add role checks, dedicated accounts or impersonation features.
-- **Open decision for the user:** dictionary validation fails closed when the user can't read `sys_dictionary` (ADR-005 addendum).
 - **T-015 must include:** logout in the user's own profile → `SESSION_EXPIRED` with no sign-in dialog (T-013 AC4). Fallback if a dialog appears: the DNR rule in the ADR-002 addendum.
 - **Claude Desktop runs the old server build** until it's restarted (`npm run build` done). Restart it before live checks (T-015).
 - **"Other" environment (after T-010, user request):** the popup shows `unclassified` as **Other** with an optional name (UAT, SIT, …). It always gets PROD rules and the name is display only. `list_instances` returns `env_name` and `policy`.
 - **Popup redesign (after T-010, user request, 2026-11-04):** card layout, status pill, icon edit/remove, segmented env picker, collapsible add form, alias proposal from a tab suggestion, toasts. Same logic and permission calls. Screenshots (seeded data, stubbed `popup.state`): `docs/evidence/T-010/popup-*.png`.
-- **Also eligible:** T-016 (request builder hardening; depends on T-007 ✔ and T-003 ✔).
 - **Needs a manual check by the user (from T-010):** reload the extension, open the popup on an unregistered ServiceNow tab and check that **Use it** appears and only fills the form. Then edit or remove an instance and confirm `list_instances` in Claude Desktop follows. Removing `dev` ends any active scope.
 - **Finding to carry forward:**
   - In the Claude Desktop app, all conversations share one `sn-mcp` server process and therefore one `client_key_id` (ADR-003 addendum; notes added to T-011, T-012, T-015).

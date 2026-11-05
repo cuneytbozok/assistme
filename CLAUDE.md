@@ -52,14 +52,13 @@ We are not building another AI assistant. Claude provides the reasoning, MCP pro
 
 ## Commands
 
-The repository is scaffolded in T-001. Until then, these are planned:
-
 - `npm install` — install workspace dependencies
 - `npm run build` — build all packages (shared, server, extension)
 - `npm test` — unit + mocked integration tests (vitest)
 - `npm run lint` — Biome lint + format check
 - `npm run e2e:live -- --instance <alias>` — opt-in live tests against a real instance (T-034)
 - `npm run setup` / `npm run uninstall` — local install of native host manifest etc. (T-037)
+- `npm run pack:mcpb` / `npm run pack:skill` — build the Claude Desktop bundle and the skill zip
 
 ## Session start / recovery protocol
 

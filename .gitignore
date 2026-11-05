@@ -5,6 +5,7 @@ coverage/
 *.tsbuildinfo
 *.mcpb
 mcpb-build/
+dist-skill/
 *.zip
 
 # secrets & local config — never commit

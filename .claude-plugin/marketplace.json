@@ -1,0 +1,11 @@
+{
+  "name": "sn-mcp",
+  "owner": { "name": "Cüneyt Bozok" },
+  "plugins": [
+    {
+      "name": "sn-mcp-skills",
+      "source": "./",
+      "description": "Read-only ServiceNow troubleshooting guidance for the sn-mcp connector."
+    }
+  ]
+}

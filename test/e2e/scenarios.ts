@@ -75,6 +75,44 @@ async function walk(
   return { pages, last: r };
 }
 
+/** Tables named in skills/servicenow-troubleshooting/references (T-038). */
+const SKILL_TABLES = [
+  'syslog',
+  'syslog_transaction',
+  'sys_email',
+  'sysevent',
+  'sys_trigger',
+  'sys_script',
+  'sys_script_include',
+  'sys_script_client',
+  'sys_data_policy2',
+  'sys_ui_policy',
+  'discovery_status',
+  'discovery_device_history',
+  'discovery_log',
+  'ecc_queue',
+  'ecc_agent',
+  'discovery_schedule',
+  'cmdb_ci',
+  'cmdb_rel_ci',
+  'cmdb_rel_type',
+  'cmdb_identifier',
+  'cmdb_identifier_entry',
+  'reconciliation_definition',
+  'sys_object_source',
+  'cmdb_datasource',
+  'sys_hub_flow',
+  'sys_hub_action_type_definition',
+  'sys_hub_trigger_instance',
+  'sys_flow_context',
+  'sys_flow_log',
+  'sys_security_acl',
+  'sys_security_acl_role',
+  'sys_user_has_role',
+  'sys_user_grmember',
+  'sys_user_role_contains',
+];
+
 export const SCENARIOS: {
   name: string;
   run: (call: Call, scope: string) => Promise<Record<string, unknown>>;
@@ -392,6 +430,18 @@ export const SCENARIOS: {
         reference_has_summary: refs.length > 0 && Object.keys(refs[0].summary).length > 1,
         journal_chars: j.data.total_chars,
       };
+    },
+  },
+  {
+    name: 'the tables the skill names exist here (reported, not required: plugins vary)',
+    run: async (call, scope) => {
+      const missing: string[] = [];
+      for (const table of SKILL_TABLES) {
+        const r = await call('describe_table', { scope_id: scope, table, max_chars: 4000 });
+        if (r?.error?.code === 'NOT_FOUND') missing.push(table);
+        else if (!r?.ok) expectThat(false, `${table}: ${r?.error?.code}`);
+      }
+      return { checked: SKILL_TABLES.length, missing };
     },
   },
   {

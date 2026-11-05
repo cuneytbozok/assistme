@@ -21,6 +21,7 @@
     "setup": "node scripts/setup.ts",
     "uninstall": "node scripts/uninstall.ts",
     "e2e:live": "npm run build && node test/e2e/live.ts",
+    "pack:skill": "node scripts/pack-skill.ts",
     "pack:mcpb": "npm run build -w @sn-mcp/shared && npm run pack:mcpb -w @sn-mcp/server",
     "install-native-host": "npm run install-native-host -w @sn-mcp/server --"
   },
