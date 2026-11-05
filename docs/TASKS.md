@@ -43,7 +43,7 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 | T-031 | `search_code`                                   | 026      | DONE        |
 | T-032 | `compare_records`                               | 025, 011 | DONE        |
 | T-033 | Tool contract review + TOOLS.md                 | 024–032  | DONE        |
-| T-034 | Live tool acceptance (M4)                       | 033      | TODO        |
+| T-034 | Live tool acceptance (M4)                       | 033      | BLOCKED     |
 | T-035 | Claude Code registration                        | 034      | TODO        |
 | T-036 | `.mcpb` Desktop Extension                       | 034      | TODO        |
 | T-037 | Setup/uninstall + INSTALL.md (M5)               | 036      | TODO        |
@@ -1256,7 +1256,7 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 
 ### T-034 — Live tool acceptance (Milestone M4)
 
-- **Status:** TODO
+- **Status:** BLOCKED
 - **Purpose:** Prove AC-10, AC-11, AC-12, AC-13 on a real instance.
 - **Dependencies:** T-033
 - **Deliverables:** `test/e2e/live.ts` (`npm run e2e:live -- --instance dev`) that uses an MCP stdio client and goes through the real approval flow, exercising every tool: discover a custom table, describe `incident`, query `syslog` with no time window and paginate past offset 2,000 by cursor, query records older than one year, read a large script include completely in chunks, search_code for a field name, related records for a CI, history of an incident, aggregate by state, and an ambiguous `get_record`. Results saved (redacted) to `docs/evidence/T-034/`.
@@ -1266,7 +1266,7 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 - **DoD:** M4 marked achieved.
 - **Blocker:** requires a DEV instance.
 - **Evidence (2026-11-05):**
-  - Delivered: `docs/TOOLS.md` (all 14 tools, each input, an example per tool, result contract, filter syntax, error catalog, limits), `test/tool-contract.test.ts` (40 tests; mock), and the updated tool-surface snapshot in `tool-surface.test.ts`.
+  - Delivered: `docs/TOOLS.md` (all 14 tools, each input, an example per tool, result contract, filter syntax, error catalog, limits), `test/tool-contract.test.ts` (39 tests; mock), and the updated tool-surface snapshot in `tool-surface.test.ts`.
   - **Size:** `tools/list` went from **41,803 bytes to under 12,000** (a test enforces it). How:
     - `lean()` in `tools/common.ts` publishes a compact schema while still validating with the full one. Validation is as strict as before: 29 hostile or malformed inputs across all tools are refused, with no request sent.
     - Shorter descriptions; the shared contract moved to the server instructions (`complete`, `omitted`, cursors, efficient reads).
@@ -1293,7 +1293,14 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 - **Acceptance criteria:** in a fresh Claude Code session, `/mcp` lists the server and a scoped query works on DEV.
 - **Verification:** manual, with a transcript in evidence.
 - **DoD:** —
-- **Evidence:** —
+- **Blocker:** the run needs the user: approving a scope in the popup in their Chrome, after reloading the extension. Nothing else is missing.
+- **Evidence so far (2026-11-05, not acceptance):**
+  - Delivered: `test/e2e/scenarios.ts` (12 scenarios covering all data tools except `compare_records`, which needs a second instance, T-015), `test/e2e/live.ts`, root script `npm run e2e:live -- --instance <alias> [--dry-run]`. Saves shapes, counts and sizes only to `docs/evidence/T-034/results.json`.
+  - The script's logic is checked against the fake (`test/live-scenarios.test.ts`; **mock, not evidence of connectivity**).
+  - `--dry-run` against the user's real bridge (real result, not acceptance): the new build connected, 14 tools, `tools/list` 11,798 bytes, and the registry lists `dev469966 (connected)`. No scope requested, nothing read from ServiceNow. It also caught a wrong import in the runner, now fixed.
+  - The alias is `dev469966` (HANDOFF said `dev`): the run is `npm run e2e:live -- --instance dev469966`.
+  - **Questions the live run answers:** `sysparm_display_value=all` shape in the Stats API (`group_value_shape`), `sys_dictionary.reference` filtering by table name (related records), journal fields by display value, time for a whole-instance `search_code` batch, `sysparm_offset` past 2,000. `sysparm_offset` counting pre-ACL rows can't be shown with an admin user (ADR-011 addendum): it needs a user with restricted ACLs.
+  - **Acceptance criteria:** none evaluated yet. All need the live run.
 
 ### T-036 — `.mcpb` Desktop Extension
 

@@ -84,6 +84,10 @@ export class FakeServiceNow {
         return v > t.value;
       case '>=':
         return v >= t.value;
+      case 'RELATIVELT':
+        return true; // relative dates aren't evaluated: every fixture row counts as old enough
+      case 'RELATIVEGE':
+        return true;
       default:
         throw new Error(`fake SN: operator ${t.operator} not implemented`);
     }

@@ -18,6 +18,7 @@
     "test": "npm run test --workspaces",
     "lint": "biome check .",
     "format": "biome check --write .",
+    "e2e:live": "npm run build && node test/e2e/live.ts",
     "install-native-host": "npm run install-native-host -w @sn-mcp/server --"
   },
   "devDependencies": {
