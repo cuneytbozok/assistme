@@ -118,6 +118,8 @@ First install the update from "Latest update" above, so access stays open for fo
 
 ## D. Claude Code: test in a terminal
 
+**Status:** skipped: not used. Not tested.
+
 The connector and skills are already registered for Claude Code. This Mac has no `claude` command on its path, so you may need to install it first.
 
 **Where:** Terminal
@@ -139,6 +141,8 @@ The connector and skills are already registered for Claude Code. This Mac has no
 **Tell me:** whether it worked. If you never use Claude Code in a terminal, tell me and I'll mark this as not tested.
 
 ## E. Optional: Cowork
+
+**Status:** skipped: not used. Not tested.
 
 If you use Cowork in Claude Desktop, ask it the question from B4. **Tell me:** whether it can see the tools. Either answer is fine: I'll record it.
 

@@ -44,12 +44,12 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 | T-032 | `compare_records`                               | 025, 011 | DONE        |
 | T-033 | Tool contract review + TOOLS.md                 | 024–032  | DONE        |
 | T-034 | Live tool acceptance (M4)                       | 033      | DONE        |
-| T-035 | Claude Code registration                        | 034      | BLOCKED     |
-| T-036 | `.mcpb` Desktop Extension                       | 034      | BLOCKED     |
-| T-037 | Setup/uninstall + INSTALL.md (M5)               | 036      | BLOCKED     |
+| T-035 | Claude Code registration                        | 034      | DONE        |
+| T-036 | `.mcpb` Desktop Extension                       | 034      | DONE        |
+| T-037 | Setup/uninstall + INSTALL.md (M5)               | 036      | DONE        |
 | T-038 | Custom troubleshooting skill                    | 034      | DONE        |
 | T-039 | Official now-sdk skill evaluation               | 038      | DROPPED     |
-| T-040 | Full acceptance matrix                          | 037      | TODO        |
+| T-040 | Full acceptance matrix                          | 037      | IN_PROGRESS |
 | T-041 | Recovery drill + install from scratch (M6)      | 040      | TODO        |
 
 ---
@@ -1302,7 +1302,7 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 
 ### T-035 — Claude Code registration
 
-- **Status:** BLOCKED
+- **Status:** DONE
 - **Purpose:** Easy use from Claude Code (AC-1).
 - **Dependencies:** T-034
 - **Deliverables:** `.mcp.json.example`; `claude mcp add` instructions (user and project scope); verification that tools appear and work.
@@ -1310,15 +1310,15 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 - **Acceptance criteria:** in a fresh Claude Code session, `/mcp` lists the server and a scoped query works on DEV.
 - **Verification:** manual, with a transcript in evidence.
 - **DoD:** —
-- **Blocker:** the acceptance check needs the user: a fresh Claude Code session (the CLI here isn't signed in, and logging it in needs the user's credentials) and T-034 first.
 - **Done for the user (2026-11-05):** `claude mcp add --scope user` with the installed CLI (2.1.317). `claude mcp list` reports `sn-mcp ✔ Connected`, which shows the server starts and answers, not that a signed-in session can use it. After registering, the running Code session in the Desktop app listed the new tools (such as `search_code` and `compare_records`).
 - **Tried from that session (2026-11-05, live):** it mixed two servers. Tools both had (`request_scope`, `claim_scope`, `query_records`) went to the old server still running in Claude Desktop; the rest went to the new one. A scope claimed through the old server read INC0000060 there, and the new server refused it with `SCOPE_UNKNOWN`, as client binding should (T-012). So the new tools can't be used in a session started before Claude Desktop restarts. Expected to clear up after a restart, when both run the same build: not verified.
 - **Re-tried after the user restarted Claude Desktop (2026-11-05, live, `dev469966`):** cleared up. In a new Code session, `list_instances`, `request_scope` and `claim_scope` came from the current build, the user approved, and `get_record`, `get_record_history`, `search_code` and `query_records` all worked on the scope. The scope was released. **Still open:** `/mcp` in a fresh terminal session. Three server processes were running, so which registration served this session wasn't determined.
-- **Evidence so far (2026-11-05, not acceptance):** `.mcp.json.example`; `claude mcp add` (user scope) and `.mcp.json` (project scope) instructions in `docs/INSTALL.md`. A test checks the example points at the built server. **Unverified:** AC, `/mcp` listing the server and a scoped query on DEV.
+- **Evidence (2026-11-05):** `.mcp.json.example`; `claude mcp add` (user scope) and `.mcp.json` (project scope) instructions in `docs/INSTALL.md`. A test checks the example points at the built server. **Unverified:** AC, `/mcp` listing the server and a scoped query on DEV.
+  - **Acceptance changed by the user (2026-11-05):** they don't use Claude Code in a terminal, so that check was dropped. **Not tested:** `/mcp` in a terminal session. What is shown: `claude mcp list` connects, and a scoped query, history and search worked live in a Claude Code session inside the Desktop app.
 
 ### T-036 — `.mcpb` Desktop Extension
 
-- **Status:** BLOCKED
+- **Status:** DONE
 - **Purpose:** One-click install in Claude Desktop (AC-1).
 - **Dependencies:** T-034
 - **Deliverables:** esbuild single-file server bundle; `packages/server/mcpb/manifest.json` (`server.type: node`, `entry_point`, `mcp_config` with `${__dirname}`, optional `user_config` for log level only, no secrets); `npm run pack:mcpb` using `@anthropic-ai/mcpb`; install via Settings → Extensions → Advanced → Install Extension; Cowork behavior tested and documented.
@@ -1326,21 +1326,20 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 - **Acceptance criteria:** the `.mcpb` installs, tools appear under Connectors, and a scoped query works in Desktop chat; the Cowork result (works or doesn't) is recorded.
 - **Verification:** manual, with screenshots in evidence.
 - **DoD:** —
-- **Blocker:** needs the user: installing the bundle in Claude Desktop, a scoped query in Desktop chat, and the Cowork result.
-- **Evidence so far (2026-11-05, not acceptance):**
+- **Evidence (2026-11-05):**
   - Delivered: `packages/server/mcpb/manifest.json` (manifest 0.4), `packages/server/build.mjs` (one bundled file), `npm run pack:mcpb`, `test/mcpb.test.ts` (mock). Install steps in `docs/INSTALL.md`.
   - Rebuilt on 2026-11-05 with the current rules. The user installed it (found in `Claude Extensions/local.mcpb.cneyt-bozok.sn-mcp`, with the filter check), and the old `sn-mcp` entry was then removed from `claude_desktop_config.json`, with a backup. 
   - **Used in Claude Desktop (2026-11-05, reported by the user):** after a restart, a new chat listed the instance and answered the INC0000060 question, with the user approving the code in the popup. Claude Desktop also asks for permission per tool: that is its own prompt, separate from the connector's approval code.
-  - **Only the Cowork result remains** (NEXT_STEPS part E). If the user doesn't use Cowork, record that and finish this task.
+  - **Cowork: not tested.** The user doesn't use it (2026-11-05), so whether the connector works there is unknown.
   - `npm run pack:mcpb` → `Manifest schema validation passes!`, `packages/server/sn-mcp.mcpb` at 288 kB, 2 files. Rebuilt after T-034.
   - The real bundle runs alone from an empty folder over stdio and lists the same 14 tools as the manifest. With no broker, `list_instances` gives `BRIDGE_UNAVAILABLE`.
   - **Deviation:** the task said `user_config` for log level only, but the server has no log level, and ADR-011/ARCHITECTURE §8.3 say result-shaping settings come through `user_config`. So it has four numeric shaping settings. No secrets; a test keeps it that way.
-  - **Unverified:** the install itself, tools appearing under Connectors, a scoped query in Desktop chat, Cowork behaviour, and whether Claude Desktop substitutes unset optional settings (a test shows an unfilled placeholder falls back safely).
+  - **Unverified:** Cowork, and whether Claude Desktop substitutes unset optional settings (a test shows an unfilled placeholder falls back safely).
   - `@anthropic-ai/mcpb` is a dev dependency. `npm audit --omit=dev`: 0 vulnerabilities. Full `npm audit`: 6 (3 high), all in dev packages.
 
 ### T-037 — Setup/uninstall + INSTALL.md (Milestone M5)
 
-- **Status:** BLOCKED
+- **Status:** DONE
 - **Purpose:** Simple local installation (AC-19).
 - **Dependencies:** T-036
 - **Deliverables:** `npm run setup` (checks Node version, builds, installs the native host manifest, prints the extension load steps and ID, and prints Claude Code and Desktop registration steps); `npm run uninstall` (removes the host manifest, socket directory, and logs); complete `docs/INSTALL.md` with troubleshooting (host not found, `BROKER_CONFLICT`, session expired, logs location).
@@ -1348,8 +1347,7 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 - **Acceptance criteria:** setup is idempotent; uninstall leaves no files behind (verified by listing); the docs cover every step.
 - **Verification:** run setup → uninstall → setup on this machine.
 - **DoD:** M5 marked achieved.
-- **Blocker:** only its dependency, T-036 (installing the `.mcpb` in Claude Desktop). Every acceptance criterion below passed.
-- **Evidence so far (2026-11-05, not acceptance):**
+- **Evidence (2026-11-05):**
   - Delivered: `scripts/setup.ts`, `scripts/uninstall.ts`, `npm run setup`, `npm run uninstall`, `uninstallAll` in `installer.ts`, complete `docs/INSTALL.md`, `test/setup-scripts.test.ts`.
   - Tests run setup → setup → uninstall → uninstall → setup under a throwaway `HOME`, using the real scripts: 
     - Idempotent ✔ the second setup leaves an identical manifest and the same file listing.
@@ -1361,7 +1359,7 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
   - **Real machine (2026-11-05, at the user's request):** setup → uninstall → setup. The first setup and the last wrote an identical manifest (same hash). Uninstall stopped the running broker and, by listing, left no manifest, no sn-mcp folder and no host process. The extension reconnected on its own, with no reload, and a dry run through the real bridge then listed `dev469966 (connected)`.
   - **Unverified:** a person following `INSTALL.md` from scratch (T-041).
   - **Mutation checks** (each reverted): signalling without checking the process, a loose process name match, removing any folder; all fail tests.
-  - M5 is not achieved until this and T-036 are verified.
+  - **DoD ✔** M5 achieved (2026-11-05), with the terminal and Cowork checks dropped by the user.
 
 ## Phase 6 — Skills
 
@@ -1409,7 +1407,7 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 
 ### T-040 — Full acceptance matrix
 
-- **Status:** TODO
+- **Status:** IN_PROGRESS
 - **Purpose:** Evidence for AC-1 … AC-19.
 - **Dependencies:** T-037
 - **Deliverables:** `docs/ACCEPTANCE.md` matrix: criterion → test or procedure → result → evidence link → date. Re-run live suites (`e2e:live`, `live-scope`) on the final build.
