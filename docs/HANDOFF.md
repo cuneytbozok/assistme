@@ -7,7 +7,8 @@ _Last updated: 2026-11-05 (after T-039 preparation)_
 **All code that can be built and mock-tested is done. Everything left needs the user.**
 
 - **DONE:** T-001 to T-014, T-016 to T-034. All 14 MCP tools exist; 13 ran live on `dev469966` (T-034). `compare_records` is mock-only until a second instance exists.
-- **BLOCKED on the user, prepared as far as possible:** T-015, T-035, T-036, T-037, T-038, T-039. Each task's entry in TASKS lists what remains unverified.
+- **DROPPED by the user:** T-039 (official SDK skill).
+- **BLOCKED on the user, prepared as far as possible:** T-015, T-035, T-036, T-037, T-038. Each task's entry in TASKS lists what remains unverified.
 - **TODO, waiting on those:** T-040 (acceptance matrix), T-041 (recovery drill, install from scratch).
 - **Milestones:** M1, M3, M4 achieved. M2, M5, M6 not achieved.
 
@@ -15,11 +16,11 @@ _Last updated: 2026-11-05 (after T-039 preparation)_
 
 1. Done 2026-11-05: extension reloaded, T-034 live runs passed.
 2. Fully quit and reopen Claude Desktop: its `sn-mcp` server is still the old build.
-3. Claude Code: start a fresh signed-in session, register per `docs/INSTALL.md`, check `/mcp` and a scoped query (T-035).
-4. `npm run pack:mcpb`, install `packages/server/sn-mcp.mcpb` in Claude Desktop, remove the old `sn-mcp` entry from `claude_desktop_config.json`, try a scoped query and Cowork (T-036).
-5. Done 2026-11-05: the setup round trip on the real machine (T-037). It stays BLOCKED only on T-036.
-6. Install the skill in Claude Code and upload the zip to Desktop (T-038).
-7. Install the official SDK plugin with the deny rules; check `explain` and that denied commands are blocked (T-039).
+3. Claude Code: registered and skills installed for the user on 2026-11-05. In a fresh signed-in session: check `/mcp`, try a query, and ask something that should load a skill (T-035, T-038).
+4. Claude Desktop (`packages/server/sn-mcp.mcpb` is rebuilt and current): install it, then remove the old `sn-mcp` entry from `claude_desktop_config.json`, quit and reopen. Try a query, a revoke, a logout, and Cowork (T-036).
+5. Upload both zips from `dist-skill/` in Claude Desktop (T-038).
+6. Done 2026-11-05: the setup round trip on the real machine (T-037). It waits only on T-036.
+7. Dropped: the official SDK skill (T-039). The user's Claude Code does have `fluent@servicenow`; ask whether to remove it.
 8. A second instance for T-015, if one is available. That also allows a live `compare_records` run, which T-034 can't cover.
 
 **Decisions made 2026-11-05 by the user:** the word "javascript" is allowed and only the `javascript:` prefix is refused (ADR-005 addendum); dictionary validation stays fail-closed, with Claude telling the user what they can't read; a denied request stays `status: "denied"` (T-015 AC6 changed).
@@ -98,6 +99,7 @@ _Last updated: 2026-11-05 (after T-039 preparation)_
 - **T-037 DONE:** Prepared, BLOCKED on the user: `npm run setup`, `npm run uninstall`, `docs/INSTALL.md`. Tested under a throwaway HOME only; the real machine run stops the live broker, so it is left to the user.
 - **T-038, T-039 prepared, BLOCKED on the user.**
 - **T-037 real-machine run passed:** the extension reconnects by itself after uninstall and setup.
+- **The repo has no git remote:** nothing is backed up off this machine.
 - **Third-party skill added (user decision):** `plugin/skills/servicenow-development-guide`, pinned; see its `PROVENANCE.md`.
 - **T-034 DONE (live):** 14 of 14 scenarios on `dev469966`; M4 achieved.
 - **Next task:** the checklist at the top of this file.

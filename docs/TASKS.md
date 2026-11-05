@@ -1,6 +1,6 @@
 # Tasks
 
-Statuses: `TODO` · `IN_PROGRESS` · `BLOCKED` · `DONE`.
+Statuses: `TODO` · `IN_PROGRESS` · `BLOCKED` · `DONE` · `DROPPED` (the user decided not to do it; nothing was verified).
 
 Every task also has to meet the global Definition of Done in `IMPLEMENTATION_PLAN.md`: committed; build, test, and lint pass; every acceptance criterion evaluated with evidence; TASKS and HANDOFF updated. "DoD" below lists only what's specific to that task.
 
@@ -48,8 +48,8 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 | T-036 | `.mcpb` Desktop Extension                       | 034      | BLOCKED     |
 | T-037 | Setup/uninstall + INSTALL.md (M5)               | 036      | BLOCKED     |
 | T-038 | Custom troubleshooting skill                    | 034      | BLOCKED     |
-| T-039 | Official now-sdk skill evaluation               | 038      | BLOCKED     |
-| T-040 | Full acceptance matrix                          | 037, 039 | TODO        |
+| T-039 | Official now-sdk skill evaluation               | 038      | DROPPED     |
+| T-040 | Full acceptance matrix                          | 037      | TODO        |
 | T-041 | Recovery drill + install from scratch (M6)      | 040      | TODO        |
 
 ---
@@ -1183,7 +1183,7 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 - **DoD:** —
 - **Evidence (2026-11-05):**
   - Implemented: `tools/search-code.ts` (`buildTargets`, `makeSnippets`), `MetadataService.fieldsOfTypes`, adaptive window size in `WindowReader`.
-  - Tests: `test/search-code.test.ts` (12; mock). Root build, tests and lint exit 0.
+  - Tests: `test/search-code.test.ts` (14; mock). Root build, tests and lint exit 0.
   - **Acceptance criteria:**
     - No hard-coded tables ✔ matches found in `sys_script`, `sys_script_include` and a custom `x_acme_` table, and a brand-new `u_` script field added only to the dictionary fixture is searched. The only hard-coded list is the field types (script, script_plain, script_server, conditions, condition_string, email_script, html_script).
     - Cursor covers every table ✔ 70 tables at the default, `limit: 7` and `max_chars: 4000`: the exact set of matching records, none lost or repeated.
@@ -1212,32 +1212,6 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 - **Verification:** `npm test`.
 - **DoD:** —
 - **Evidence (2026-11-05):**
-  - Implemented: `tools/search-code.ts` (`buildTargets`, `makeSnippets`), `MetadataService.fieldsOfTypes`, adaptive window size in `WindowReader`.
-  - Tests: `test/search-code.test.ts` (14; mock). Root build, tests and lint exit 0.
-  - **Acceptance criteria:**
-    - No hard-coded tables ✔ matches found in `sys_script`, `sys_script_include` and a custom `x_acme_` table, and a brand-new `u_` script field added only to the dictionary fixture is searched. The only hard-coded list is the field types (script, script_plain, script_server, conditions, condition_string, email_script, html_script).
-    - Cursor covers every table ✔ 70 tables at the default, `limit: 7` and `max_chars: 4000`: the exact set of matching records, none lost or repeated.
-    - Pattern validation ✔ `a^ORb`, `javascript:…`, `x^NQy` refused with no request; literal code such as `gs.info(` is fine in a structured filter.
-    - `complete: true` only after the last table ✔ every earlier page has `complete: false` and `tables_remaining > 0`. `tables_searched`, `tables_remaining` and `requests_used` are reported.
-  - **Beyond the task:**
-    - Each call searches at most 25 tables (`reason: batch`, with a cursor) so it stays inside client timeouts; a hint suggests `tables` when a full search takes several calls.
-    - More matches than snippets (3 per field) → an `omitted` entry with the `get_field_content` call.
-    - A record too large to read with its scripts, even alone, is named in `omitted` (`too_large`) and the rest continue. Denied tables are never queried; unreadable ones give a retry call.
-    - Tables with many script fields are split so each query stays under the query limits.
-  - **Mutation checks** (each reverted): denied table queried, no per-call batch, pattern not validated, no adaptive window, extra matches unreported, oversized record abandons the table, multi-group table counted done early; each is caught by a test or a hang.
-  - **Limitation:** a pattern containing `javascript:` can't be searched, because the query validator refuses it everywhere (ADR-005). To verify live (T-034): how long a full-instance search takes.
-
-### T-033 — Tool contract review + TOOLS.md
-
-- **Status:** DONE
-- **Purpose:** Consistent, well-described, efficient tools.
-- **Dependencies:** T-024 – T-032
-- **Deliverables:** review names, descriptions (concise, with when-to-use guidance), input and output schemas, annotations, and error mapping; `docs/TOOLS.md` with every contract, an example, and the error catalog; tool-surface snapshot updated.
-- **Files:** `packages/server/src/mcp/tools/*`, `docs/TOOLS.md`
-- **Acceptance criteria:** every tool has an `outputSchema` and examples; every data tool documents its continuation (`cursor`/`next`) and `complete`/`omitted` semantics; the tool descriptions tell Claude to prefer filters, projection and aggregates, and to continue cursors when needed; total `tools/list` payload ≤ 12 KB; snapshot test passes.
-- **Verification:** `npm test`; size measurement recorded.
-- **DoD:** —
-- **Evidence (2026-11-05):**
   - Implemented: `tools/compare-records.ts`, `mcp/line-diff.ts` (Myers with a bounded edit distance, unified output). The harness has one fake per instance and compare scopes.
   - Tests: `test/compare-records.test.ts` (13; mock). Root build, tests and lint exit 0.
   - **Acceptance criteria:**
@@ -1253,17 +1227,16 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
     - If a snapshot is gone and a new read differs, a hint says so.
   - **Mutation checks** (each reverted): single scopes accepted, `scope.check` ignored, system fields compared, credentials not stripped, no page split, wrong hunk line numbers, hunks never split, Myers backtrack broken; each is caught by a test or a hang.
 
-### T-034 — Live tool acceptance (Milestone M4)
+### T-033 — Tool contract review + TOOLS.md
 
 - **Status:** DONE
-- **Purpose:** Prove AC-10, AC-11, AC-12, AC-13 on a real instance.
-- **Dependencies:** T-033
-- **Deliverables:** `test/e2e/live.ts` (`npm run e2e:live -- --instance dev`) that uses an MCP stdio client and goes through the real approval flow, exercising every tool: discover a custom table, describe `incident`, query `syslog` with no time window and paginate past offset 2,000 by cursor, query records older than one year, read a large script include completely in chunks, search_code for a field name, related records for a CI, history of an incident, aggregate by state, and an ambiguous `get_record`. Results saved (redacted) to `docs/evidence/T-034/`.
-- **Files:** `test/e2e/live.ts`, `docs/evidence/T-034/*`
-- **Acceptance criteria:** every scenario passes on live DEV; no scenario is blocked by a volume limit; every partial result had `complete:false` with working continuations; response sizes and `requests_used` are recorded.
-- **Verification:** live run.
-- **DoD:** M4 marked achieved.
-- **Blocker:** requires a DEV instance.
+- **Purpose:** Consistent, well-described, efficient tools.
+- **Dependencies:** T-024 – T-032
+- **Deliverables:** review names, descriptions (concise, with when-to-use guidance), input and output schemas, annotations, and error mapping; `docs/TOOLS.md` with every contract, an example, and the error catalog; tool-surface snapshot updated.
+- **Files:** `packages/server/src/mcp/tools/*`, `docs/TOOLS.md`
+- **Acceptance criteria:** every tool has an `outputSchema` and examples; every data tool documents its continuation (`cursor`/`next`) and `complete`/`omitted` semantics; the tool descriptions tell Claude to prefer filters, projection and aggregates, and to continue cursors when needed; total `tools/list` payload ≤ 12 KB; snapshot test passes.
+- **Verification:** `npm test`; size measurement recorded.
+- **DoD:** —
 - **Evidence (2026-11-05):**
   - Delivered: `docs/TOOLS.md` (all 14 tools, each input, an example per tool, result contract, filter syntax, error catalog, limits), `test/tool-contract.test.ts` (39 tests; mock), and the updated tool-surface snapshot in `tool-surface.test.ts`.
   - **Size:** `tools/list` went from **41,803 bytes to under 12,000** (a test enforces it). How:
@@ -1280,18 +1253,17 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
     2. `query_records` accepted 200 named fields but one request carries 50. It now accepts 49 (plus `sys_id`). Reading an oversized record on a table with more than 50 fields stays within the limit and lists the rest in `omitted`.
   - **Mutation checks** (each reverted): no skip on stop, skip ignored on resume, `lean()` not validating, no field cap on the oversized read; all fail tests.
 
-## Phase 5 — Packaging (Milestone M5)
+### T-034 — Live tool acceptance (Milestone M4)
 
-### T-035 — Claude Code registration
-
-- **Status:** BLOCKED
-- **Purpose:** Easy use from Claude Code (AC-1).
-- **Dependencies:** T-034
-- **Deliverables:** `.mcp.json.example`; `claude mcp add` instructions (user and project scope); verification that tools appear and work.
-- **Files:** `.mcp.json.example`, `docs/INSTALL.md` (section)
-- **Acceptance criteria:** in a fresh Claude Code session, `/mcp` lists the server and a scoped query works on DEV.
-- **Verification:** manual, with a transcript in evidence.
-- **DoD:** —
+- **Status:** DONE
+- **Purpose:** Prove AC-10, AC-11, AC-12, AC-13 on a real instance.
+- **Dependencies:** T-033
+- **Deliverables:** `test/e2e/live.ts` (`npm run e2e:live -- --instance dev`) that uses an MCP stdio client and goes through the real approval flow, exercising every tool: discover a custom table, describe `incident`, query `syslog` with no time window and paginate past offset 2,000 by cursor, query records older than one year, read a large script include completely in chunks, search_code for a field name, related records for a CI, history of an incident, aggregate by state, and an ambiguous `get_record`. Results saved (redacted) to `docs/evidence/T-034/`.
+- **Files:** `test/e2e/live.ts`, `docs/evidence/T-034/*`
+- **Acceptance criteria:** every scenario passes on live DEV; no scenario is blocked by a volume limit; every partial result had `complete:false` with working continuations; response sizes and `requests_used` are recorded.
+- **Verification:** live run.
+- **DoD:** M4 marked achieved.
+- **Blocker:** requires a DEV instance.
 - **Evidence (2026-11-05, live, real instance `dev469966`, PDI, signed in as admin):**
   - Real MCP stdio client → real server → real broker → real extension (reloaded by the user) → ServiceNow. The user approved each scope in the popup. No mocks in the chain.
   - **Full run** (`docs/evidence/T-034/results.json`, 06:45–06:55 UTC): **14 passed, 0 failed, 0 skipped**, scope released. **Re-run after fixes** (`results-partial.json`): the 3 affected scenarios passed. Both files hold shapes, counts, sizes, table and field names and error messages; no record content.
@@ -1313,6 +1285,13 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
     - A table named with "javascript" couldn't be read at the time. The user chose to allow the word (ADR-005 addendum): see the re-check below.
   - **Change after the run (2026-11-05, user decision):** only the `javascript:` prefix is refused now, not the word (ADR-005 addendum). 102 attack cases, 12 of them new and aimed at hiding the prefix, are all refused in the shared validator, and 4 disguises are checked against the extension's real builder. **Live on 2026-11-05** (`results-javascript.json`, extension reloaded, approved by the user): `automation_pipeline_transformer_javascript` was described, a search for the word in `sys_script_include` returned 5 matches, `javascript:` stayed refused, and the 4 unsafe queries were still refused with 0 requests.
   - **DoD ✔** M4 achieved.
+  - **The runner, and how it was first checked:**
+    - Delivered: `test/e2e/scenarios.ts` (12 scenarios covering all data tools except `compare_records`, which needs a second instance, T-015), `test/e2e/live.ts`, root script `npm run e2e:live -- --instance <alias> [--dry-run]`. Saves shapes, counts and sizes only to `docs/evidence/T-034/results.json`.
+    - The script's logic is checked against the fake (`test/live-scenarios.test.ts`; **mock, not evidence of connectivity**).
+    - `--dry-run` against the user's real bridge (real result, not acceptance): the new build connected, 14 tools, `tools/list` 11,798 bytes, and the registry lists `dev469966 (connected)`. No scope requested, nothing read from ServiceNow. It also caught a wrong import in the runner, now fixed.
+    - The alias is `dev469966` (HANDOFF said `dev`): the run is `npm run e2e:live -- --instance dev469966`.
+
+## Phase 5 — Packaging (Milestone M5)
 
 ### T-035 — Claude Code registration
 
@@ -1324,14 +1303,9 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 - **Acceptance criteria:** in a fresh Claude Code session, `/mcp` lists the server and a scoped query works on DEV.
 - **Verification:** manual, with a transcript in evidence.
 - **DoD:** —
-- **Blocker:** the run needs the user: approving a scope in the popup in their Chrome, after reloading the extension. Nothing else is missing.
-- **Evidence so far (2026-11-05, not acceptance):**
-  - Delivered: `test/e2e/scenarios.ts` (12 scenarios covering all data tools except `compare_records`, which needs a second instance, T-015), `test/e2e/live.ts`, root script `npm run e2e:live -- --instance <alias> [--dry-run]`. Saves shapes, counts and sizes only to `docs/evidence/T-034/results.json`.
-  - The script's logic is checked against the fake (`test/live-scenarios.test.ts`; **mock, not evidence of connectivity**).
-  - `--dry-run` against the user's real bridge (real result, not acceptance): the new build connected, 14 tools, `tools/list` 11,798 bytes, and the registry lists `dev469966 (connected)`. No scope requested, nothing read from ServiceNow. It also caught a wrong import in the runner, now fixed.
-  - The alias is `dev469966` (HANDOFF said `dev`): the run is `npm run e2e:live -- --instance dev469966`.
-  - **Questions the live run answers:** `sysparm_display_value=all` shape in the Stats API (`group_value_shape`), `sys_dictionary.reference` filtering by table name (related records), journal fields by display value, time for a whole-instance `search_code` batch, `sysparm_offset` past 2,000. `sysparm_offset` counting pre-ACL rows can't be shown with an admin user (ADR-011 addendum): it needs a user with restricted ACLs.
-  - **Acceptance criteria:** none evaluated yet. All need the live run.
+- **Blocker:** the acceptance check needs the user: a fresh Claude Code session (the CLI here isn't signed in, and logging it in needs the user's credentials) and T-034 first.
+- **Done for the user (2026-11-05):** `claude mcp add --scope user` with the installed CLI (2.1.317). `claude mcp list` reports `sn-mcp ✔ Connected`, which shows the server starts and answers, not that a signed-in session can use it.
+- **Evidence so far (2026-11-05, not acceptance):** `.mcp.json.example`; `claude mcp add` (user scope) and `.mcp.json` (project scope) instructions in `docs/INSTALL.md`. A test checks the example points at the built server. **Unverified:** AC, `/mcp` listing the server and a scoped query on DEV.
 
 ### T-036 — `.mcpb` Desktop Extension
 
@@ -1343,8 +1317,15 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 - **Acceptance criteria:** the `.mcpb` installs, tools appear under Connectors, and a scoped query works in Desktop chat; the Cowork result (works or doesn't) is recorded.
 - **Verification:** manual, with screenshots in evidence.
 - **DoD:** —
-- **Blocker:** the acceptance check needs the user: a fresh Claude Code session (the CLI here isn't signed in, and logging it in needs the user's credentials) and T-034 first.
-- **Evidence so far (2026-11-05, not acceptance):** `.mcp.json.example`; `claude mcp add` (user scope) and `.mcp.json` (project scope) instructions in `docs/INSTALL.md`. A test checks the example points at the built server. **Unverified:** AC, `/mcp` listing the server and a scoped query on DEV.
+- **Blocker:** needs the user: installing the bundle in Claude Desktop, a scoped query in Desktop chat, and the Cowork result.
+- **Evidence so far (2026-11-05, not acceptance):**
+  - Delivered: `packages/server/mcpb/manifest.json` (manifest 0.4), `packages/server/build.mjs` (one bundled file), `npm run pack:mcpb`, `test/mcpb.test.ts` (mock). Install steps in `docs/INSTALL.md`.
+  - Rebuilt on 2026-11-05 with the current rules. The old `sn-mcp` entry stays in `claude_desktop_config.json` until the bundle is installed, so Desktop isn't left without a connector.
+  - `npm run pack:mcpb` → `Manifest schema validation passes!`, `packages/server/sn-mcp.mcpb` at 288 kB, 2 files. Rebuilt after T-034.
+  - The real bundle runs alone from an empty folder over stdio and lists the same 14 tools as the manifest. With no broker, `list_instances` gives `BRIDGE_UNAVAILABLE`.
+  - **Deviation:** the task said `user_config` for log level only, but the server has no log level, and ADR-011/ARCHITECTURE §8.3 say result-shaping settings come through `user_config`. So it has four numeric shaping settings. No secrets; a test keeps it that way.
+  - **Unverified:** the install itself, tools appearing under Connectors, a scoped query in Desktop chat, Cowork behaviour, and whether Claude Desktop substitutes unset optional settings (a test shows an unfilled placeholder falls back safely).
+  - `@anthropic-ai/mcpb` is a dev dependency. `npm audit --omit=dev`: 0 vulnerabilities. Full `npm audit`: 6 (3 high), all in dev packages.
 
 ### T-037 — Setup/uninstall + INSTALL.md (Milestone M5)
 
@@ -1356,27 +1337,6 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 - **Acceptance criteria:** setup is idempotent; uninstall leaves no files behind (verified by listing); the docs cover every step.
 - **Verification:** run setup → uninstall → setup on this machine.
 - **DoD:** M5 marked achieved.
-- **Blocker:** needs the user: installing the bundle in Claude Desktop, a scoped query in Desktop chat, and the Cowork result.
-- **Evidence so far (2026-11-05, not acceptance):**
-  - Delivered: `packages/server/mcpb/manifest.json` (manifest 0.4), `packages/server/build.mjs` (one bundled file), `npm run pack:mcpb`, `test/mcpb.test.ts` (mock). Install steps in `docs/INSTALL.md`.
-  - `npm run pack:mcpb` → `Manifest schema validation passes!`, `packages/server/sn-mcp.mcpb` at 288 kB, 2 files. Rebuilt after T-034.
-  - The real bundle runs alone from an empty folder over stdio and lists the same 14 tools as the manifest. With no broker, `list_instances` gives `BRIDGE_UNAVAILABLE`.
-  - **Deviation:** the task said `user_config` for log level only, but the server has no log level, and ADR-011/ARCHITECTURE §8.3 say result-shaping settings come through `user_config`. So it has four numeric shaping settings. No secrets; a test keeps it that way.
-  - **Unverified:** the install itself, tools appearing under Connectors, a scoped query in Desktop chat, Cowork behaviour, and whether Claude Desktop substitutes unset optional settings (a test shows an unfilled placeholder falls back safely).
-  - `@anthropic-ai/mcpb` is a dev dependency. `npm audit --omit=dev`: 0 vulnerabilities. Full `npm audit`: 6 (3 high), all in dev packages.
-
-## Phase 6 — Skills
-
-### T-038 — Custom troubleshooting skill
-
-- **Status:** BLOCKED
-- **Purpose:** Optional expertise loaded on demand (FR-8.1).
-- **Dependencies:** T-034
-- **Deliverables:** `plugin/skills/servicenow-readonly-troubleshooting/SKILL.md` (frontmatter name and description; methodology; scope flow and approval code; discover → describe → narrow queries; scripts via `get_field_content`; untrusted-content reminder; freedom to investigate beyond the skill) and `references/` (logs-and-transactions, business-rule-execution, discovery-ecc, cmdb-ire, flow-designer, acl-debugging); `.claude-plugin/marketplace.json`; `npm run pack:skill` producing a Desktop-uploadable zip.
-- **Files:** `plugin/skills/**`, `.claude-plugin/marketplace.json`, `scripts/pack-skill.ts`
-- **Acceptance criteria:** installs in Claude Code via `/plugin marketplace add <repo>`; the zip uploads in Desktop; no reference instructs any write action; SKILL.md is ≤ 500 lines and loads references only on demand.
-- **Verification:** manual install in both clients.
-- **DoD:** —
 - **Blocker:** only its dependency, T-036 (installing the `.mcpb` in Claude Desktop). Every acceptance criterion below passed.
 - **Evidence so far (2026-11-05, not acceptance):**
   - Delivered: `scripts/setup.ts`, `scripts/uninstall.ts`, `npm run setup`, `npm run uninstall`, `uninstallAll` in `installer.ts`, complete `docs/INSTALL.md`, `test/setup-scripts.test.ts`.
@@ -1392,15 +1352,17 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
   - **Mutation checks** (each reverted): signalling without checking the process, a loose process name match, removing any folder; all fail tests.
   - M5 is not achieved until this and T-036 are verified.
 
-### T-039 — Official now-sdk skill evaluation
+## Phase 6 — Skills
+
+### T-038 — Custom troubleshooting skill
 
 - **Status:** BLOCKED
-- **Purpose:** Use official guidance safely (AC-17).
-- **Dependencies:** T-038
-- **Deliverables:** install `servicenow-sdk@claude-plugins-official` in Claude Code; verify `explain` works without `now-sdk auth`; `.claude/settings.json` example deny rules for `npx @servicenow/sdk` `auth|init|build|install|deploy|transform|dependencies|download` (and the `now-sdk` binary equivalents); document the findings (license status, version requirements, Desktop unsupported).
-- **Files:** `docs/SKILLS.md`, `.claude/settings.example.json`
-- **Acceptance criteria:** `explain` works with no credentials; denied commands are blocked by Claude Code permissions (demonstrated); no write path is introduced.
-- **Verification:** manual in Claude Code, with a transcript in evidence.
+- **Purpose:** Optional expertise loaded on demand (FR-8.1).
+- **Dependencies:** T-034
+- **Deliverables:** `plugin/skills/servicenow-readonly-troubleshooting/SKILL.md` (frontmatter name and description; methodology; scope flow and approval code; discover → describe → narrow queries; scripts via `get_field_content`; untrusted-content reminder; freedom to investigate beyond the skill) and `references/` (logs-and-transactions, business-rule-execution, discovery-ecc, cmdb-ire, flow-designer, acl-debugging); `.claude-plugin/marketplace.json`; `npm run pack:skill` producing a Desktop-uploadable zip.
+- **Files:** `plugin/skills/**`, `plugin/.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`, `scripts/pack-skill.ts`
+- **Acceptance criteria:** installs in Claude Code via `/plugin marketplace add <repo>`; the zip uploads in Desktop; no reference instructs any write action; SKILL.md is ≤ 500 lines and loads references only on demand.
+- **Verification:** manual install in both clients.
 - **DoD:** —
 - **Blocker:** installing it needs the user: `/plugin marketplace add` in a signed-in Claude Code, and the zip upload in Claude Desktop.
 - **Evidence so far (2026-11-05, not acceptance):**
@@ -1413,7 +1375,22 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
   - `claude plugin validate .` (Claude Code 2.1.317, already installed) → exit 0, "Validation passed with warnings"; the warnings are optional plugin-directory checks, which don't apply as this isn't being submitted.
   - The T-034 live run checked the 34 tables named: 2 names were wrong and are fixed; `discovery_schedule` is absent on the PDI, because Discovery isn't fully there. Field names in the references aren't checked live.
   - **Added 2026-11-05 (user decision):** the third-party `plugin/skills/servicenow-development-guide`, pinned; `npm run pack:skill` now builds both zips. Same install checks apply.
-  - **Unverified:** installing in Claude Code, uploading in Desktop.
+  - **Installed in Claude Code for the user (2026-11-05):** `claude plugin marketplace add` and `claude plugin install sn-mcp-skills@sn-mcp` both succeeded, and `claude plugin list` shows it enabled.
+  - **Bug found by installing:** with the plugin rooted at the repo, Claude Code copied the whole project into its cache (233 MB, including `node_modules`). The skills now live in `plugin/`, and the cache is 428 KB with both skills and no `node_modules`. A test keeps that folder to the manifest and skills.
+  - **Unverified:** Claude actually using the skills in a signed-in session; uploading the zips in Desktop.
+
+### T-039 — Official now-sdk skill evaluation
+
+- **Status:** DROPPED
+- **Purpose:** Use official guidance safely (AC-17).
+- **Dependencies:** T-038
+- **Deliverables:** install `servicenow-sdk@claude-plugins-official` in Claude Code; verify `explain` works without `now-sdk auth`; `.claude/settings.json` example deny rules for `npx @servicenow/sdk` `auth|init|build|install|deploy|transform|dependencies|download` (and the `now-sdk` binary equivalents); document the findings (license status, version requirements, Desktop unsupported).
+- **Files:** `docs/SKILLS.md`, `.claude/settings.example.json`
+- **Acceptance criteria:** `explain` works with no credentials; denied commands are blocked by Claude Code permissions (demonstrated); no write path is introduced.
+- **Verification:** manual in Claude Code, with a transcript in evidence.
+- **DoD:** —
+- **Dropped (2026-11-05, user decision):** the SDK skill isn't part of this project. No acceptance criterion was evaluated, and `explain` and the deny rules were never verified. AC-17 goes out of scope, and T-040 no longer waits on this task.
+- **What remains:** a note in `docs/SKILLS.md` and `.claude/settings.example.json`, because the user's Claude Code has `fluent@servicenow` installed.
 
 ## Phase 7 — Acceptance (Milestone M6)
 
@@ -1421,18 +1398,13 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 
 - **Status:** TODO
 - **Purpose:** Evidence for AC-1 … AC-19.
-- **Dependencies:** T-037, T-039
+- **Dependencies:** T-037
 - **Deliverables:** `docs/ACCEPTANCE.md` matrix: criterion → test or procedure → result → evidence link → date. Re-run live suites (`e2e:live`, `live-scope`) on the final build.
 - **Files:** `docs/ACCEPTANCE.md`, `docs/evidence/T-040/*`
 - **Acceptance criteria:** all 19 criteria pass with evidence, or any failure is recorded with a follow-up task.
 - **Verification:** full test + live run.
 - **DoD:** —
-- **Blocker:** needs the user in a signed-in Claude Code: installing the plugin, running `explain`, and showing that denied commands are blocked. An attempt to run the SDK in a sandbox here was refused by the session's permission system, and wasn't retried.
-- **Evidence so far (2026-11-05, not acceptance):**
-  - Delivered: `docs/SKILLS.md` (with a table of what is checked and what isn't), `.claude/settings.example.json` (deny rules for all 8 commands across 5 spellings, allow `explain`), `test/skills-doc.test.ts` (checks the rules as text only).
-  - Checked: `npm view @servicenow/sdk` on 2026-11-05: 4.14.0, MIT, Node ≥20.18, binaries `sdk`, `now-sdk`, `now-sdk-debug`.
-  - **Acceptance criteria:** none met yet. `explain` with no credentials and enforcement of the deny rules are both unverified. No write path is added: nothing here changes the connector.
-  - Plugin facts from web search only are marked as such in `docs/SKILLS.md`.
+- **Evidence:** —
 
 ### T-041 — Recovery drill + install from scratch (Milestone M6)
 

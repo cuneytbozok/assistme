@@ -110,7 +110,7 @@ Principle: optimize *how* Claude retrieves information, not *how much* it may in
 ### FR-8 Skills (optional)
 
 - FR-8.1 The custom `servicenow-readonly-troubleshooting` skill is guidance only, with on-demand references. It ships as a Claude Code plugin and as a Claude Desktop zip.
-- FR-8.2 The official `now-sdk` skill is optional and Claude Code only, limited to `explain`. No SDK auth. Mutating SDK commands are denied.
+- FR-8.2 ~~The official `now-sdk` skill~~: dropped by the user on 2026-11-05.
 - FR-8.3 The third-party `servicenow-development-guide` skill is optional, pinned to a reviewed commit. It's guidance only and adds no access (user decision, 2026-11-05).
 
 ### FR-9 Local installation
@@ -156,7 +156,7 @@ Principle: optimize *how* Claude retrieves information, not *how much* it may in
 | AC-14 | Unsafe or broadening queries are rejected.                                                                      | T-003, T-018                   |
 | AC-15 | Session expiration is handled safely.                                                                           | T-013, T-015                   |
 | AC-16 | The broker rejects unauthenticated clients and detects squatted sockets.                                        | T-006, T-014                   |
-| AC-17 | Official ServiceNow skill guidance complements the tools without adding write capability.                       | T-039                          |
+| AC-17 | Out of scope: the official SDK skill was dropped by the user on 2026-11-05. | — |
 | AC-18 | A new development session can resume work using the repository handoff docs.                                    | T-041                          |
 | AC-19 | The complete project can be installed locally by following the docs.                                            | T-037, T-041                   |
 
