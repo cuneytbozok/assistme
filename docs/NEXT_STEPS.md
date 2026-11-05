@@ -65,20 +65,28 @@ Otherwise the connector runs twice. You can do this yourself, or tell me "B1 is 
 
 ## C. Chrome: test revoking and logging out
 
-**Where:** the Claude Desktop chat from B4, plus Chrome. Keep access approved.
+**Where:** a Claude Desktop chat, plus Chrome.
+
+Claude ends its access when it finishes a question, so the popup only shows **Revoke** while access is open. Ask it to keep access open for these tests.
 
 **C1. Revoke**
 
-1. Click the magnifying glass icon in Chrome, and click **Revoke** on the active access.
-2. In the chat, ask:
+1. In the chat, ask:
 
-   > Show me INC0000055.
+   > Request access to dev469966 and keep it open: don't release it until I say so.
 
-3. **Check:** Claude says access has ended and asks for a new approval (`SCOPE_UNKNOWN`). It must not show the incident.
+2. Check the code, and approve it in the popup.
+3. Click the magnifying glass icon again. **Check:** an **Active access** section now shows, with a **Revoke** button.
+4. Click **Revoke**.
+5. In the chat, ask:
+
+   > Using the access you already have, show me INC0000055. Don't request new access.
+
+6. **Check:** Claude says access has ended (`SCOPE_UNKNOWN`). It must not show the incident.
 
 **C2. Log out**
 
-1. Approve a new code, so access is active again.
+1. Ask Claude to request access again and keep it open, and approve the new code.
 2. In your ServiceNow tab, log out. Stay on the logged-out page.
 3. Ask Claude:
 

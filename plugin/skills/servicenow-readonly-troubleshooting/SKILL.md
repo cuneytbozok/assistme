@@ -36,6 +36,7 @@ Be clear which instance you're on. Never move from one instance to another to ge
 
 - Filter first, and name the fields you need. `aggregate_records` answers "how many" and "what's the distribution" without reading rows.
 - Start with `describe_table` on an unfamiliar table. It shows field types, references and inherited fields.
+- With `search_code`, pass `tables` when you can. A whole-instance search takes minutes, and it leaves "Part of the query has been ignored" banners in the user's ServiceNow session. They're harmless, but mention them if you run one.
 - On large log tables, add a time range and an exact key where you can. Prefer `starts_with` or `=` to `contains`.
 - There's no limit on how much you may read. Continue with `page.next_cursor` when you need more, and follow the `next` calls in `omitted`.
 - A `TIMEOUT` means narrow the query, not give up.
