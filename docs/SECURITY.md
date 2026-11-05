@@ -154,3 +154,7 @@ This is a personal project, not a hosted service. Please report security issues 
 repository owner (see the git history for contact details) rather than in a public issue. Include
 the affected component (extension, broker, MCP server), steps to reproduce, and impact. Never
 include real session cookies, tokens or customer data in a report.
+
+## Accepted by the user: record copies
+
+`sys_update_version` holds XML copies of records, and it's readable (2026-11-05). Field-level credential protection doesn't look inside those copies, so a copy of a record with a secret value could show it. The user accepted this rather than adding a guard.

@@ -51,6 +51,7 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 | T-039 | Official now-sdk skill evaluation               | 038      | DROPPED     |
 | T-040 | Full acceptance matrix                          | 037      | DONE        |
 | T-041 | Recovery drill + install from scratch (M6)      | 040      | DONE        |
+| T-042 | Compare within one instance, and record versions | 032     | TODO        |
 
 ---
 
@@ -1441,3 +1442,24 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
   - **(b) Install from scratch** ◐: uninstall, clean clone, `npm install`, `npm run setup` and packaging all worked from the docs, Chrome started the clone's host, and the normal setup was restored and checked. **Skipped by the user's decision:** re-adding the extension from the clone, re-registering, and a scoped query through that clean install. They'd done the real install the same day, and it answered real questions (T-036).
   - **M6 achieved by the user's decision (2026-11-05),** with AC-6, AC-7 and AC-8 left open. Its original exit criterion, all 19 acceptance criteria evidenced, isn't met.
 
+## Phase 8 — Follow-ups
+
+### T-042 — Compare within one instance, and record versions
+
+- **Status:** TODO
+- **Purpose:** Let the user compare two records, or two versions of one record, on a single instance. Requested by the user on 2026-11-05. It also lets `compare_records` run live for the first time.
+- **Dependencies:** T-032
+- **Deliverables:**
+  1. `compare_records` also accepts a single-instance scope: `match_a` and `match_b` find two records on that instance. In that mode `match_b` is required, since comparing a record with itself says nothing. Comparing two different instances still needs a compare scope the user approved.
+  2. Compare two versions of one configuration record, such as a script, from `sys_update_version`, shown with the existing unified diff. Confirm the table's real fields and payload format live first (T-034 didn't cover them). Choose the smallest design, an option on `compare_records` if it fits, because `tools/list` has a 12,000-byte limit (11,825 now).
+  3. Update `docs/TOOLS.md`, the tool description, the skill if useful, and T-032's now-outdated "a single-instance scope is rejected" tests.
+- **Files:** `packages/server/src/mcp/tools/compare-records.ts`, tests, `docs/TOOLS.md`, `test/e2e/scenarios.ts`
+- **Acceptance criteria:**
+  1. Two different records compare on a single-instance scope, with per-side `AMBIGUOUS_MATCH`/`NOT_FOUND`.
+  2. A single-instance scope can never reach another instance; the extension's checks are unchanged.
+  3. Two versions of a script compare, with a diff that applies back exactly (`applyUnified`).
+  4. Everything in `omitted`, and no silent truncation.
+- **Decision (user, 2026-11-05):** no extra protection for `sys_update_version` payloads. They're XML copies of records, so field-level credential protection doesn't look inside them. The user accepts this. Don't add a guard, and don't describe payloads as credential-free.
+- **Verification:** `npm test`. Live scenario added to `test/e2e/scenarios.ts`; the **user will run the live test later**, in their own time, so leave it clearly pending.
+- **DoD:** bundle version bumped and rebuilt; record what remains unverified. AC-8 stays open until two real instances are compared.
+- **Evidence:** —

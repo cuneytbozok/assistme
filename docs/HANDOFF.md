@@ -6,15 +6,10 @@ _Current state only, rewritten on 2026-11-05. History is in `docs/TASKS.md` and 
 
 The connector is built, installed and working on the user's Mac, in Claude Desktop, against one developer instance.
 
-- **Tasks:** 39 DONE, 1 BLOCKED (T-015), 1 DROPPED (T-039). Nothing is in progress.
+- **Tasks:** 39 DONE, 1 BLOCKED (T-015), 1 DROPPED (T-039), 1 TODO (T-042).
 - **Milestones:** M1, M3, M4, M5 and M6 achieved. M6 by the user's decision, with AC-6, AC-7 and AC-8 left open: not all 19 criteria are evidenced. M2 not achieved (T-015).
 - **Acceptance:** `docs/ACCEPTANCE.md`: 15 passed, 3 open, 1 out of scope, none failed.
-- **Next:** nothing is eligible. What remains needs the user: see `docs/NEXT_STEPS.md`.
-
-## Open decisions for the user
-
-- The GitHub repository `cuneytbozok/assistme` is **public** and empty, and nothing has been pushed. The history names the instance, local paths and the user's email. Make it private first, or decide to publish.
-- How to test `compare_records` live: a second instance, or a test-only exception on one instance (T-015).
+- **Next:** T-042. The user will run its live test later. Anything else that remains needs the user: see `docs/NEXT_STEPS.md`.
 
 ## Decisions made by the user (2026-11-05)
 
@@ -27,6 +22,9 @@ The connector is built, installed and working on the user's Mac, in Claude Deskt
 - A denied request is `status: "denied"` from `claim_scope` (T-015 AC6 changed).
 - On logs and busy tables, Claude starts with a short time window or a filter. Broad reads still work, with a warning.
 - The third-party `servicenow-development-guide` skill is included, pinned to a commit.
+- `cuneytbozok/assistme` is public, with commit emails replaced by the GitHub no-reply address.
+- `sys_update_version` is readable with no extra guard, though its XML payloads aren't covered by field-level credential protection.
+- `compare_records` stays untested between two real instances for now: AC-6, AC-7 and AC-8 stay open.
 
 ## The user's setup
 
@@ -35,7 +33,7 @@ The connector is built, installed and working on the user's Mac, in Claude Deskt
 - **Native host:** installed by `npm run setup` from this folder. Runtime files are in `~/Library/Application Support/sn-mcp/`, which is 0700: `broker.sock`, `broker.key`, `broker.pid`, `broker.log` (metadata only). Exit codes: 64 bad origin, 78 unsafe path, 75 conflict.
 - **Claude Desktop:** the `.mcpb` bundle, version 0.1.2, named "ServiceNow (read-only)", plus both skills uploaded. `mcpServers` in `claude_desktop_config.json` is empty; the old entry's backup is `claude_desktop_config.json.before-sn-mcp-bundle`.
 - **Claude Code:** Code sessions inside the Desktop app use the Desktop connector and skills. Nothing is registered separately: the `sn-mcp` registration and plugin were removed, because two connectors in one session don't share scopes.
-- **Git:** no remote configured yet, and nothing pushed. The project exists only on this Mac.
+- **Git:** `origin` is https://github.com/cuneytbozok/assistme (public). Commits use the no-reply address set in this repo's git config.
 
 ## After changing code
 

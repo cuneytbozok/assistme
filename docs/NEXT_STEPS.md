@@ -2,12 +2,9 @@
 
 The connector is installed and working in Claude Desktop, and every required step is done. All of these are optional.
 
-## 1. Back up the code (recommended)
+## 1. The live test for T-042
 
-The project exists only on this Mac.
-
-1. `cuneytbozok/assistme` exists but is public. Make it **private**, or tell me you want it public.
-2. I'll then connect it and push.
+When that work is finished, you'll be asked to run a short live test. It needs one approval code.
 
 ## 2. A second instance
 
