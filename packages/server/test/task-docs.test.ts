@@ -58,6 +58,6 @@ describe('docs/TASKS.md', () => {
     expect(body('T-037')).toContain('scripts/setup.ts');
     expect(body('T-038')).toContain('Bug found by installing');
     expect(body('T-039')).toContain('Dropped');
-    expect(body('T-040')).toContain('- **Evidence:** —');
+    expect(body('T-040')).toContain('docs/ACCEPTANCE.md');
   });
 });

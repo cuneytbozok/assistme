@@ -6,10 +6,10 @@ _Last updated: 2026-11-05 (after T-039 preparation)_
 
 **All code that can be built and mock-tested is done. Everything left needs the user.**
 
-- **DONE:** T-001 to T-014, T-016 to T-038. All 14 MCP tools exist; 13 ran live on `dev469966` (T-034). `compare_records` is mock-only until a second instance exists.
+- **DONE:** T-001 to T-014, T-016 to T-038, T-040 (`docs/ACCEPTANCE.md`: 13 passed, 5 open, 1 out of scope). All 14 MCP tools exist; 13 ran live on `dev469966` (T-034). `compare_records` is mock-only until a second instance exists.
 - **DROPPED by the user:** T-039 (official SDK skill).
 - **BLOCKED:** T-015 (needs a second instance). Each task's entry in TASKS lists what remains unverified.
-- **TODO, waiting on those:** T-040 (acceptance matrix), T-041 (recovery drill, install from scratch).
+- **Next:** T-041 (recovery drill, install from scratch). It's the last task; it needs the user for an approval.
 - **Milestones:** M1, M3, M4, M5 achieved. M2 and M6 not achieved.
 - **Not tested, by the user's decision:** Claude Code in a terminal, and Cowork (the user uses neither).
 

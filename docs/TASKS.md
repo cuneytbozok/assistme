@@ -49,7 +49,7 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 | T-037 | Setup/uninstall + INSTALL.md (M5)               | 036      | DONE        |
 | T-038 | Custom troubleshooting skill                    | 034      | DONE        |
 | T-039 | Official now-sdk skill evaluation               | 038      | DROPPED     |
-| T-040 | Full acceptance matrix                          | 037      | IN_PROGRESS |
+| T-040 | Full acceptance matrix                          | 037      | DONE        |
 | T-041 | Recovery drill + install from scratch (M6)      | 040      | TODO        |
 
 ---
@@ -1290,6 +1290,7 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
     - 22 tables refused `ACL_DENIED` even for admin, reported as such; not investigated further.
     - A table named with "javascript" couldn't be read at the time. The user chose to allow the word (ADR-005 addendum): see the re-check below.
   - **Re-run after adding the filter check (2026-11-05, 09:55–10:06 UTC, `results.json`, approved by the user):** 16 of 16 passed, scope released. 19 ordinary queries (case differences, booleans, references by sys_id and by display text, dot-walks, relative dates, OR groups) over 663 rows raised no false alarm, and neither did the search of all 611 tables. The `javascript` table was searched. The check firing on a really ignored filter is shown only with mocks, because this instance refuses such queries instead (`test/filter-check.test.ts`; 10 mutations caught).
+  - **Final run on 0.1.2:** see T-040.
   - **Change after the run (2026-11-05, user decision):** only the `javascript:` prefix is refused now, not the word (ADR-005 addendum). 102 attack cases, 12 of them new and aimed at hiding the prefix, are all refused in the shared validator, and 4 disguises are checked against the extension's real builder. **Live on 2026-11-05** (`results-javascript.json`, extension reloaded, approved by the user): `automation_pipeline_transformer_javascript` was described, a search for the word in `sys_script_include` returned 5 matches, `javascript:` stayed refused, and the 4 unsafe queries were still refused with 0 requests.
   - **DoD ✔** M4 achieved.
   - **The runner, and how it was first checked:**
@@ -1407,7 +1408,7 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 
 ### T-040 — Full acceptance matrix
 
-- **Status:** IN_PROGRESS
+- **Status:** DONE
 - **Purpose:** Evidence for AC-1 … AC-19.
 - **Dependencies:** T-037
 - **Deliverables:** `docs/ACCEPTANCE.md` matrix: criterion → test or procedure → result → evidence link → date. Re-run live suites (`e2e:live`, `live-scope`) on the final build.
@@ -1415,7 +1416,13 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 - **Acceptance criteria:** all 19 criteria pass with evidence, or any failure is recorded with a follow-up task.
 - **Verification:** full test + live run.
 - **DoD:** —
-- **Evidence:** —
+- **Evidence (2026-11-05):**
+  - `docs/ACCEPTANCE.md`: 13 passed, 5 open, 1 out of scope, none failed. Each open item has a follow-up (T-015, T-041), so the task's criterion is met, but **not every criterion has passed**.
+  - Final live run on version 0.1.2 (10:57–11:07 UTC, `docs/evidence/T-040/final-live-run.json`): 16 of 16, scope released. Root build, tests (261, 397, 311) and lint exit 0. `live-scope` doesn't exist, because T-015 is blocked.
+  - **Runs before it found two bugs:**
+    1. One duplicate row in a `syslog` walk (10:31 UTC). Cause unconfirmed.
+    2. My fix for it dropped rows: it compared the end of `sys_id`s, which real rows often share, so 3,225 different rows were skipped as repeats while the scenario still passed. Spotted from the numbers (skipped 3,225, table growth 0). Fixed by hashing the whole id, with a test and a new check in the live scenario. Only the commit before it had the bug, and it was never shipped in a bundle.
+  - **Mutation checks:** repeat skipping off, `recent` not restored, the memory not capped, and the id fingerprint back to a slice each fail tests.
 
 ### T-041 — Recovery drill + install from scratch (Milestone M6)
 

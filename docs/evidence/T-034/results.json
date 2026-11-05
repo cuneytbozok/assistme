@@ -1,11 +1,11 @@
 {
   "note": "Live run against a real instance. Shapes, counts and sizes only; no record content.",
-  "started": "2026-11-05T09:55:46.846Z",
-  "finished": "2026-11-05T10:06:03.238Z",
+  "started": "2026-11-05T10:57:06.778Z",
+  "finished": "2026-11-05T11:07:01.764Z",
   "instance": "dev469966",
   "env": "dev",
   "tools": 14,
-  "tools_list_bytes": 11798,
+  "tools_list_bytes": 11825,
   "released": true,
   "counts": {
     "pass": 16,
@@ -43,13 +43,15 @@
       "name": "query syslog with no time window, past offset 2,000, by cursor (AC-12)",
       "status": "pass",
       "metrics": {
-        "rows": 2508,
-        "pages": 22
+        "rows": 2510,
+        "pages": 22,
+        "rows_added_during_walk": 0,
+        "rows_moved_and_skipped": 0
       },
       "measure": {
-        "calls": 22,
-        "max_result_chars": 22844,
-        "requests_used": 44
+        "calls": 24,
+        "max_result_chars": 24281,
+        "requests_used": 47
       }
     },
     {
@@ -61,7 +63,7 @@
       },
       "measure": {
         "calls": 1,
-        "max_result_chars": 3185,
+        "max_result_chars": 3351,
         "requests_used": 1
       }
     },
@@ -75,7 +77,7 @@
       },
       "measure": {
         "calls": 6,
-        "max_result_chars": 63816,
+        "max_result_chars": 65182,
         "requests_used": 2
       }
     },
@@ -87,7 +89,7 @@
         "pages": 3,
         "tables_total_narrow": 2,
         "tables_total_instance": 611,
-        "first_batch_seconds": 22
+        "first_batch_seconds": 21
       },
       "measure": {
         "calls": 4,
@@ -135,7 +137,7 @@
         ],
         "pages": 25,
         "most_requests_in_one_call": 112,
-        "seconds": 491
+        "seconds": 471
       },
       "measure": {
         "calls": 25,
@@ -212,7 +214,7 @@
       },
       "measure": {
         "calls": 2,
-        "max_result_chars": 8447,
+        "max_result_chars": 9013,
         "requests_used": 1
       }
     },
@@ -235,7 +237,9 @@
       "status": "pass",
       "metrics": {
         "checked": 34,
-        "missing": ["discovery_schedule"],
+        "missing": [
+          "discovery_schedule"
+        ],
         "similar": {
           "discovery_sched": [],
           "reconcil": [
@@ -310,7 +314,7 @@
       },
       "measure": {
         "calls": 20,
-        "max_result_chars": 33463,
+        "max_result_chars": 34829,
         "requests_used": 37
       }
     },
