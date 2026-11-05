@@ -170,7 +170,12 @@ export const SCENARIOS: {
     run: async (call, scope) => {
       const ids = new Set<string>();
       let rows = 0;
+      let moved = 0;
       const target = 2500;
+      const countRows = async () =>
+        ok(await call('aggregate_records', { scope_id: scope, table: 'syslog' }), 'count').data
+          .count as number;
+      const before = await countRows();
       const { pages } = await walk(
         call,
         'query_records',
@@ -181,12 +186,18 @@ export const SCENARIOS: {
             rows++;
             ids.add(x.sys_id);
           }
+          for (const h of r.hints ?? []) {
+            const m = /changed while being read: (\d+) row/.exec(h);
+            if (m) moved += Number(m[1]);
+          }
           return rows >= target;
         },
       );
       if (rows < 2100) throw new Skip(`syslog has only ${rows} readable rows`);
       expectThat(ids.size === rows, `${rows - ids.size} duplicate rows`);
-      return { rows, pages };
+      // Is the table being written to while it's read? That's what moves rows between pages.
+      const after = await countRows();
+      return { rows, pages, rows_added_during_walk: after - before, rows_moved_and_skipped: moved };
     },
   },
   {

@@ -5,6 +5,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import { CursorCodec } from '../src/mcp/cursor.js';
+import { dictionaryFixture } from './fake-sn.js';
 import { claim, harness, walk, withIncidents } from './mcp-harness.js';
 
 describe('AC1: a 5,000-row walk with cursors returns every row exactly once, in order', () => {
@@ -355,6 +356,84 @@ describe('shaping details', () => {
       `https://dev.service-now.com/nav_to.do?uri=${encodeURIComponent(`incident.do?sys_id=${r.data.records[0].sys_id}`)}`,
     );
     expect(r.complete).toBe(false);
+    await h.close();
+  });
+});
+
+describe('a table that changes while it is read', () => {
+  function logs(n: number) {
+    const sn = dictionaryFixture();
+    sn.insert('sys_db_object', { name: 'syslog', label: 'Log', super_class: '' });
+    for (const element of ['message', 'sys_created_on']) {
+      sn.insert('sys_dictionary', {
+        name: 'syslog',
+        element,
+        column_label: element,
+        internal_type: 'string',
+        reference: '',
+        max_length: '4000',
+        mandatory: 'false',
+        display: 'false',
+      });
+    }
+    const add = (i: number) =>
+      sn.insert('syslog', {
+        message: `event ${i}`,
+        sys_created_on: `2026-01-01 ${String(Math.floor(i / 3600)).padStart(2, '0')}:${String(Math.floor(i / 60) % 60).padStart(2, '0')}:${String(i % 60).padStart(2, '0')}`,
+      });
+    for (let i = 0; i < n; i++) add(i);
+    return { sn, add };
+  }
+
+  it('rows pushed back by new rows are not returned twice, and it says so', async () => {
+    const { sn, add } = logs(600);
+    const h = await harness({ sn });
+    const scope = await claim(h, 'dev');
+    const ids: string[] = [];
+    const before = new Set(sn.tables.get('syslog')?.map((r) => r.sys_id));
+    let next = 600;
+    let hints = '';
+    let r = await h.call('query_records', {
+      scope_id: scope,
+      table: 'syslog',
+      fields: ['message'],
+      limit: 400,
+      max_chars: 4000,
+    });
+    for (;;) {
+      ids.push(...r.data.records.map((x: { sys_id: string }) => x.sys_id));
+      hints += (r.hints ?? []).join(' ');
+      if (!r.page.next_cursor) break;
+      // New log rows arrive between the calls, at the top of a newest-first table.
+      for (let k = 0; k < 3; k++) add(next++);
+      r = await h.call('query_records', {
+        scope_id: scope,
+        cursor: r.page.next_cursor,
+        max_chars: 4000,
+      });
+    }
+    expect(new Set(ids).size).toBe(ids.length);
+    expect(ids).toHaveLength(600); // every row from before the walk, once (limit is per call)
+    expect(hints).toMatch(/changed while being read/);
+    // Nothing older was lost, and the new rows didn't get mixed in.
+    expect(new Set(ids)).toEqual(before);
+    await h.close();
+  });
+
+  it('a table that does not change says nothing, and the cursor stays small enough', async () => {
+    const { sn } = logs(3000);
+    const h = await harness({ sn });
+    const scope = await claim(h, 'dev');
+    const r = await h.call('query_records', {
+      scope_id: scope,
+      table: 'syslog',
+      fields: ['message'],
+      limit: 2000,
+    });
+    expect(JSON.stringify(r.hints ?? [])).not.toMatch(/changed while/);
+    expect(r.page.next_cursor.length).toBeLessThan(8000);
+    const next = await h.call('query_records', { scope_id: scope, cursor: r.page.next_cursor });
+    expect(next.ok).toBe(true);
     await h.close();
   });
 });

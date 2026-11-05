@@ -321,6 +321,8 @@ export function registerQueryRecords(server: McpServer, ctx: ToolContext): void 
         fetch: (offset, n, withCount) => fetchPage(offset, n, undefined, withCount === true),
         offset: state.offset,
         ...(state.skip ? { skip: state.skip } : {}),
+        ...(state.recent ? { recent: state.recent.match(/.{10}/g) ?? [] } : {}),
+        rowId: (raw) => String(compactValue(raw.sys_id) ?? '').slice(-10),
         limit,
         pageSize: config.pageSize,
         budgetChars: maxChars - RESPONSE_OVERHEAD_CHARS,
@@ -378,11 +380,17 @@ export function registerQueryRecords(server: McpServer, ctx: ToolContext): void 
       const page = result as PaginateResult;
       if (page.adapted)
         hints.push(`Large records: the upstream page size was reduced to ${page.pageSize}.`);
+      if (page.repeats > 0) {
+        hints.push(
+          `This table changed while being read: ${page.repeats} row(s) moved back into this page and were left out, because you already have them. Rows added since the first page may not appear.`,
+        );
+      }
       if (page.error) hints.push(`Stopped early: ${page.error.code} — ${page.error.message}`);
       const nextState: CursorState = {
         ...state,
         offset: page.nextOffset,
         ...(page.nextSkip > 0 ? { skip: page.nextSkip } : { skip: 0 }),
+        ...(page.recent.length > 0 ? { recent: page.recent.join('') } : {}),
         limit,
         seen: state.seen + page.records.length,
       };

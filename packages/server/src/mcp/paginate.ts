@@ -30,6 +30,13 @@ export interface PaginateInput {
   offset: number;
   /** Readable rows of the window at `offset` already returned (a stop inside a short window). */
   skip?: number;
+  /**
+   * Rows returned most recently, by id. On a table being written to, a new row pushes older rows
+   * down, so the next offset can hand back a row already returned: those are skipped.
+   */
+  recent?: readonly string[];
+  /** A row's id, for `recent`. */
+  rowId?: (raw: Row) => string;
   limit: number;
   pageSize: number;
   /** Characters available for records (and their omission entries and links). */
@@ -55,6 +62,10 @@ export interface PaginateResult {
   nextOffset: number;
   /** With `nextOffset`: readable rows of that window to skip when continuing. */
   nextSkip: number;
+  /** Ids to remember for the next call (the most recent MAX_RECENT_ROWS). */
+  recent: string[];
+  /** Rows skipped because they had already been returned. */
+  repeats: number;
   hasMore: boolean;
   stop: StopReason;
   /** Upstream requests made for this response. */
@@ -66,6 +77,9 @@ export interface PaginateResult {
   error?: { code: ErrorCode; message: string; hint?: string };
 }
 
+/** How many returned rows a cursor remembers. */
+export const MAX_RECENT_ROWS = 50;
+
 export async function paginate(
   p: PaginateInput,
 ): Promise<PaginateResult | { error: { code: ErrorCode; message: string; hint?: string } }> {
@@ -75,6 +89,9 @@ export async function paginate(
   let offset = p.offset;
   let skip = p.skip ?? 0;
   let nextSkip = 0;
+  const recent = [...(p.recent ?? [])];
+  const seen = new Set(recent);
+  let repeats = 0;
   let pageSize = Math.max(1, Math.min(p.pageSize, MAX_PAGE_SIZE));
   let budget = p.budgetChars;
   let requests = 0;
@@ -91,6 +108,8 @@ export async function paginate(
     links,
     nextOffset: offset,
     nextSkip,
+    recent: recent.slice(-MAX_RECENT_ROWS),
+    repeats,
     hasMore,
     stop,
     requests,
@@ -203,7 +222,18 @@ export async function paginate(
     };
     for (const raw of rows) {
       if (records.length >= p.limit) break;
+      const id = p.rowId?.(raw);
+      if (id && seen.has(id)) {
+        repeats++;
+        offset++;
+        taken++;
+        continue;
+      }
       if (!accept(raw)) return stopInside('response_budget');
+      if (id) {
+        seen.add(id);
+        recent.push(id);
+      }
       taken++;
     }
     // A short page may just have hidden rows (ServiceNow drops them after windowing), so the
