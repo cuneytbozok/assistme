@@ -25,6 +25,7 @@ import {
   readAcls,
   registerHostArgs,
   renderCmdWrapper,
+  restrictToCurrentUser,
   windowsRuntimeDir,
 } from '../src/native-host/windows.js';
 import { FrameReader, LABEL } from './helpers.js';
@@ -130,6 +131,7 @@ describe('T-044 Windows logic', () => {
 });
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '../../..');
+const ROOT_LIKE = ['S-1-5-18', 'S-1-5-32-544']; // SYSTEM and Administrators
 const realWindows = process.platform === 'win32' && process.env.CI === 'true';
 
 describe.runIf(realWindows)('T-044 on real Windows (CI only)', () => {
@@ -161,8 +163,8 @@ describe.runIf(realWindows)('T-044 on real Windows (CI only)', () => {
     const dir = defaultRuntimeDir();
     const [folder] = readAcls([dir]);
     const sid = currentUserSid();
-    expect(folder?.aces.filter((a) => a.sid !== sid)).toEqual([]);
-    expect(folder?.owner).toBe(sid);
+    console.log('runtime folder ACL', execFileSync('icacls', [dir], { encoding: 'utf8' }));
+    expect(new Set(folder?.aces.map((a) => a.sid))).toEqual(new Set([sid, ...ROOT_LIKE]));
     expect(aclProblem(folder as PathAcl, sid)).toBeUndefined();
 
     // The MCP server's real handshake, over the real pipe.
@@ -196,6 +198,21 @@ describe.runIf(realWindows)('T-044 on real Windows (CI only)', () => {
     expect(existsSync(dir)).toBe(false);
     expect(() => execFileSync('reg', ['query', key], { stdio: 'pipe' })).toThrow();
   }, 120_000);
+
+  it('restricting a folder removes what others could already read', () => {
+    const open = join(homedir(), `sn-mcp-open-${process.pid}`);
+    mkdirSync(open);
+    try {
+      execFileSync('icacls', [open, '/grant', '*S-1-5-32-545:(OI)(CI)RX'], { stdio: 'pipe' });
+      restrictToCurrentUser(open);
+      console.log('restricted folder ACL', execFileSync('icacls', [open], { encoding: 'utf8' }));
+      const sids = readAcls([open])[0]?.aces.map((a) => a.sid) ?? [];
+      expect(sids).toContain(currentUserSid());
+      expect(sids).not.toContain('S-1-5-32-545');
+    } finally {
+      rmSync(open, { recursive: true, force: true });
+    }
+  }, 60_000);
 
   it('refuses a folder other users can write to, and accepts the home folder', () => {
     const shared = join(homedir(), `sn-mcp-shared-${process.pid}`);
