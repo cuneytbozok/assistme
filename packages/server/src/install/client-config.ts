@@ -6,9 +6,11 @@
  */
 import { realpathSync } from 'node:fs';
 import { delimiter, join, posix, win32 } from 'node:path';
+import { INSTRUCTIONS } from '../mcp/server.js';
 
 export const SERVER_ENTRY = 'packages/server/dist/bin/mcp-server.js';
 export const CHATGPT_DESKTOP_LABEL = 'ChatGPT Desktop';
+export const MISTRAL_VIBE_LABEL = 'Mistral Vibe';
 
 export interface StdioClientConfig {
   name: string;
@@ -42,21 +44,38 @@ export function stableNodePath(
   return execPath;
 }
 
-export function chatGptDesktopConfig(
+function stdioConfig(
+  label: string,
   repoRoot: string,
-  nodePath: string = stableNodePath(),
-  platform: NodeJS.Platform = process.platform,
+  nodePath: string,
+  platform: NodeJS.Platform,
 ): StdioClientConfig {
   const path = platform === 'win32' ? win32 : posix;
   return {
     name: 'sn-mcp',
     command: nodePath,
     args: [path.join(repoRoot, ...SERVER_ENTRY.split('/'))],
-    env: { SN_MCP_CLIENT_NAME: CHATGPT_DESKTOP_LABEL },
+    env: { SN_MCP_CLIENT_NAME: label },
     cwd: repoRoot,
     startupTimeoutSec: 30,
     toolTimeoutSec: 360,
   };
+}
+
+export function chatGptDesktopConfig(
+  repoRoot: string,
+  nodePath: string = stableNodePath(),
+  platform: NodeJS.Platform = process.platform,
+): StdioClientConfig {
+  return stdioConfig(CHATGPT_DESKTOP_LABEL, repoRoot, nodePath, platform);
+}
+
+export function mistralVibeConfig(
+  repoRoot: string,
+  nodePath: string = stableNodePath(),
+  platform: NodeJS.Platform = process.platform,
+): StdioClientConfig {
+  return stdioConfig(MISTRAL_VIBE_LABEL, repoRoot, nodePath, platform);
 }
 
 /** The values, in the order of the fields in ChatGPT Desktop's "add MCP server" form. */
@@ -83,6 +102,32 @@ export function renderConfigToml(c: StdioClientConfig): string {
     `tool_timeout_sec = ${c.toolTimeoutSec}`,
     '',
     `[mcp_servers.${c.name}.env]`,
+    ...Object.entries(c.env).map(([k, v]) => `${k} = ${q(v)}`),
+    '',
+  ].join('\n');
+}
+
+/**
+ * The block for `~/.vibe/config.toml` (ADR-016).
+ *
+ * Vibe doesn't pass the server's `instructions` to its model, so `prompt` carries them: it reaches
+ * the model as connector guidance when the model searches for tools. `vibe mcp add` can't set it.
+ * `command` is an array because Vibe splits a string on spaces.
+ */
+export function renderVibeConfigToml(c: StdioClientConfig): string {
+  const q = JSON.stringify;
+  return [
+    '[[mcp_servers]]',
+    `name = ${q(c.name)}`,
+    'transport = "stdio"',
+    `command = [${q(c.command)}]`,
+    `args = [${c.args.map((a) => q(a)).join(', ')}]`,
+    `cwd = ${q(c.cwd)}`,
+    `startup_timeout_sec = ${c.startupTimeoutSec}`,
+    `tool_timeout_sec = ${c.toolTimeoutSec}`,
+    `prompt = ${q(INSTRUCTIONS)}`,
+    '',
+    '[mcp_servers.env]',
     ...Object.entries(c.env).map(([k, v]) => `${k} = ${q(v)}`),
     '',
   ].join('\n');

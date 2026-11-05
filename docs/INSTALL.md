@@ -1,6 +1,6 @@
 # Installing sn-mcp
 
-sn-mcp lets Claude or ChatGPT Desktop read your ServiceNow instances through your own Chrome session. It has three parts: a Chrome extension, a small native host that Chrome starts, and an MCP server that your AI client runs. It only reads, and it reaches an instance only after you approve a request in the extension.
+sn-mcp lets Claude, ChatGPT Desktop or Mistral Vibe read your ServiceNow instances through your own Chrome session. It has three parts: a Chrome extension, a small native host that Chrome starts, and an MCP server that your AI client runs. It only reads, and it reaches an instance only after you approve a request in the extension.
 
 ## Requirements
 
@@ -8,7 +8,7 @@ sn-mcp lets Claude or ChatGPT Desktop read your ServiceNow instances through you
 - Google Chrome
 - Node.js 22.18 or newer (`node --version`)
 - A ServiceNow instance you can sign in to
-- Claude Desktop, Claude Code or ChatGPT Desktop
+- Claude Desktop, Claude Code, ChatGPT Desktop or Mistral Vibe
 
 You don't need any API key, corporate credential or Docker.
 
@@ -103,6 +103,38 @@ If you'd rather edit `~/.codex/config.toml`, setup prints a block for that too. 
 
 Each client has its own access: what you approve for ChatGPT doesn't work in Claude, and the other way round. Each ChatGPT conversation also has its own, so a new conversation asks for a new approval. The popup shows which client is asking. To add the optional skills to Codex chats, run `npm run codex-skills`: see [SKILLS.md](SKILLS.md#in-codex).
 
+### Mistral Vibe
+
+Vibe starts the same local server over STDIO. `npm run setup` prints a block with the real paths for your machine. Add it to the end of `~/.vibe/config.toml`, then start a new `vibe` session:
+
+```toml
+[[mcp_servers]]
+name = "sn-mcp"
+transport = "stdio"
+command = ["/ABSOLUTE/PATH/TO/node"]
+args = ["/ABSOLUTE/PATH/TO/AssistMe/packages/server/dist/bin/mcp-server.js"]
+cwd = "/ABSOLUTE/PATH/TO/AssistMe"
+startup_timeout_sec = 30
+tool_timeout_sec = 360
+prompt = "(setup prints the text)"
+
+[mcp_servers.env]
+SN_MCP_CLIENT_NAME = "Mistral Vibe"
+```
+
+Use the block from setup rather than `vibe mcp add`. That command can't set `prompt`, and Vibe doesn't pass the server's own instructions to its model, so `prompt` is how the model learns the approval steps and that ServiceNow content is untrusted. That text can change when the project does, so after updating, replace the old `sn-mcp` block with the new one.
+
+To remove it, run `vibe mcp remove sn-mcp`. That leaves a line reading `mcp_servers = []`. If you add the block again later, delete that line first: the file isn't valid with both.
+
+Tested with Vibe 3.1.0 on a Mac. Some things work differently here:
+
+- **Two different approvals.** Vibe asks before it runs each tool, including the ones that only read. That prompt controls what Vibe may run. It doesn't give access to an instance: only the popup does that, so choosing "always allow" in Vibe doesn't skip it. While the model waits for your approval it calls `claim_scope` repeatedly, so that tool is the one most worth allowing.
+- **Use an interactive session.** The model has to show you the approval code and wait. In `vibe -p`, you see only the final answer, and the access ends when that run ends.
+- **Each `vibe` you start has its own access**, which ends when you exit it. So `vibe --continue` asks for a new approval. Sessions served by one Vibe process, as in an editor using `vibe-acp`, share one connection, as conversations in Claude Desktop do.
+- **Where your data goes.** What the tools return goes to the model Vibe is set to use, which is Mistral's service unless you've set up another. Vibe also keeps it in its session files under `~/.vibe/logs/session`, readable only by you, so that a large result can be read back from a file there.
+
+To add the optional skills to Vibe, run `npm run codex-skills`: see [SKILLS.md](SKILLS.md#in-mistral-vibe).
+
 ## 5. Try it
 
 Ask your AI client:
@@ -145,7 +177,7 @@ After upgrading Node, run `npm run setup` again: the native host records which N
 
 - Keep the project and Node where only you can write. Your home folder is fine. `C:\src` isn't, because every user can write to new folders under `C:\`, and setup refuses it. Node in `C:\Program Files\nodejs` is fine.
 - Setup registers the host for your user, under `HKCU\Software\Google\Chrome\NativeMessagingHosts`, and runtime files go in `%USERPROFILE%\AppData\Local\sn-mcp`.
-- Use the setup output for the ChatGPT Desktop and Claude Code values: the paths differ. For Claude Desktop, install the same bundle.
+- Use the setup output for the ChatGPT Desktop, Mistral Vibe and Claude Code values: the paths differ. For Claude Desktop, install the same bundle.
 - Google Chrome only, not Edge.
 
 ## Uninstalling
@@ -173,6 +205,8 @@ Logs are in `~/Library/Application Support/sn-mcp/broker.log` (on Windows, `%USE
 | `RESPONSE_TOO_LARGE` | One value is larger than the per-request limit | Raise "Max response" in the extension settings |
 | `SCOPE_UNKNOWN` right after you approved, in a Code session inside Claude Desktop | That session has two connectors, usually the Desktop one plus a `claude mcp add` registration. Access approved through one doesn't work with the other | Remove the extra one with `claude mcp remove sn-mcp`, fully quit and reopen Claude Desktop (Cmd+Q), then start a new session |
 | ChatGPT Desktop says it can't find your instances, and no approval code appears | It's a normal chat, which doesn't use local servers | Ask in a Codex chat |
+| Vibe reports an error reading `config.toml` after you added the block | The file also has `mcp_servers = []`, left by `vibe mcp remove` | Delete that line |
+| Vibe's model says it has no ServiceNow tools | The session started before you added the block, or `sn-mcp` failed to start | Start a new session. Check `~/.vibe/logs/vibe.log` |
 | ChatGPT Desktop can't start `sn-mcp` | Usually the Command is plain `node`, or Node was upgraded and the path changed | Run `npm run setup` again and copy the printed Command |
 | Tools are missing or out of date in Claude | Claude is running an old build | Fully quit and reopen Claude Desktop (Cmd+Q), or start a new Claude Code session |
 | You moved the project, and the extension still uses the old folder | Reloading doesn't change the folder | Remove the extension and use **Load unpacked** on the new folder, then add your instance again |

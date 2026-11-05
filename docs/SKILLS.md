@@ -7,7 +7,7 @@
 
 They're separate on purpose: each loads only when its description fits the task, and the third-party one stays traceable to its source. `dist-skill/` is build output and isn't in git; the source is `plugin/skills/`.
 
-Skills give your AI client expertise. They work in Claude and in Codex chats, in the ChatGPT Desktop app or Codex itself. They add no tools and no access: everything still goes through the read-only connector and the scopes you approve. All the skills here are optional.
+Skills give your AI client expertise. They work in Claude, in Mistral Vibe, and in Codex chats, in the ChatGPT Desktop app or Codex itself. They add no tools and no access: everything still goes through the read-only connector and the scopes you approve. All the skills here are optional.
 
 ## `servicenow-readonly-troubleshooting` (ours)
 
@@ -56,6 +56,10 @@ npm run codex-skills -- --uninstall
 ```
 
 The third-party skill's warnings above apply here too. Its note about compatibility mentions only Claude; that's the upstream text, and Codex loads it without errors.
+
+## In Mistral Vibe
+
+Vibe reads the same folder, so `npm run codex-skills` adds them to both. Start a new session afterwards. Vibe lists both to its model, though no real model has used one there yet. The third-party skill's warnings above apply here too.
 
 ## The official ServiceNow SDK skill: not used
 

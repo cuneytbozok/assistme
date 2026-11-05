@@ -1,0 +1,95 @@
+{
+  "at": "2026-11-05T14:53:49.961Z",
+  "mock": false,
+  "model": "local script",
+  "vibe": {
+    "name": "@mistralai/mistral-vibe",
+    "title": "Mistral Vibe",
+    "version": "3.1.0"
+  },
+  "instructions_in_system_prompt": false,
+  "skills_seen": [
+    "servicenow-readonly-troubleshooting",
+    "servicenow-development-guide"
+  ],
+  "large_result": {
+    "told_the_model": true,
+    "saved_file": true,
+    "ok": true,
+    "complete": true,
+    "chars": 10245
+  },
+  "second_session_in_one_vibe_process_shares_access": true,
+  "second_session_code": "ok",
+  "vibe_tool_prompts_answered_by_this_test": 86,
+  "api_key_sent_to_the_local_model": false,
+  "checks": [
+    {
+      "name": "tool discovery: every tool, in real Vibe",
+      "pass": true,
+      "detail": {
+        "tools": 14,
+        "missing": []
+      }
+    },
+    {
+      "name": "a model searching for ServiceNow finds list_instances",
+      "pass": true
+    },
+    {
+      "name": "that search also gives it the access flow and the untrusted-content rule",
+      "pass": true
+    },
+    {
+      "name": "broker connectivity: list_instances answers through the real extension",
+      "pass": true,
+      "detail": {
+        "instances": 1
+      }
+    },
+    {
+      "name": "the other client could not pick up the approval",
+      "pass": true
+    },
+    {
+      "name": "Vibe reads the instance with its approved access",
+      "pass": true,
+      "detail": {
+        "complete": true
+      }
+    },
+    {
+      "name": "the same server process served every turn, so the access lasted",
+      "pass": true,
+      "detail": {
+        "processes": 1
+      }
+    },
+    {
+      "name": "the other client, given the same scope id, is refused",
+      "pass": true,
+      "detail": {
+        "code": "SCOPE_UNKNOWN"
+      }
+    },
+    {
+      "name": "a large result reaches the model whole, or the model is told where it was saved",
+      "pass": true,
+      "detail": {
+        "told_the_model": true,
+        "saved_file": true,
+        "ok": true,
+        "complete": true,
+        "chars": 10245
+      }
+    },
+    {
+      "name": "after release the access is gone",
+      "pass": true,
+      "detail": {
+        "code": "SCOPE_UNKNOWN"
+      }
+    }
+  ],
+  "passed": true
+}

@@ -17,9 +17,13 @@ import type { InstanceEntry } from '../../extension/src/background/registry.js';
 import {
   CHATGPT_DESKTOP_LABEL,
   chatGptDesktopConfig,
+  MISTRAL_VIBE_LABEL,
+  mistralVibeConfig,
   renderConfigToml,
   renderStdioForm,
+  renderVibeConfigToml,
 } from '../src/install/client-config.js';
+import { INSTRUCTIONS } from '../src/mcp/server.js';
 import { currentUid } from '../src/native-host/auth.js';
 import { Broker } from '../src/native-host/broker.js';
 import { MemoryLogger } from '../src/native-host/logger.js';
@@ -215,5 +219,30 @@ describe('T-043 registration values', () => {
     const toml = renderConfigToml(c);
     expect(toml).toContain('command = "C:\\\\Program Files\\\\nodejs\\\\node.exe"');
     expect(toml).toContain('[mcp_servers.sn-mcp.env]\nSN_MCP_CLIENT_NAME = "ChatGPT Desktop"');
+  });
+});
+
+describe('T-046 Mistral Vibe registration values', () => {
+  const c = mistralVibeConfig('/Users/my name/AssistMe', '/opt/my tools/node', 'darwin');
+  const toml = renderVibeConfigToml(c);
+
+  it('are the same server, with its own label', () => {
+    expect(c.args).toEqual(chatGptDesktopConfig('/Users/my name/AssistMe', 'x', 'darwin').args);
+    expect(c.env).toEqual({ SN_MCP_CLIENT_NAME: MISTRAL_VIBE_LABEL });
+  });
+
+  it('use the schema Vibe reads: an array of tables, with the transport named', () => {
+    expect(toml.startsWith('[[mcp_servers]]\nname = "sn-mcp"\ntransport = "stdio"\n')).toBe(true);
+    expect(toml).toContain('tool_timeout_sec = 360');
+    expect(toml).toContain('[mcp_servers.env]\nSN_MCP_CLIENT_NAME = "Mistral Vibe"');
+  });
+
+  it('write the command as an array, because Vibe splits a string on spaces', () => {
+    expect(toml).toContain('command = ["/opt/my tools/node"]');
+  });
+
+  it('carry the server instructions, which Vibe does not pass to its model by itself', () => {
+    const line = toml.split('\n').find((l) => l.startsWith('prompt = ')) ?? '';
+    expect(JSON.parse(line.slice('prompt = '.length))).toBe(INSTRUCTIONS);
   });
 });

@@ -57,6 +57,7 @@ describe('T-037 setup and uninstall', () => {
       readFileSync(join(REPO, 'packages/extension/EXTENSION_ID'), 'utf8').trim(),
     );
     expect(first).toContain('claude mcp add');
+    expect(first).toContain('[[mcp_servers]]');
     expect(first).toContain('Install Extension');
     const before = readFileSync(manifest(), 'utf8');
     const files = listing();

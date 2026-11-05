@@ -55,6 +55,7 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 | T-043 | ChatGPT Desktop as a local STDIO client         | 037      | DONE        |
 | T-044 | Windows support                                 | 037      | BLOCKED     |
 | T-045 | Skills in Codex                                 | 043      | DONE        |
+| T-046 | Mistral Vibe as a local STDIO client            | 037      | DONE        |
 
 ---
 
@@ -1556,3 +1557,31 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 - **Evidence (2026-11-05):** The engine inside `ChatGPT.app` (codex-cli 0.166.0-alpha.6), through `skills/list`, in a throwaway home and then with the real home: both skills `scope=user`, `enabled=true`, `errors: []`. Installed in the user's `~/.agents/skills`, next to their `find-skills` and `remotion-best-practices`, which weren't changed. `codex-skills.test.ts` covers AC2 and AC3 under a throwaway home.
 - **Still unverified:** a model choosing and following a skill in a real Codex chat, and the skills on Windows.
 
+### T-046 — Mistral Vibe as a local STDIO client
+
+- **Status:** DONE
+- **Purpose:** Let Mistral Vibe CLI use the connector as a local STDIO client, reusing the server, broker and extension. Requested by the user on 2026-11-05.
+- **Dependencies:** T-037
+- **Deliverables:** `mistralVibeConfig` and `renderVibeConfigToml` in `install/client-config.ts`, printed by `npm run setup`; `test/e2e/vibe-client.ts` (`npm run e2e:vibe`); `docs/INSTALL.md`, `docs/SKILLS.md`, `docs/NEXT_STEPS.md`, `docs/SECURITY.md`; ADR-016.
+- **Acceptance criteria:**
+  1. The printed block is valid for real Vibe, with no shell PATH, and with spaces in its paths.
+  2. Tool discovery: all 14 tools in real Vibe.
+  3. Broker connectivity through the real extension.
+  4. Per-client authorization, live: access approved for Vibe can't be claimed or used by another client.
+  5. Access lasts across turns of a conversation.
+  6. The model gets the access flow and the untrusted-content rule, which Vibe doesn't pass on from the server's `instructions`.
+  7. Rule 8 holds through Vibe: a large result isn't cut without the model being told.
+  8. The other clients are unaffected: the server, broker, extension and tools are unchanged, and existing tests pass.
+- **Verification:** `npm test`; `npm run e2e:vibe -- --instance <alias>`, which needs one approval from the user.
+- **Evidence (2026-11-05, live, `dev469966`, one approval by the user, `docs/evidence/T-046/live-run.json`):** real `vibe-acp` from Vibe 3.1.0, with a throwaway `VIBE_HOME` holding the printed block, against the real broker and real extension. **The model was a local script that runs the code the test sends, so this shows what Vibe does, not what a model would choose.** The test answered Vibe's own tool prompts (86, mostly from polling `claim_scope`); the user alone approved access. No API key reached the local model.
+  - **AC1:** the block was started by Vibe from the file. Its command resolves to `/opt/homebrew/opt/node@24/bin/node`. A stub server started from an array `command` with spaces in both paths. The block as setup prints it, indented, parses, and `vibe mcp remove` removes it.
+  - **AC2, AC3:** 14 of 14 tools under `mcp_sn_mcp`. `list_instances` returned 1 instance.
+  - **AC4:** a client labelled "Claude Code" tried to claim first in every round and got nothing. Vibe then read a count of `sys_user` (`complete: true`). The other client, given the same scope id, got `SCOPE_UNKNOWN`. After release, so did Vibe.
+  - **AC5:** each poll was its own turn, and one server process served them all.
+  - **AC6:** `instructions` aren't in the system prompt (`instructions_in_system_prompt: false`). A tool search returned the `prompt` text as connector guidance, from its first part to its last sentence.
+  - **AC7:** `describe_table` on `incident`, 10,245 characters, was saved to a file and the model told where (`complete: true`). With a stub server, results of 20,000 to 500,000 characters were saved whole, in `0600` files in a `0700` folder. A 200-second call finished with a 360-second timeout. A stub server's error kept its code in `structuredContent`.
+  - **AC8:** no file in the server's runtime code, the broker or the extension changed, only `install/client-config.ts`. `npm test`: 261, 484 and 311 passed, 3 skipped.
+  - **Lint:** `biome check` on the changed files exits 0. `npm run lint` fails on the user's untracked `brag-output/`, not on this work.
+  - **Found by testing:** `vibe mcp remove` leaves `mcp_servers = []`, and adding the block after that makes Vibe refuse its config. The instructions now say to replace the block in place, and to delete that line.
+- **Recorded, not required:** a second session in one `vibe-acp` process could use the first's scope, because they share a server process (`second_session_in_one_vibe_process_shares_access: true`), as conversations in Claude Desktop do.
+- **Still unverified:** a real Mistral model finding the tools, writing working TypeScript for them, showing the approval code and following the guidance. The interactive `vibe` window, whose session handling was only tested through `vibe-acp`. That a new `vibe` process needs a new approval is expected from the per-process key and T-043, not run here. Whether a real model loads the skills. Windows. The user's own `~/.vibe/config.toml` wasn't changed.

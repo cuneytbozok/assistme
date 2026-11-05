@@ -59,10 +59,15 @@ try {
 
 const extensionId = readFileSync(join(ROOT, 'packages/extension/EXTENSION_ID'), 'utf8').trim();
 const server = join(ROOT, 'packages/server/dist/bin/mcp-server.js');
-const { chatGptDesktopConfig, renderConfigToml, renderStdioForm } = await built(
-  'packages/server/dist/install/client-config.js',
-);
+const {
+  chatGptDesktopConfig,
+  mistralVibeConfig,
+  renderConfigToml,
+  renderStdioForm,
+  renderVibeConfigToml,
+} = await built('packages/server/dist/install/client-config.js');
 const chatgpt = chatGptDesktopConfig(ROOT);
+const vibe = mistralVibeConfig(ROOT);
 console.log(`
 Next steps (details in docs/INSTALL.md):
 
@@ -92,6 +97,15 @@ ${renderStdioForm(chatgpt)
    Or add this to ~/.codex/config.toml, which also sets longer timeouts:
 
 ${renderConfigToml(chatgpt)
+  .trimEnd()
+  .split('\n')
+  .map((line: string) => `     ${line}`)
+  .join('\n')}
+
+5. Or connect Mistral Vibe: add this to the end of ~/.vibe/config.toml, then start a new session.
+   Already added? Replace the old sn-mcp block. If the file has a "mcp_servers = []" line, delete it.
+
+${renderVibeConfigToml(vibe)
   .trimEnd()
   .split('\n')
   .map((line: string) => `     ${line}`)

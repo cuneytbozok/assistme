@@ -6,12 +6,14 @@ _Current state only, rewritten on 2026-11-05. History is in `docs/TASKS.md` and 
 
 The connector is built, installed and working on the user's Mac, in Claude Desktop, against one developer instance.
 
-- **Tasks:** 42 DONE, 2 BLOCKED (T-015, T-044), 1 DROPPED (T-039).
+- **Tasks:** 43 DONE, 2 BLOCKED (T-015, T-044), 1 DROPPED (T-039).
 - **Milestones:** M1, M3, M4, M5 and M6 achieved. M6 by the user's decision, with AC-6, AC-7 and AC-8 left open: not all 19 criteria are evidenced. M2 not achieved (T-015).
 - **Acceptance:** `docs/ACCEPTANCE.md`: 15 passed, 3 open, 1 out of scope, none failed.
 - **Next:** no task is eligible. T-044 waits for someone with a Windows PC. Anything else that remains needs the user: see `docs/NEXT_STEPS.md`.
 
-## T-043 and T-044
+## T-043, T-044 and T-046
+
+**Mistral Vibe (T-046):** done, live through real `vibe-acp` 3.1.0, with a throwaway `VIBE_HOME` and a local scripted model: discovery, broker connectivity, per-client authorization, access across turns. **No real model has used it.** Its model reaches tools through `search_tool_functions` and `run_typescript`, not directly, and it ignores the server's `instructions`, so the printed block carries them in `prompt` (ADR-016).
 
 **ChatGPT Desktop (T-043):** done, live through the engine inside `ChatGPT.app`, with a throwaway `CODEX_HOME`: discovery, broker connectivity and per-client authorization. Each conversation gets its own access. The user registered it in the app's settings: **it works in a Codex chat and not in a normal chat** (their test, 2026-11-05).
 
@@ -48,6 +50,7 @@ Done by the user's decision. Live on `dev469966` (`docs/evidence/T-042/`): two r
 - **Claude Desktop:** the `.mcpb` bundle, version 0.1.2, named "ServiceNow (read-only)", plus both skills uploaded. Version 0.1.6 is built at `packages/server/sn-mcp.mcpb`. It isn't known to be installed: until the user installs 0.1.3 or later, Desktop still refuses `compare_records` on a single-instance scope. The live test doesn't depend on that, because it starts the built server itself. `mcpServers` in `claude_desktop_config.json` is empty; the old entry's backup is `claude_desktop_config.json.before-sn-mcp-bundle`.
 - **Claude Code:** Code sessions inside the Desktop app use the Desktop connector and skills. Nothing is registered separately: the `sn-mcp` registration and plugin were removed, because two connectors in one session don't share scopes.
 - **ChatGPT Desktop:** installed, version 26.1029.61003, engine codex-cli 0.166.0-alpha.6. sn-mcp is registered in `~/.codex/config.toml` by the user, through the app's settings, without the longer timeouts.
+- **Mistral Vibe:** 3.1.0, a uv tool at `~/.local/bin/vibe`, which isn't on the non-login shell's PATH. sn-mcp is not registered in `~/.vibe/config.toml`. Skills are already visible to it, through `~/.agents/skills`.
 - **Git:** `origin` is https://github.com/cuneytbozok/assistme (public). Commits use the no-reply address set in this repo's git config.
 
 ## After changing code
@@ -59,6 +62,7 @@ Done by the user's decision. Live on `dev469966` (`docs/evidence/T-042/`): two r
 
 ## Working notes
 
+- **Vibe live run:** `npm run e2e:vibe -- --instance dev469966`, about three minutes including the wait, one approval. `--discovery-only` needs none. Re-run it after upgrading Vibe.
 - **ChatGPT live run:** `npm run e2e:chatgpt -- --instance dev469966`, about a minute, one approval. `--discovery-only` needs none.
 - **Live runs:** `npm run e2e:live -- --instance dev469966`, about 10 minutes, needs one approval from the user. `--only "a,b"` runs matching scenarios and saves to `results-partial.json`. `--dry-run` reads only the registry.
 - **Read the numbers, not just the pass count.** A live run passed while a bug dropped 3,225 rows; only the metrics showed it.

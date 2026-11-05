@@ -1,0 +1,43 @@
+{
+  "at": "2026-11-05T14:53:20.813Z",
+  "mock": false,
+  "model": "local script",
+  "vibe": {
+    "name": "@mistralai/mistral-vibe",
+    "title": "Mistral Vibe",
+    "version": "3.1.0"
+  },
+  "instructions_in_system_prompt": false,
+  "skills_seen": [
+    "servicenow-readonly-troubleshooting",
+    "servicenow-development-guide"
+  ],
+  "vibe_tool_prompts_answered_by_this_test": 1,
+  "api_key_sent_to_the_local_model": false,
+  "checks": [
+    {
+      "name": "tool discovery: every tool, in real Vibe",
+      "pass": true,
+      "detail": {
+        "tools": 14,
+        "missing": []
+      }
+    },
+    {
+      "name": "a model searching for ServiceNow finds list_instances",
+      "pass": true
+    },
+    {
+      "name": "that search also gives it the access flow and the untrusted-content rule",
+      "pass": true
+    },
+    {
+      "name": "broker connectivity: list_instances answers through the real extension",
+      "pass": true,
+      "detail": {
+        "instances": 1
+      }
+    }
+  ],
+  "passed": true
+}

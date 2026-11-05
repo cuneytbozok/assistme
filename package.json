@@ -22,6 +22,7 @@
     "uninstall": "node scripts/uninstall.ts",
     "e2e:live": "npm run build && node test/e2e/live.ts",
     "e2e:chatgpt": "npm run build && node test/e2e/chatgpt-client.ts",
+    "e2e:vibe": "npm run build && node test/e2e/vibe-client.ts",
     "pack:skill": "node scripts/pack-skill.ts",
     "codex-skills": "node scripts/codex-skills.ts",
     "pack:mcpb": "npm run build -w @sn-mcp/shared && npm run pack:mcpb -w @sn-mcp/server",

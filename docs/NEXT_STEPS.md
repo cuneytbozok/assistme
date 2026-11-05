@@ -10,6 +10,10 @@ Comparing on one instance, and comparing record versions, passed live. To use th
 
 Run `npm run setup`, and copy the printed values into **Settings → MCP servers**: see [INSTALL.md](INSTALL.md#chatgpt-desktop). Then ask it to list your instances, in a Codex chat: normal chats don't use local servers.
 
+## Mistral Vibe
+
+Run `npm run setup`, and add the printed block to `~/.vibe/config.toml`: see [INSTALL.md](INSTALL.md#mistral-vibe). Then start `vibe` and ask it to list your instances. No real model has used it yet, so tell me if it can't find the tools or doesn't show you the approval code.
+
 ## Windows
 
 Left for later, because you don't have a Windows PC. The Windows CI job passes, but it doesn't cover real Chrome or a real instance. Someone with a PC can try the install using [INSTALL.md](INSTALL.md#windows).

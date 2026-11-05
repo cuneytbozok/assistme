@@ -17,7 +17,7 @@ sn-mcp is an independent project, not affiliated with or endorsed by ServiceNow.
 - A Mac with Google Chrome (Windows passes automated tests, but hasn't been tried on a real PC yet)
 - [Node.js](https://nodejs.org) 22.18 or newer (run `node --version` to check)
 - A ServiceNow instance you can sign in to
-- [Claude Desktop](https://claude.ai/download), Claude Code, or ChatGPT Desktop, in its Codex chats only ([how to connect it](docs/INSTALL.md#chatgpt-desktop))
+- [Claude Desktop](https://claude.ai/download), Claude Code, ChatGPT Desktop in its Codex chats only ([how to connect it](docs/INSTALL.md#chatgpt-desktop)), or [Mistral Vibe](docs/INSTALL.md#mistral-vibe)
 
 You don't need an API key or Docker. Your ServiceNow account needs to be able to read table definitions (`sys_db_object` and `sys_dictionary`). So far the connector has only been tested with an admin account.
 
