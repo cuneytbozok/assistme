@@ -1,0 +1,7 @@
+Claude Code: Let Claude Code read your ServiceNow, read-only, through your own Chrome session. Four steps: npm run setup, claude mcp add, /mcp, then approve the matching code in Chrome.
+
+Codex CLI: Point Codex CLI at your ServiceNow. Paste one block into ~/.codex/config.toml, and every instance it reads still needs your approval code in Chrome.
+
+Mistral Vibe: Mistral Vibe can now investigate your ServiceNow, read-only. Add the sn-mcp block to ~/.vibe/config.toml, start vibe, and approve the matching code in Chrome.
+
+Chrome extension: The Chrome half of sn-mcp. Load it unpacked, pin it, add your instance. Your password, cookies and tokens never leave the browser.
