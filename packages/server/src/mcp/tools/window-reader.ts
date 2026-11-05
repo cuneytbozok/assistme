@@ -5,7 +5,7 @@
  * give the upstream offset. A position is therefore a window start plus how many *readable* rows
  * of that window were already used. Resuming re-reads the window and skips them: no row is lost
  * or repeated, as long as the data doesn't change. The total count, which includes hidden rows,
- * decides where the query ends.
+ * decides where the query ends. On RESPONSE_TOO_LARGE the window halves, keeping the position.
  */
 import { z } from 'zod';
 import type { Row } from '../paginate.js';
@@ -27,6 +27,7 @@ export class WindowReader {
   private skip: number;
   private buf: Row[] = [];
   private used = 0;
+  private carry = 0;
   private loaded = false;
   private ended = false;
   total: number | undefined;
@@ -46,7 +47,8 @@ export class WindowReader {
     while (this.buf.length === 0 && !this.ended && !this.failure) {
       if (this.loaded) {
         this.offset += this.size;
-        this.skip = 0;
+        this.skip = this.carry;
+        this.carry = 0;
         this.used = 0;
         this.loaded = false;
         if (this.total !== undefined && this.offset >= this.total) {
@@ -56,6 +58,10 @@ export class WindowReader {
       }
       const r = await this.fetch(this.offset, this.size);
       if (!r.ok) {
+        if (r.code === 'RESPONSE_TOO_LARGE' && this.size > 1) {
+          this.size = Math.floor(this.size / 2); // same position, smaller window
+          continue;
+        }
         this.failure = r;
         break;
       }
@@ -63,6 +69,8 @@ export class WindowReader {
       this.loaded = true;
       this.used = this.skip;
       this.buf = r.rows.slice(this.skip);
+      // A window that shrank can hold fewer rows than were already used: the rest skip later.
+      this.carry = Math.max(0, this.skip - r.rows.length);
       if (this.total === undefined && r.rows.length < this.size) this.ended = this.buf.length === 0;
     }
     return this.buf[0];
@@ -74,10 +82,17 @@ export class WindowReader {
     return row;
   }
 
+  /** Passes over the row at this position after RESPONSE_TOO_LARGE at window size 1. */
+  skipOversized(): void {
+    this.failure = undefined;
+    this.offset += 1;
+    this.skip = 0;
+  }
+
   /** Where to resume so the next row returned is the next unused one. */
   position(): ReaderPosition {
     if (!this.loaded) return { offset: this.offset, skip: this.skip };
-    if (this.buf.length === 0) return { offset: this.offset + this.size, skip: 0 };
+    if (this.buf.length === 0) return { offset: this.offset + this.size, skip: this.carry };
     return { offset: this.offset, skip: this.used };
   }
 }

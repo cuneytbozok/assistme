@@ -28,6 +28,7 @@ const APPROVED = [
   'query_records',
   'release_scope',
   'request_scope',
+  'search_code',
 ];
 const FORBIDDEN_INPUTS =
   /^(url|uri|href|endpoint|path|method|verb|header|headers|body|payload|script|http|request)$/i;
@@ -239,6 +240,12 @@ describe('AC1: tool surface snapshot', () => {
       {
         name: 'request_scope',
         inputs: ['instance', 'instances', 'purpose'],
+        readOnly: true,
+        destructive: false,
+      },
+      {
+        name: 'search_code',
+        inputs: ['cursor', 'instance', 'limit', 'max_chars', 'pattern', 'scope_id', 'tables'],
         readOnly: true,
         destructive: false,
       },

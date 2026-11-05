@@ -40,7 +40,7 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 | T-028 | `aggregate_records`                             | 024      | DONE        |
 | T-029 | `get_related_records`                           | 026, 028 | DONE        |
 | T-030 | `get_record_history`                            | 025      | DONE        |
-| T-031 | `search_code`                                   | 026      | TODO        |
+| T-031 | `search_code`                                   | 026      | DONE        |
 | T-032 | `compare_records`                               | 025, 011 | TODO        |
 | T-033 | Tool contract review + TOOLS.md                 | 024–032  | TODO        |
 | T-034 | Live tool acceptance (M4)                       | 033      | TODO        |
@@ -1171,7 +1171,7 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 
 ### T-031 — `search_code`
 
-- **Status:** TODO
+- **Status:** DONE
 - **Purpose:** Find which scripts or configuration reference a pattern (e.g. a field update).
 - **Dependencies:** T-026
 - **Deliverables:**
@@ -1182,7 +1182,21 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 - **Acceptance criteria:** a fixture finds matches in business rules and script includes without a hard-coded table list; following the cursor covers every table; the pattern goes through value validation; `complete:true` only after the last table.
 - **Verification:** `npm test`.
 - **DoD:** —
-- **Evidence:** —
+- **Evidence (2026-11-05):**
+  - Implemented: `tools/search-code.ts` (`buildTargets`, `makeSnippets`), `MetadataService.fieldsOfTypes`, adaptive window size in `WindowReader`.
+  - Tests: `test/search-code.test.ts` (12; mock). Root build, tests and lint exit 0.
+  - **Acceptance criteria:**
+    - No hard-coded tables ✔ matches found in `sys_script`, `sys_script_include` and a custom `x_acme_` table, and a brand-new `u_` script field added only to the dictionary fixture is searched. The only hard-coded list is the field types (script, script_plain, script_server, conditions, condition_string, email_script, html_script).
+    - Cursor covers every table ✔ 70 tables at the default, `limit: 7` and `max_chars: 4000`: the exact set of matching records, none lost or repeated.
+    - Pattern validation ✔ `a^ORb`, `javascript:…`, `x^NQy` refused with no request; literal code such as `gs.info(` is fine in a structured filter.
+    - `complete: true` only after the last table ✔ every earlier page has `complete: false` and `tables_remaining > 0`. `tables_searched`, `tables_remaining` and `requests_used` are reported.
+  - **Beyond the task:**
+    - Each call searches at most 25 tables (`reason: batch`, with a cursor) so it stays inside client timeouts; a hint suggests `tables` when a full search takes several calls.
+    - More matches than snippets (3 per field) → an `omitted` entry with the `get_field_content` call.
+    - A record too large to read with its scripts, even alone, is named in `omitted` (`too_large`) and the rest continue. Denied tables are never queried; unreadable ones give a retry call.
+    - Tables with many script fields are split so each query stays under the query limits.
+  - **Mutation checks** (each reverted): denied table queried, no per-call batch, pattern not validated, no adaptive window, extra matches unreported, oversized record abandons the table, multi-group table counted done early; each is caught by a test or a hang.
+  - **Limitation:** a pattern containing `javascript:` can't be searched, because the query validator refuses it everywhere (ADR-005). To verify live (T-034): how long a full-instance search takes.
 
 ### T-032 — `compare_records`
 
@@ -1198,7 +1212,21 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 - **Acceptance criteria:** a single-instance scope is rejected; ambiguity on either side is reported; a 5,000-line script diff is fully retrievable through cursors.
 - **Verification:** `npm test`.
 - **DoD:** —
-- **Evidence:** —
+- **Evidence (2026-11-05):**
+  - Implemented: `tools/search-code.ts` (`buildTargets`, `makeSnippets`), `MetadataService.fieldsOfTypes`, adaptive window size in `WindowReader`.
+  - Tests: `test/search-code.test.ts` (14; mock). Root build, tests and lint exit 0.
+  - **Acceptance criteria:**
+    - No hard-coded tables ✔ matches found in `sys_script`, `sys_script_include` and a custom `x_acme_` table, and a brand-new `u_` script field added only to the dictionary fixture is searched. The only hard-coded list is the field types (script, script_plain, script_server, conditions, condition_string, email_script, html_script).
+    - Cursor covers every table ✔ 70 tables at the default, `limit: 7` and `max_chars: 4000`: the exact set of matching records, none lost or repeated.
+    - Pattern validation ✔ `a^ORb`, `javascript:…`, `x^NQy` refused with no request; literal code such as `gs.info(` is fine in a structured filter.
+    - `complete: true` only after the last table ✔ every earlier page has `complete: false` and `tables_remaining > 0`. `tables_searched`, `tables_remaining` and `requests_used` are reported.
+  - **Beyond the task:**
+    - Each call searches at most 25 tables (`reason: batch`, with a cursor) so it stays inside client timeouts; a hint suggests `tables` when a full search takes several calls.
+    - More matches than snippets (3 per field) → an `omitted` entry with the `get_field_content` call.
+    - A record too large to read with its scripts, even alone, is named in `omitted` (`too_large`) and the rest continue. Denied tables are never queried; unreadable ones give a retry call.
+    - Tables with many script fields are split so each query stays under the query limits.
+  - **Mutation checks** (each reverted): denied table queried, no per-call batch, pattern not validated, no adaptive window, extra matches unreported, oversized record abandons the table, multi-group table counted done early; each is caught by a test or a hang.
+  - **Limitation:** a pattern containing `javascript:` can't be searched, because the query validator refuses it everywhere (ADR-005). To verify live (T-034): how long a full-instance search takes.
 
 ### T-033 — Tool contract review + TOOLS.md
 

@@ -42,6 +42,7 @@ import { registerGetRecord } from './tools/get-record.js';
 import { registerGetRecordHistory } from './tools/get-record-history.js';
 import { registerGetRelatedRecords } from './tools/get-related-records.js';
 import { registerQueryRecords } from './tools/query-records.js';
+import { registerSearchCode } from './tools/search-code.js';
 
 export { ScopeIdInput, UNTRUSTED_NOTE };
 
@@ -409,6 +410,7 @@ export function createMcpServer(
   registerAggregateRecords(server, tools);
   registerGetRelatedRecords(server, tools);
   registerGetRecordHistory(server, tools);
+  registerSearchCode(server, tools);
 
   return server;
 }
