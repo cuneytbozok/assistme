@@ -6,15 +6,15 @@ _Last updated: 2026-11-05 (after T-039 preparation)_
 
 **All code that can be built and mock-tested is done. Everything left needs the user.**
 
-- **DONE:** T-001 to T-014, T-016 to T-033. All 14 MCP tools exist and are mock-tested; none has been run live with its new code yet, apart from the T-034 dry run.
-- **BLOCKED on the user, prepared as far as possible:** T-015, T-034, T-035, T-036, T-037, T-038, T-039. Each task's entry in TASKS lists what remains unverified.
+- **DONE:** T-001 to T-014, T-016 to T-034. All 14 MCP tools exist; 13 ran live on `dev469966` (T-034). `compare_records` is mock-only until a second instance exists.
+- **BLOCKED on the user, prepared as far as possible:** T-015, T-035, T-036, T-037, T-038, T-039. Each task's entry in TASKS lists what remains unverified.
 - **TODO, waiting on those:** T-040 (acceptance matrix), T-041 (recovery drill, install from scratch).
-- **Milestones:** M1 and M3 achieved. M2, M4, M5, M6 not achieved.
+- **Milestones:** M1, M3, M4 achieved. M2, M5, M6 not achieved.
 
 **The user's checklist, in order:**
 
-1. Reload the extension on `chrome://extensions`, which also restarts the broker. Required: the new `scope.check` message needs both. Until then, reads from the local field copy fail closed.
-2. `npm run e2e:live -- --instance dev469966`, then approve the code in the popup (T-034). It writes `docs/evidence/T-034/results.json`.
+1. Done 2026-11-05: extension reloaded, T-034 live runs passed.
+2. Fully quit and reopen Claude Desktop: its `sn-mcp` server is still the old build.
 3. Claude Code: start a fresh signed-in session, register per `docs/INSTALL.md`, check `/mcp` and a scoped query (T-035).
 4. `npm run pack:mcpb`, install `packages/server/sn-mcp.mcpb` in Claude Desktop, remove the old `sn-mcp` entry from `claude_desktop_config.json`, try a scoped query and Cowork (T-036).
 5. `npm run setup`, `npm run uninstall`, `npm run setup`, then reload the extension (T-037). This stops the live broker.
@@ -22,7 +22,7 @@ _Last updated: 2026-11-05 (after T-039 preparation)_
 7. Install the official SDK plugin with the deny rules; check `explain` and that denied commands are blocked (T-039).
 8. A second instance for T-015, if one is available. That also allows a live `compare_records` run, which T-034 can't cover.
 
-**Open decisions for the user:** dictionary validation fails closed when the user can't read `sys_dictionary` (ADR-005 addendum); `REQUEST_DENIED` vs `status: denied` (T-015 AC6).
+**Open decisions for the user:** whether exact table names containing "javascript" may be looked up (they fail closed today; found in T-034); dictionary validation fails closed when the user can't read `sys_dictionary` (ADR-005 addendum); `REQUEST_DENIED` vs `status: denied` (T-015 AC6).
 
 **Known deviations:**
 
@@ -95,6 +95,7 @@ _Last updated: 2026-11-05 (after T-039 preparation)_
 - **T-036 DONE:** Prepared, BLOCKED on the user: `.mcp.json.example` (T-035), `.mcpb` bundle and `npm run pack:mcpb` (T-036). `docs/INSTALL.md` written.
 - **T-037 DONE:** Prepared, BLOCKED on the user: `npm run setup`, `npm run uninstall`, `docs/INSTALL.md`. Tested under a throwaway HOME only; the real machine run stops the live broker, so it is left to the user.
 - **T-038, T-039 prepared, BLOCKED on the user.**
+- **T-034 DONE (live):** 14 of 14 scenarios on `dev469966`; M4 achieved.
 - **Next task:** the checklist at the top of this file.
 - **Verify live in T-034:** `sysparm_offset` counts pre-ACL rows (ADR-011 addendum).
 - **Role-agnostic (ADR-012, 2026-11-04):** no ServiceNow role handling of any kind. Don't add role checks, dedicated accounts or impersonation features.

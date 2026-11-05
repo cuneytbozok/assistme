@@ -322,6 +322,85 @@ describe('T-031 search_code', () => {
     await h.close();
   });
 
+  it('nothing is skipped silently: unusable names and credential fields are reported', async () => {
+    const sn = fixture();
+    // A field name outside the connector's rules, next to a usable one on the same table.
+    scriptTable(sn, 'sys_script', 'script', 'u_Mixed_Case');
+    scriptTable(sn, 'sys_script', 'script', 'u_other');
+    sn.insert('sys_script', { name: 'Other field', u_other: 'u_close_code' });
+    // A table with only a credential-named script field.
+    scriptTable(sn, 'u_vault', 'script', 'u_api_key');
+    // A dictionary row for a table name the connector can't query.
+    sn.insert('sys_dictionary', {
+      name: 'Bad-Table',
+      element: 'script',
+      column_label: 's',
+      internal_type: 'script',
+      reference: '',
+      max_length: '40',
+      mandatory: 'false',
+      display: 'false',
+    });
+    const h = await harness({ sn });
+    const scope = await claim(h, 'dev');
+    const r = await h.call('search_code', { scope_id: scope, pattern: 'u_close_code' });
+    expect(r.ok).toBe(true);
+    expect(r.complete).toBe(false);
+    // The usable fields of the same table were still searched.
+    expect(r.data.matches.map((m: { name: string }) => m.name)).toContain('Other field');
+    expect(r.omitted).toContainEqual(
+      expect.objectContaining({
+        kind: 'fields',
+        reason: 'unsupported_name',
+        fields: ['sys_script.u_Mixed_Case'],
+      }),
+    );
+    expect(r.omitted).toContainEqual(
+      expect.objectContaining({ kind: 'table', reason: 'unsupported_name', table: 'Bad-Table' }),
+    );
+    expect(r.omitted).toContainEqual(
+      expect.objectContaining({
+        kind: 'fields',
+        reason: 'sensitive',
+        table: 'u_vault',
+        fields: ['u_api_key'],
+      }),
+    );
+    await h.close();
+  });
+
+  it('explains var__m_ tables, which the live run showed are listed but not queryable', async () => {
+    const sn = fixture();
+    sn.insert('sys_dictionary', {
+      name: 'var__m_abc',
+      element: 'script',
+      column_label: 's',
+      internal_type: 'script',
+      reference: '',
+      max_length: '40',
+      mandatory: 'false',
+      display: 'false',
+    });
+    const h = await harness({ sn });
+    const scope = await claim(h, 'dev');
+    const r = await h.call('search_code', { scope_id: scope, pattern: 'u_close_code' });
+    expect(r.omitted).toContainEqual(
+      expect.objectContaining({ table: 'var__m_abc', reason: 'not_found' }),
+    );
+    expect(r.hints.join(' ')).toMatch(/var__m_/);
+    await h.close();
+  });
+
+  it('an unreadable table says why', async () => {
+    const h = await harness({ sn: fixture(), denyTables: ['sys_script'] });
+    const scope = await claim(h, 'dev');
+    const r = await h.call('search_code', { scope_id: scope, pattern: 'u_close_code' });
+    const om = r.omitted.find((o: { table?: string }) => o.table === 'sys_script');
+    expect(om).toMatchObject({ reason: 'acl_denied', code: 'ACL_DENIED' });
+    expect(om.message).toMatch(/Insufficient rights/);
+    await h.close();
+  });
+
   it('hitting the limit exactly on the last match is complete, with no empty extra call', async () => {
     const h = await harness({ sn: fixture() });
     const scope = await claim(h, 'dev');

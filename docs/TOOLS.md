@@ -42,11 +42,11 @@ Successful data results share this shape:
 | `rows` | More results exist | `limit`, `response_budget`, `batch`, `error` |
 | `groups` | More groups exist | `response_budget` |
 | `field` | A value is partial or missing | `preview`, `response_budget`, `too_large` |
-| `fields` | Credential fields were removed (never retrievable) | `sensitive` |
+| `fields` | Fields left out (never retrievable) | `sensitive`, `unsupported_name` |
 | `content` | More of a field remains | `limit`, `response_budget` |
 | `reference` | A referenced record wasn't expanded | `table_denied`, `acl_denied`, `unavailable`, `response_budget` |
 | `relation` | A relation has no count | `table_denied`, `acl_denied`, `timeout`, `not_found`, `samples_unavailable`, `error` |
-| `table` | A table wasn't searched | `table_denied`, `acl_denied`, `timeout`, `not_found`, `error` |
+| `table` | A table wasn't searched | `table_denied`, `acl_denied`, `timeout`, `not_found`, `unsupported_name`, `error` |
 | `source` | A history source wasn't read | `acl_denied` |
 
 Values appear as a plain value, or as `{v, d}` (raw, display) when the two differ. Errors are `isError: true` with `{"ok": false, "error": {"code", "message", "hint"}}`, plus extra fields where noted. Invalid arguments are refused by the MCP layer with a text message.
@@ -200,6 +200,14 @@ Pages come from one snapshot held in memory, after the extension confirms the sc
 ```json compare-example
 { "scope_id": "$COMPARE_SCOPE", "table": "incident", "match_a": { "number": "INC0000060" }, "fields": ["short_description", "priority"] }
 ```
+
+## Known platform behaviour
+
+Seen on a live instance (T-034):
+
+- **`var__m_*` tables** hold Flow Designer variables. They're listed in the dictionary, but `sys_db_object` doesn't have them and the Stats API refuses them with "Aggregate Query Failed". `search_code` reports them as `not_found`, and `get_related_records` as `error`, each with a hint. Some have mixed-case field names, reported as `unsupported_name`. A whole-instance `search_code` is therefore normally `complete: false` on the pages that include them.
+- **A name containing "javascript"** can't be used in a query value, because the validator rejects that word in any disguise (ADR-005). So a table such as `automation_pipeline_transformer_javascript` can't be read, and a `search_code` for that word is refused.
+- **Whole-instance `search_code`:** about 610 tables, 25 calls and 8 minutes on a developer instance. Pass `tables` when you can.
 
 ## Error catalog
 

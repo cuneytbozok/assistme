@@ -1,0 +1,268 @@
+{
+  "note": "Live run against a real instance. Shapes, counts and sizes only; no record content.",
+  "started": "2026-11-05T06:45:21.367Z",
+  "finished": "2026-11-05T06:55:23.440Z",
+  "instance": "dev469966",
+  "env": "dev",
+  "tools": 14,
+  "tools_list_bytes": 11798,
+  "released": true,
+  "counts": {
+    "pass": 14,
+    "fail": 0,
+    "skip": 0
+  },
+  "results": [
+    {
+      "name": "discover_tables finds a custom table (AC-10)",
+      "status": "pass",
+      "metrics": {
+        "custom_tables_found": 5,
+        "fields": 23
+      },
+      "measure": {
+        "calls": 4,
+        "max_result_chars": 19006,
+        "requests_used": 9
+      }
+    },
+    {
+      "name": "describe_table incident: inheritance and choices (AC-11)",
+      "status": "pass",
+      "metrics": {
+        "fields": 91,
+        "pages": 1
+      },
+      "measure": {
+        "calls": 1,
+        "max_result_chars": 17302,
+        "requests_used": 4
+      }
+    },
+    {
+      "name": "query syslog with no time window, past offset 2,000, by cursor (AC-12)",
+      "status": "pass",
+      "metrics": {
+        "rows": 2509,
+        "pages": 22
+      },
+      "measure": {
+        "calls": 22,
+        "max_result_chars": 22920,
+        "requests_used": 44
+      }
+    },
+    {
+      "name": "query records older than one year (AC-12)",
+      "status": "pass",
+      "metrics": {
+        "rows": 5,
+        "total": 27
+      },
+      "measure": {
+        "calls": 1,
+        "max_result_chars": 3185,
+        "requests_used": 1
+      }
+    },
+    {
+      "name": "read the largest of 50 script includes completely, in chunks (AC-11, AC-12)",
+      "status": "pass",
+      "metrics": {
+        "total_chars": 42161,
+        "chunks": 5,
+        "upstream_requests": 1
+      },
+      "measure": {
+        "calls": 6,
+        "max_result_chars": 63816,
+        "requests_used": 2
+      }
+    },
+    {
+      "name": "search_code for a field name in scripts (AC-11)",
+      "status": "pass",
+      "metrics": {
+        "matches": 60,
+        "pages": 3,
+        "tables_total_narrow": 2,
+        "tables_total_instance": 617,
+        "first_batch_seconds": 22
+      },
+      "measure": {
+        "calls": 4,
+        "max_result_chars": 16074,
+        "requests_used": 102
+      }
+    },
+    {
+      "name": "search_code across the whole instance: every table, through cursors (AC-11, AC-12)",
+      "status": "pass",
+      "metrics": {
+        "tables_total": 617,
+        "tables_searched": 617,
+        "tables_not_searched": {
+          "acl_denied:ACL_DENIED": 22,
+          "error:INVALID_INPUT": 1,
+          "table_denied:": 1,
+          "not_found:NOT_FOUND": 78
+        },
+        "pages": 25,
+        "most_requests_in_one_call": 112,
+        "seconds": 488
+      },
+      "measure": {
+        "calls": 25,
+        "max_result_chars": 9010,
+        "requests_used": 2233
+      }
+    },
+    {
+      "name": "get_related_records for a CI: every relation, through cursors (AC-11)",
+      "status": "pass",
+      "metrics": {
+        "relation_count": 916,
+        "relations_returned": 908,
+        "with_records": 3,
+        "pages": 16,
+        "unreadable": {
+          "error:SN_API_ERROR": 8
+        },
+        "seconds": 50
+      },
+      "measure": {
+        "calls": 17,
+        "max_result_chars": 5819,
+        "requests_used": 922
+      }
+    },
+    {
+      "name": "get_record_history of an incident (AC-11)",
+      "status": "pass",
+      "metrics": {
+        "entries": 71,
+        "audit": 59,
+        "journal": 12,
+        "pages": 1,
+        "complete": true
+      },
+      "measure": {
+        "calls": 2,
+        "max_result_chars": 11299,
+        "requests_used": 8
+      }
+    },
+    {
+      "name": "aggregate_records: by state, with display values (AC-12)",
+      "status": "pass",
+      "metrics": {
+        "count": 67,
+        "groups": 4,
+        "group_value_shape": "value+display",
+        "aggregate_shape": "number"
+      },
+      "measure": {
+        "calls": 2,
+        "max_result_chars": 797,
+        "requests_used": 2
+      }
+    },
+    {
+      "name": "an ambiguous get_record never guesses, and list_all works (AC-13)",
+      "status": "pass",
+      "metrics": {
+        "total": 40,
+        "candidates": 5
+      },
+      "measure": {
+        "calls": 2,
+        "max_result_chars": 8447,
+        "requests_used": 1
+      }
+    },
+    {
+      "name": "get_record: expand_references, and a journal field by display value",
+      "status": "pass",
+      "metrics": {
+        "references": 1,
+        "reference_has_summary": true,
+        "journal_chars": 2442
+      },
+      "measure": {
+        "calls": 2,
+        "max_result_chars": 9127,
+        "requests_used": 4
+      }
+    },
+    {
+      "name": "the tables the skill names exist here (reported, not required: plugins vary)",
+      "status": "pass",
+      "metrics": {
+        "checked": 34,
+        "missing": ["discovery_schedule", "reconciliation_definition", "cmdb_datasource"],
+        "similar": {
+          "discovery_sched": [],
+          "reconcil": [
+            "cmdb_dynamic_reconciliation_definition",
+            "cmdb_reconciliation_definition",
+            "cmdb_reconciliation_definition_mapping",
+            "reconcile_duplicate_related_table_config",
+            "reconcile_duplicate_task",
+            "reconcile_duplicate_task_data",
+            "reconcile_duplicate_template",
+            "reconcile_duplicate_template_condition",
+            "reconcile_duplicate_template_run",
+            "reconcile_duplicate_template_stats",
+            "reconcile_duplicate_template_task_run",
+            "sn_cmdb_ws_reconcile_duplicate_task_group",
+            "sn_cmdb_ws_reconcile_duplicate_task_group_m2m",
+            "sn_cmdb_ws_reconcile_duplicate_template_library",
+            "sn_cmdb_ws_reconcile_duplicate_template_schedule"
+          ],
+          "datasource": [
+            "ais_datasource",
+            "ais_datasource_attribute",
+            "ais_datasource_churn_audit",
+            "ais_datasource_field_attribute",
+            "ais_datasource_stats",
+            "ais_ingest_datasource_stats",
+            "cmdb_datasource_attribute_value",
+            "cmdb_datasource_last_update",
+            "cmdb_datasource_precedence",
+            "cmdb_datasource_staleness",
+            "jrobin_datasource",
+            "sys_ux_composite_datasource",
+            "sys_ux_composite_datasource_filter",
+            "sys_ux_composite_data_m2m_datasource"
+          ],
+          "data_source": [
+            "ais_guard_rail_limit_data_source",
+            "cmdb_ire_data_source_rule",
+            "sn_cmdb_int_util_service_graph_connection_data_source",
+            "sys_data_source",
+            "sys_sg_data_source",
+            "sys_viz_data_source",
+            "sys_viz_data_source_role"
+          ]
+        }
+      },
+      "measure": {
+        "calls": 38,
+        "max_result_chars": 2777,
+        "requests_used": 60
+      }
+    },
+    {
+      "name": "unsafe and broadening queries are refused before any read (AC-14)",
+      "status": "pass",
+      "metrics": {
+        "refused": 4
+      },
+      "measure": {
+        "calls": 4,
+        "max_result_chars": 313,
+        "requests_used": 0
+      }
+    }
+  ]
+}

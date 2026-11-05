@@ -10,9 +10,9 @@ Confirm names with `discover_tables`: they vary by release.
 | `cmdb_rel_ci` | Relationships: `parent`, `child`, `type` |
 | `cmdb_rel_type` | Relationship types |
 | `cmdb_identifier`, `cmdb_identifier_entry` | Identification rules per class |
-| `reconciliation_definition` | Which source may update which attributes |
+| `cmdb_reconciliation_definition` | Which source may update which attributes |
 | `sys_object_source` | Which source knows a CI, and by what id |
-| `cmdb_datasource` | Registered data sources |
+| `cmdb_datasource_last_update` | When each source last updated a CI |
 
 ## Why did this CI change, or not?
 

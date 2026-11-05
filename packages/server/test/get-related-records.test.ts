@@ -173,6 +173,30 @@ describe('T-029 get_related_records', () => {
     await h.close();
   });
 
+  it('explains var__m_ relations, whose counts ServiceNow refuses', async () => {
+    const { sn, ci } = ciFixture(1);
+    sn.insert('sys_dictionary', {
+      name: 'var__m_abc',
+      element: 'u_ci',
+      column_label: 'c',
+      internal_type: 'reference',
+      reference: 'cmdb_ci',
+      max_length: '32',
+      mandatory: 'false',
+      display: 'false',
+    });
+    const h = await harness({ sn, denyTables: ['var__m_abc'] });
+    const scope = await claim(h, 'dev');
+    const r = await h.call('get_related_records', {
+      scope_id: scope,
+      table: 'cmdb_ci_server',
+      sys_id: ci,
+    });
+    expect(r.omitted[0]).toMatchObject({ table: 'var__m_abc', message: expect.any(String) });
+    expect(r.hints.join(' ')).toMatch(/var__m_/);
+    await h.close();
+  });
+
   it('glide_list fields match with contains; sys_ids are read from a list', async () => {
     const { sn, ci } = ciFixture(1);
     sn.insert('sys_db_object', { name: 'u_list', label: 'L', super_class: '' });

@@ -8,8 +8,10 @@ import type { McpServer } from '@modelcontextprotocol/server';
 import {
   compileFilter,
   type ErrorCode,
+  FIELD_PATH_RE,
   isDeniedTable,
   MAX_ENCODED_QUERY_LENGTH,
+  TABLE_NAME_RE,
   TableNameSchema,
 } from '@sn-mcp/shared';
 import { z } from 'zod';
@@ -83,7 +85,11 @@ export function buildTargets(
   pattern: string,
 ): Target[] {
   const byTable = new Map<string, string[]>();
-  for (const f of fields) byTable.set(f.table, [...(byTable.get(f.table) ?? []), f.field]);
+  for (const f of fields) {
+    // One unusable name must not sink the other fields of its query group.
+    if (!FIELD_PATH_RE.test(f.field)) continue;
+    byTable.set(f.table, [...(byTable.get(f.table) ?? []), f.field]);
+  }
   const out: Target[] = [];
   for (const table of [...byTable.keys()].sort()) {
     let group: string[] = [];
@@ -227,6 +233,15 @@ export function registerSearchCode(server: McpServer, ctx: ToolContext): void {
         return metadataError(e, id);
       }
       const targets = buildTargets(fieldList, pattern);
+      const unusable = fieldList.filter((f) => f.field && !FIELD_PATH_RE.test(f.field));
+      if (unusable.length > 0 && !state) {
+        omitted.push({
+          kind: 'fields',
+          reason: 'unsupported_name',
+          fields: unusable.map((f) => `${f.table}.${f.field}`),
+          note: 'The dictionary lists these fields, but their names are outside what the connector can query.',
+        });
+      }
       const tablesTotal = new Set(targets.map((t) => t.table)).size;
 
       const matches: Record<string, unknown>[] = [];
@@ -259,6 +274,16 @@ export function registerSearchCode(server: McpServer, ctx: ToolContext): void {
           next();
           continue;
         }
+        if (!TABLE_NAME_RE.test(target.table)) {
+          omitted.push({
+            kind: 'table',
+            reason: 'unsupported_name',
+            table: target.table,
+            note: 'The dictionary lists this table, but its name is outside what the connector can query.',
+          });
+          next();
+          continue;
+        }
         let known: ReadonlyMap<string, FieldInfo>;
         try {
           known = await meta.fields(mc, target.table);
@@ -274,6 +299,7 @@ export function registerSearchCode(server: McpServer, ctx: ToolContext): void {
             kind: 'table',
             reason: REASONS[code] ?? 'error',
             code,
+            message: (e as Error).message,
             table: target.table,
             next: retry,
           });
@@ -281,6 +307,20 @@ export function registerSearchCode(server: McpServer, ctx: ToolContext): void {
           continue;
         }
         const fields = target.fields.filter((f) => !isSensitiveField(f, known));
+        const sensitive = target.fields.filter((f) => isSensitiveField(f, known));
+        if (sensitive.length > 0) {
+          omitted.push({
+            kind: 'fields',
+            reason: 'sensitive',
+            table: target.table,
+            fields: sensitive,
+            note: 'Credential fields are never searched.',
+          });
+        }
+        if (fields.length === 0) {
+          next();
+          continue;
+        }
         const compiled = compileFilter({
           where:
             fields.length === 1
@@ -292,7 +332,15 @@ export function registerSearchCode(server: McpServer, ctx: ToolContext): void {
                 ],
           order_by: [{ field: 'sys_id', direction: 'asc' }],
         });
-        if (!compiled.ok || fields.length === 0) {
+        if (!compiled.ok) {
+          omitted.push({
+            kind: 'table',
+            reason: 'error',
+            code: compiled.error.code,
+            message: compiled.error.message,
+            table: target.table,
+            fields,
+          });
           next();
           continue;
         }
@@ -366,6 +414,7 @@ export function registerSearchCode(server: McpServer, ctx: ToolContext): void {
               kind: 'table',
               reason: REASONS[f.code] ?? 'error',
               code: f.code,
+              message: f.message,
               table: target.table,
               next: retry,
             });
@@ -458,6 +507,11 @@ export function registerSearchCode(server: McpServer, ctx: ToolContext): void {
       if (!state && !explicit && targets.length > TABLES_PER_CALL) {
         hints.push(
           `Searching ${tablesTotal} tables with script fields takes several calls. Pass tables to narrow it.`,
+        );
+      }
+      if (omitted.some((o) => 'table' in o && String(o.table).startsWith('var__m_'))) {
+        hints.push(
+          "`var__m_` tables hold Flow Designer variables. ServiceNow lists them in the dictionary but can't query or count them, so retrying won't help.",
         );
       }
       omitted.push(...fieldOmissions);

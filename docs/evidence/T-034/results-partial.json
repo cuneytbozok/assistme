@@ -1,0 +1,156 @@
+{
+  "note": "Live run against a real instance. Shapes, counts and sizes only; no record content.",
+  "started": "2026-11-05T06:56:47.859Z",
+  "finished": "2026-11-05T07:06:14.076Z",
+  "instance": "dev469966",
+  "env": "dev",
+  "tools": 14,
+  "tools_list_bytes": 11798,
+  "released": true,
+  "counts": {
+    "pass": 3,
+    "fail": 0,
+    "skip": 0
+  },
+  "results": [
+    {
+      "name": "search_code across the whole instance: every table, through cursors (AC-11, AC-12)",
+      "status": "pass",
+      "metrics": {
+        "tables_total": 611,
+        "tables_searched": 611,
+        "tables_not_searched": {
+          "acl_denied:ACL_DENIED": 22,
+          "error:INVALID_INPUT": 1,
+          "table_denied:": 1,
+          "not_found:NOT_FOUND": 72
+        },
+        "examples": {
+          "error:INVALID_INPUT": [
+            "automation_pipeline_transformer_javascript: script values (javascript:) are not allowed"
+          ],
+          "not_found:NOT_FOUND": [
+            "var__m_0a6c97790a0a0b2756919eb960284334: No table named \"var__m_0a6c97790a0a0b2756919eb960284334\" on this instance.",
+            "var__m_283e8bb80a2581021d036a052ffc3433: No table named \"var__m_283e8bb80a2581021d036a052ffc3433\" on this instance.",
+            "var__m_35433da80a0a029a0028c639a1e51eb4: No table named \"var__m_35433da80a0a029a0028c639a1e51eb4\" on this instance.",
+            "var__m_354e911f0a0a029a00e6a0e6ad74206f: No table named \"var__m_354e911f0a0a029a00e6a0e6ad74206f\" on this instance.",
+            "var__m_35ef56111b211100adca1e094f071315: No table named \"var__m_35ef56111b211100adca1e094f071315\" on this instance.",
+            "var__m_38891b6f0a0a0b1e00efdfdd77602027: No table named \"var__m_38891b6f0a0a0b1e00efdfdd77602027\" on this instance.",
+            "var__m_3961a1da0a0a0b5c00ecd84822f70d85: No table named \"var__m_3961a1da0a0a0b5c00ecd84822f70d85\" on this instance.",
+            "var__m_46359d4e373111003e7d40ed9dbe5d55: No table named \"var__m_46359d4e373111003e7d40ed9dbe5d55\" on this instance.",
+            "var__m_5994b389c0a80011000e64de81b1864c: No table named \"var__m_5994b389c0a80011000e64de81b1864c\" on this instance.",
+            "var__m_9359a22ac0a801975710cd9e7daa8bfe: No table named \"var__m_9359a22ac0a801975710cd9e7daa8bfe\" on this instance.",
+            "var__m_98f621ca0a0a0b5900f7c291f5e45a0e: No table named \"var__m_98f621ca0a0a0b5900f7c291f5e45a0e\" on this instance.",
+            "var__m_9f46fb44c0a8016400e10261db653ecd: No table named \"var__m_9f46fb44c0a8016400e10261db653ecd\" on this instance.",
+            "var__m_9f4d1be5c0a8016400043d34ce066316: No table named \"var__m_9f4d1be5c0a8016400043d34ce066316\" on this instance.",
+            "var__m_9f680b92c0a801640026553f665b429f: No table named \"var__m_9f680b92c0a801640026553f665b429f\" on this instance.",
+            "var__m_a1e18d75c33101008de24a3c5bba8fe4: No table named \"var__m_a1e18d75c33101008de24a3c5bba8fe4\" on this instance."
+          ]
+        },
+        "fields_left_out": [
+          "var__m_sys_hub_action_input_4329302d2fc00300e8f802d3c18c9552.Filter",
+          "var__m_sys_hub_action_input_4f3fe391c30003002841b63b12d3ae7a.Condition",
+          "var__m_sys_hub_action_input_6ffe2b51c30003002841b63b12d3aef3.Condition",
+          "var__m_sys_hub_action_input_82be30ad2fc00300e8f802d3c18c95ad.Filter",
+          "var__m_sys_hub_action_input_8fccf46d2fc00300e8f802d3c18c9530.Filter",
+          "var__m_sys_hub_action_input_ae66b0e92fc00300e8f802d3c18c954d.Filter"
+        ],
+        "pages": 25,
+        "most_requests_in_one_call": 112,
+        "seconds": 500
+      },
+      "measure": {
+        "calls": 25,
+        "max_result_chars": 11765,
+        "requests_used": 2298
+      }
+    },
+    {
+      "name": "get_related_records for a CI: every relation, through cursors (AC-11)",
+      "status": "pass",
+      "metrics": {
+        "relation_count": 916,
+        "relations_returned": 908,
+        "with_records": 3,
+        "pages": 16,
+        "unreadable": {
+          "error:SN_API_ERROR": 8
+        },
+        "details": [
+          "var__m_sys_hub_action_input_0a9376f1c344f110c7f9f92f050131b0.configuration_item: Aggregate Query Failed",
+          "var__m_sys_hub_action_input_0d352d01538b2300568fddeeff7b1205.ah_configuration_item: Aggregate Query Failed",
+          "var__m_sys_hub_action_input_4c532dc953872300568fddeeff7b126a.ah_configuration_item: Aggregate Query Failed",
+          "var__m_sys_hub_action_input_d1bc0f0fc30031107db578f9d0013138.configuration_item: Aggregate Query Failed",
+          "var__m_sys_hub_flow_output_38e2a63177783110dd32591e6b5a99e3.ci: Aggregate Query Failed",
+          "var__m_sys_hub_flow_output_40d4455177c47110dd32591e6b5a995d.ci: Aggregate Query Failed",
+          "var__m_sys_hub_flow_output_b2aa867977f43110dd32591e6b5a9933.ci: Aggregate Query Failed",
+          "var__m_sys_hub_flow_output_f5e209dd77847110dd32591e6b5a995d.ci: Aggregate Query Failed"
+        ],
+        "seconds": 51
+      },
+      "measure": {
+        "calls": 17,
+        "max_result_chars": 5819,
+        "requests_used": 922
+      }
+    },
+    {
+      "name": "the tables the skill names exist here (reported, not required: plugins vary)",
+      "status": "pass",
+      "metrics": {
+        "checked": 34,
+        "missing": ["discovery_schedule"],
+        "similar": {
+          "discovery_sched": [],
+          "reconcil": [
+            "cmdb_dynamic_reconciliation_definition",
+            "cmdb_reconciliation_definition",
+            "cmdb_reconciliation_definition_mapping",
+            "reconcile_duplicate_related_table_config",
+            "reconcile_duplicate_task",
+            "reconcile_duplicate_task_data",
+            "reconcile_duplicate_template",
+            "reconcile_duplicate_template_condition",
+            "reconcile_duplicate_template_run",
+            "reconcile_duplicate_template_stats",
+            "reconcile_duplicate_template_task_run",
+            "sn_cmdb_ws_reconcile_duplicate_task_group",
+            "sn_cmdb_ws_reconcile_duplicate_task_group_m2m",
+            "sn_cmdb_ws_reconcile_duplicate_template_library",
+            "sn_cmdb_ws_reconcile_duplicate_template_schedule"
+          ],
+          "datasource": [
+            "ais_datasource",
+            "ais_datasource_attribute",
+            "ais_datasource_churn_audit",
+            "ais_datasource_field_attribute",
+            "ais_datasource_stats",
+            "ais_ingest_datasource_stats",
+            "cmdb_datasource_attribute_value",
+            "cmdb_datasource_last_update",
+            "cmdb_datasource_precedence",
+            "cmdb_datasource_staleness",
+            "jrobin_datasource",
+            "sys_ux_composite_datasource",
+            "sys_ux_composite_datasource_filter",
+            "sys_ux_composite_data_m2m_datasource"
+          ],
+          "data_source": [
+            "ais_guard_rail_limit_data_source",
+            "cmdb_ire_data_source_rule",
+            "sn_cmdb_int_util_service_graph_connection_data_source",
+            "sys_data_source",
+            "sys_sg_data_source",
+            "sys_viz_data_source",
+            "sys_viz_data_source_role"
+          ]
+        }
+      },
+      "measure": {
+        "calls": 38,
+        "max_result_chars": 2777,
+        "requests_used": 64
+      }
+    }
+  ]
+}

@@ -98,9 +98,9 @@ const SKILL_TABLES = [
   'cmdb_rel_type',
   'cmdb_identifier',
   'cmdb_identifier_entry',
-  'reconciliation_definition',
+  'cmdb_reconciliation_definition',
   'sys_object_source',
-  'cmdb_datasource',
+  'cmdb_datasource_last_update',
   'sys_hub_flow',
   'sys_hub_action_type_definition',
   'sys_hub_trigger_instance',
@@ -120,13 +120,13 @@ export const SCENARIOS: {
   {
     name: 'discover_tables finds a custom table (AC-10)',
     run: async (call, scope) => {
+      // `search` means contains, and results are sorted by name, so walk every match.
       const seen: string[] = [];
       for (const search of ['x_', 'u_']) {
-        const r = ok(
-          await call('discover_tables', { scope_id: scope, search, limit: 25 }),
-          'search',
-        );
-        seen.push(...r.data.records.map((t: { name: string }) => t.name));
+        await walk(call, 'discover_tables', { search, limit: 200 }, scope, (r) => {
+          seen.push(...r.data.records.map((t: { name: string }) => t.name));
+          return false;
+        });
       }
       const custom = seen.filter((n) => /^(x|u)_/.test(n));
       if (custom.length === 0) throw new Skip('no custom table on this instance');
@@ -279,6 +279,51 @@ export const SCENARIOS: {
     },
   },
   {
+    name: 'search_code across the whole instance: every table, through cursors (AC-11, AC-12)',
+    run: async (call, scope) => {
+      const reasons: Record<string, number> = {};
+      const byReason: Record<string, string[]> = {};
+      const fieldsLeftOut: string[] = [];
+      const started = Date.now();
+      let maxBatch = 0;
+      const { pages, last } = await walk(
+        call,
+        'search_code',
+        { pattern: 'zz_no_such_text_zz' },
+        scope,
+        (r) => {
+          for (const o of r.omitted ?? []) {
+            if (o.kind !== 'table') continue;
+            const key = `${o.reason}:${o.code ?? ''}`;
+            reasons[key] = (reasons[key] ?? 0) + 1;
+            if (o.reason !== 'acl_denied' && o.reason !== 'table_denied') {
+              const list = byReason[key] ?? [];
+              byReason[key] = list;
+              if (list.length < 15)
+                list.push(`${o.table}: ${String(o.message ?? '').slice(0, 100)}`);
+            }
+          }
+          for (const o of r.omitted ?? []) {
+            if (o.kind === 'fields') fieldsLeftOut.push(...o.fields);
+          }
+          maxBatch = Math.max(maxBatch, r.requests_used);
+          return false;
+        },
+      );
+      expectThat(last.data.tables_remaining === 0, 'tables remain after the last page');
+      return {
+        tables_total: last.data.tables_total,
+        tables_searched: last.data.tables_searched,
+        tables_not_searched: reasons,
+        examples: byReason,
+        fields_left_out: fieldsLeftOut,
+        pages,
+        most_requests_in_one_call: maxBatch,
+        seconds: Math.round((Date.now() - started) / 1000),
+      };
+    },
+  },
+  {
     name: 'get_related_records for a CI: every relation, through cursors (AC-11)',
     run: async (call, scope) => {
       const ci = ok(
@@ -293,6 +338,8 @@ export const SCENARIOS: {
       if (ci.data.records.length === 0) throw new Skip('no CI on this instance');
       let relations = 0;
       let withRecords = 0;
+      const unreadable: Record<string, number> = {};
+      const details: string[] = [];
       const started = Date.now();
       const { pages, last } = await walk(
         call,
@@ -302,18 +349,27 @@ export const SCENARIOS: {
         (r) => {
           relations += r.data.relations.length;
           withRecords += r.data.relations.filter((x: { count: number }) => x.count > 0).length;
+          for (const o of r.omitted ?? []) {
+            if (o.kind !== 'relation') continue;
+            const key = `${o.reason}:${o.code ?? ''}`;
+            unreadable[key] = (unreadable[key] ?? 0) + 1;
+            details.push(`${o.table}.${o.field}: ${String(o.message ?? '').slice(0, 120)}`);
+          }
           return false;
         },
       );
-      const unreadable = (last.omitted ?? []).filter(
-        (o: { kind: string }) => o.kind === 'relation',
+      const unreadableTotal = Object.values(unreadable).reduce((x, y) => x + y, 0);
+      expectThat(
+        relations + unreadableTotal >= last.data.relation_count,
+        `${last.data.relation_count - relations - unreadableTotal} relations unaccounted for`,
       );
       return {
         relation_count: last.data.relation_count,
         relations_returned: relations,
         with_records: withRecords,
         pages,
-        unreadable_on_last_page: unreadable.length,
+        unreadable,
+        details,
         seconds: Math.round((Date.now() - started) / 1000),
       };
     },
@@ -441,7 +497,13 @@ export const SCENARIOS: {
         if (r?.error?.code === 'NOT_FOUND') missing.push(table);
         else if (!r?.ok) expectThat(false, `${table}: ${r?.error?.code}`);
       }
-      return { checked: SKILL_TABLES.length, missing };
+      // Are the missing ones misnamed in the skill? Table names only.
+      const similar: Record<string, string[]> = {};
+      for (const search of ['discovery_sched', 'reconcil', 'datasource', 'data_source']) {
+        const r = await call('discover_tables', { scope_id: scope, search, limit: 15 });
+        similar[search] = r?.ok ? r.data.records.map((t: { name: string }) => t.name) : [];
+      }
+      return { checked: SKILL_TABLES.length, missing, similar };
     },
   },
   {
@@ -472,9 +534,12 @@ export async function runScenarios(
   call: Call,
   scope: string,
   log: (line: string) => void = () => {},
+  only?: string,
 ): Promise<ScenarioResult[]> {
   const out: ScenarioResult[] = [];
-  for (const s of SCENARIOS) {
+  for (const s of SCENARIOS.filter(
+    (x) => !only || only.split(',').some((o) => x.name.includes(o)),
+  )) {
     const measure: Measure = { calls: 0, max_result_chars: 0, requests_used: 0 };
     let result: ScenarioResult;
     try {

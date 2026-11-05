@@ -206,6 +206,7 @@ export function registerGetRelatedRecords(server: McpServer, ctx: ToolContext): 
             kind: 'relation',
             reason: REASONS[o.failure.code] ?? 'error',
             code: o.failure.code,
+            message: o.failure.message,
             table: o.r.table,
             field: o.r.field,
             next: listAll(o.r),
@@ -235,6 +236,12 @@ export function registerGetRelatedRecords(server: McpServer, ctx: ToolContext): 
         if (entry) out.push(entry);
         if (omission) omitted.push(omission);
         handled++;
+      }
+
+      if (omitted.some((o) => 'table' in o && String(o.table).startsWith('var__m_'))) {
+        hints.push(
+          "`var__m_` tables hold Flow Designer variables. ServiceNow lists them in the dictionary but can't query or count them, so retrying won't help.",
+        );
       }
 
       const nextIndex = index + handled;

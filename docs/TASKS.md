@@ -43,7 +43,7 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 | T-031 | `search_code`                                   | 026      | DONE        |
 | T-032 | `compare_records`                               | 025, 011 | DONE        |
 | T-033 | Tool contract review + TOOLS.md                 | 024–032  | DONE        |
-| T-034 | Live tool acceptance (M4)                       | 033      | BLOCKED     |
+| T-034 | Live tool acceptance (M4)                       | 033      | DONE        |
 | T-035 | Claude Code registration                        | 034      | BLOCKED     |
 | T-036 | `.mcpb` Desktop Extension                       | 034      | BLOCKED     |
 | T-037 | Setup/uninstall + INSTALL.md (M5)               | 036      | BLOCKED     |
@@ -1256,7 +1256,7 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 
 ### T-034 — Live tool acceptance (Milestone M4)
 
-- **Status:** BLOCKED
+- **Status:** DONE
 - **Purpose:** Prove AC-10, AC-11, AC-12, AC-13 on a real instance.
 - **Dependencies:** T-033
 - **Deliverables:** `test/e2e/live.ts` (`npm run e2e:live -- --instance dev`) that uses an MCP stdio client and goes through the real approval flow, exercising every tool: discover a custom table, describe `incident`, query `syslog` with no time window and paginate past offset 2,000 by cursor, query records older than one year, read a large script include completely in chunks, search_code for a field name, related records for a CI, history of an incident, aggregate by state, and an ambiguous `get_record`. Results saved (redacted) to `docs/evidence/T-034/`.
@@ -1282,6 +1282,37 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
   - **Mutation checks** (each reverted): no skip on stop, skip ignored on resume, `lean()` not validating, no field cap on the oversized read; all fail tests.
 
 ## Phase 5 — Packaging (Milestone M5)
+
+### T-035 — Claude Code registration
+
+- **Status:** BLOCKED
+- **Purpose:** Easy use from Claude Code (AC-1).
+- **Dependencies:** T-034
+- **Deliverables:** `.mcp.json.example`; `claude mcp add` instructions (user and project scope); verification that tools appear and work.
+- **Files:** `.mcp.json.example`, `docs/INSTALL.md` (section)
+- **Acceptance criteria:** in a fresh Claude Code session, `/mcp` lists the server and a scoped query works on DEV.
+- **Verification:** manual, with a transcript in evidence.
+- **DoD:** —
+- **Evidence (2026-11-05, live, real instance `dev469966`, PDI, signed in as admin):**
+  - Real MCP stdio client → real server → real broker → real extension (reloaded by the user) → ServiceNow. The user approved each scope in the popup. No mocks in the chain.
+  - **Full run** (`docs/evidence/T-034/results.json`, 06:45–06:55 UTC): **14 passed, 0 failed, 0 skipped**, scope released. **Re-run after fixes** (`results-partial.json`): the 3 affected scenarios passed. Both files hold shapes, counts, sizes, table and field names and error messages; no record content.
+  - **Acceptance criteria:**
+    - Every scenario passes on live DEV ✔: 5 custom tables found and described (AC-10); `incident` with 91 fields, inheritance and choices; `syslog` with no time window read past offset 2,000 by cursor (2,509 rows, no duplicates); records older than a year; a 42,161-character script include reassembled in 5 chunks with 1 upstream request; `search_code` by field name and across all 611 tables; a CI's 916 relations; an incident's 71 history entries in order; aggregates that sum to the count; `AMBIGUOUS_MATCH` with a working `list_all`; 4 unsafe queries refused with 0 requests.
+    - No scenario blocked by a volume limit ✔.
+    - Partial results ✔: the runner fails any `complete: false` with an empty `omitted`, or `has_more` with no next call, on every result. Continuations were followed for rows, relations, tables and field chunks.
+    - Sizes and `requests_used` recorded ✔. Largest result 63,816 characters (asked for 100,000); `tools/list` 11,798 bytes.
+  - **Bugs the live run found, fixed and re-tested:**
+    1. `search_code` skipped a query group silently if a field name couldn't compile. 6 tables were counted as searched and weren't. This broke rule 8. Fields and tables with unusable names are now reported, and the usable fields still run.
+    2. Omissions for relations and tables now say why (`message`), and `var__m_*` tables get a hint.
+    3. Runner: the custom-table scenario read only the first 25 "contains" hits (a wrong skip on the first run).
+    4. Skill names: `reconciliation_definition` → `cmdb_reconciliation_definition`, `cmdb_datasource` → `cmdb_datasource_last_update`. `discovery_schedule` is absent on this PDI and stays, since it comes with Discovery.
+  - **Answers to the open questions:** the Stats API gives `value` + `display_value` with `sysparm_display_value=all` ✔; `sys_dictionary.reference` filters by table name ✔ (916 relations); journal fields read by display value ✔ (2,442 characters); a whole-instance search takes about 8 minutes over 25 calls, up to 112 requests per call, with no timeouts.
+  - **Not covered:**
+    - `compare_records` live: it needs a second instance (T-015). The T-034 scenario list doesn't include it; AC-8 stays mock-only.
+    - `sysparm_offset` counting pre-ACL rows (ADR-011 addendum): the user is an admin, so little was hidden.
+    - 22 tables refused `ACL_DENIED` even for admin, reported as such; not investigated further.
+    - A table named with "javascript" can't be read (fails closed): an **open decision for the user**.
+  - **DoD ✔** M4 achieved.
 
 ### T-035 — Claude Code registration
 
@@ -1379,7 +1410,8 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
     - Every tool named exists, and every filter example passes the real schemas ✔ test.
     - The zip contains `servicenow-troubleshooting/SKILL.md` ✔ test.
   - `claude plugin validate .` (Claude Code 2.1.317, already installed) → exit 0, "Validation passed with warnings"; the warnings are optional plugin-directory checks, which don't apply as this isn't being submitted.
-  - **Unverified:** installing in Claude Code, uploading in Desktop, and whether each table named exists (written from general ServiceNow knowledge, with a note to confirm names). The T-034 run reports any missing table.
+  - The T-034 live run checked the 34 tables named: 2 names were wrong and are fixed; `discovery_schedule` is absent on the PDI, because Discovery isn't fully there. Field names in the references aren't checked live.
+  - **Unverified:** installing in Claude Code, uploading in Desktop.
 
 ## Phase 7 — Acceptance (Milestone M6)
 

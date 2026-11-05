@@ -22,6 +22,8 @@ const { values } = parseArgs({
   options: {
     instance: { type: 'string', default: 'dev' },
     'dry-run': { type: 'boolean', default: false },
+    /** Comma-separated parts of scenario names; saves to results-partial.json, not results.json. */
+    only: { type: 'string' },
   },
 });
 const alias = values.instance as string;
@@ -95,12 +97,12 @@ if (!scope) {
 }
 
 const started = new Date().toISOString();
-const results = await runScenarios(call, scope as string, (line) => console.log(line));
+const results = await runScenarios(call, scope as string, (line) => console.log(line), values.only);
 const released = await call('release_scope', { scope_id: scope });
 
 const counts = { pass: 0, fail: 0, skip: 0 };
 for (const r of results) counts[r.status]++;
-const file = resolve(ROOT, 'docs/evidence/T-034/results.json');
+const file = resolve(ROOT, `docs/evidence/T-034/results${values.only ? '-partial' : ''}.json`);
 mkdirSync(dirname(file), { recursive: true });
 writeFileSync(
   file,
