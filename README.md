@@ -11,7 +11,7 @@ sn-mcp is an independent project, not affiliated with or endorsed by ServiceNow.
 
 ## What you need
 
-- A Mac with Google Chrome (Windows support is new and hasn't been tested on a real PC yet)
+- A Mac with Google Chrome (Windows passes automated tests, but hasn't been tried on a real PC yet)
 - [Node.js](https://nodejs.org) 22.18 or newer (run `node --version` to check)
 - A ServiceNow instance you can sign in to
 - [Claude Desktop](https://claude.ai/download), Claude Code, or ChatGPT Desktop, in its Codex chats only ([how to connect it](docs/INSTALL.md#chatgpt-desktop))

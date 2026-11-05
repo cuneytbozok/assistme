@@ -6,7 +6,7 @@ _Current state only, rewritten on 2026-11-05. History is in `docs/TASKS.md` and 
 
 The connector is built, installed and working on the user's Mac, in Claude Desktop, against one developer instance.
 
-- **Tasks:** 41 DONE, 2 BLOCKED (T-015, T-044), 1 DROPPED (T-039).
+- **Tasks:** 42 DONE, 2 BLOCKED (T-015, T-044), 1 DROPPED (T-039).
 - **Milestones:** M1, M3, M4, M5 and M6 achieved. M6 by the user's decision, with AC-6, AC-7 and AC-8 left open: not all 19 criteria are evidenced. M2 not achieved (T-015).
 - **Acceptance:** `docs/ACCEPTANCE.md`: 15 passed, 3 open, 1 out of scope, none failed.
 - **Next:** no task is eligible. T-044 waits for someone with a Windows PC. Anything else that remains needs the user: see `docs/NEXT_STEPS.md`.
@@ -15,7 +15,9 @@ The connector is built, installed and working on the user's Mac, in Claude Deskt
 
 **ChatGPT Desktop (T-043):** done, live through the engine inside `ChatGPT.app`, with a throwaway `CODEX_HOME`: discovery, broker connectivity and per-client authorization. Each conversation gets its own access. The user registered it in the app's settings: **it works in a Codex chat and not in a normal chat** (their test, 2026-11-05).
 
-**Windows (T-044):** the user has no Windows PC. The first CI run (`windows.yml`, run 42028030938) passed 16 of 18 tests, including the pipe. Both failures are `readAcls` returning nothing, and **`assertSafeAncestorsWindows` treats that as safe: it fails open. Not fixed.** Don't describe Windows as working. Fixing it needs the user's OK to push, to re-run CI.
+**Windows (T-044):** the user has no Windows PC. `windows.yml` passes 20 of 20 on real Windows, but not with real Chrome, a real AI client or a real instance, so don't describe it as working there. The job runs on every push.
+
+**Skills in Codex (T-045):** `npm run codex-skills` copies both to `~/.agents/skills`; done on the user's Mac, and the engine finds both. No model has used one yet.
 
 ## T-042: what it did and didn't show
 
@@ -43,7 +45,7 @@ Done by the user's decision. Live on `dev469966` (`docs/evidence/T-042/`): two r
 - **Instance:** `dev469966.service-now.com`, alias `dev469966`, environment dev. A personal developer instance, signed in as admin.
 - **Chrome:** unpacked extension from `packages/extension/dist`, ID `clipfeocpiljpcngmjpdbegciimchbol`.
 - **Native host:** installed by `npm run setup` from this folder. Runtime files are in `~/Library/Application Support/sn-mcp/`, which is 0700: `broker.sock`, `broker.key`, `broker.pid`, `broker.log` (metadata only). Exit codes: 64 bad origin, 78 unsafe path, 75 conflict.
-- **Claude Desktop:** the `.mcpb` bundle, version 0.1.2, named "ServiceNow (read-only)", plus both skills uploaded. Version 0.1.5 is built at `packages/server/sn-mcp.mcpb`. It isn't known to be installed: until the user installs 0.1.3 or later, Desktop still refuses `compare_records` on a single-instance scope. The live test doesn't depend on that, because it starts the built server itself. `mcpServers` in `claude_desktop_config.json` is empty; the old entry's backup is `claude_desktop_config.json.before-sn-mcp-bundle`.
+- **Claude Desktop:** the `.mcpb` bundle, version 0.1.2, named "ServiceNow (read-only)", plus both skills uploaded. Version 0.1.6 is built at `packages/server/sn-mcp.mcpb`. It isn't known to be installed: until the user installs 0.1.3 or later, Desktop still refuses `compare_records` on a single-instance scope. The live test doesn't depend on that, because it starts the built server itself. `mcpServers` in `claude_desktop_config.json` is empty; the old entry's backup is `claude_desktop_config.json.before-sn-mcp-bundle`.
 - **Claude Code:** Code sessions inside the Desktop app use the Desktop connector and skills. Nothing is registered separately: the `sn-mcp` registration and plugin were removed, because two connectors in one session don't share scopes.
 - **ChatGPT Desktop:** installed, version 26.1029.61003, engine codex-cli 0.166.0-alpha.6. sn-mcp is registered in `~/.codex/config.toml` by the user, through the app's settings, without the longer timeouts.
 - **Git:** `origin` is https://github.com/cuneytbozok/assistme (public). Commits use the no-reply address set in this repo's git config.

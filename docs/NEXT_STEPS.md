@@ -2,9 +2,9 @@
 
 The connector is installed and working in Claude Desktop, and every required step is done. All of these are optional.
 
-## 1. Install version 0.1.5
+## 1. Install version 0.1.6
 
-Comparing on one instance, and comparing record versions, passed live. To use them in Claude Desktop, install `packages/server/sn-mcp.mcpb` (version 0.1.5), then Cmd+Q and reopen.
+Comparing on one instance, and comparing record versions, passed live. To use them in Claude Desktop, install `packages/server/sn-mcp.mcpb` (version 0.1.6), then Cmd+Q and reopen.
 
 ## ChatGPT Desktop
 
@@ -12,7 +12,7 @@ Run `npm run setup`, and copy the printed values into **Settings → MCP servers
 
 ## Windows
 
-Left for later, because you don't have a Windows PC. The first Windows CI run passed 16 of 18 tests and found a problem that isn't fixed: setup's check of folder permissions may not work. Nobody should rely on Windows until that's fixed. After that, someone with a PC can try the install using [INSTALL.md](INSTALL.md#windows). The CI job doesn't cover real Chrome or a real instance.
+Left for later, because you don't have a Windows PC. The Windows CI job passes, but it doesn't cover real Chrome or a real instance. Someone with a PC can try the install using [INSTALL.md](INSTALL.md#windows).
 
 ## 2. A second instance
 

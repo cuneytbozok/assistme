@@ -1528,10 +1528,19 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
   4. The MCP server authenticates over the pipe.
   5. A real instance reads live on Windows, in Chrome, from each client in use.
   6. macOS behaviour is unchanged.
-- **Blocker:** two things. `readAcls` returns nothing on Windows, and the install check treats that as safe, so it **fails open**; fixing it needs a push to re-run CI, which is the user's decision. AC5 needs a real Windows PC, and the user has none (2026-11-05). Don't describe Windows as working.
-- **First CI run (2026-11-05, run 42028030938, `windows-latest`):** 16 of 18 passed, including all of `client-e2e.test.ts`, so the real broker, named pipe, handshake and icacls ran on Windows, with the extension's authorization code and ServiceNow mocked. Both failures come from `readAcls`, whose cause isn't known. The second test never got to check a refusal, and the first stopped there, so the steps after it (the handshake through the installed wrapper, and uninstall) didn't run.
+- **Blocker:** AC5 needs a real Windows PC, and the user has none (2026-11-05). AC1 to AC4 pass in CI. Don't describe Windows as working with real Chrome or a real instance.
 - **Evidence:** —
-- **What was checked on the Mac (2026-11-05), which isn't evidence of Windows working:** the Windows logic in `windows.test.ts` (ACL decisions, pipe names, wrapper quoting, registry arguments), AC6 by the full test suite, and the live T-043 run going through the changed broker code.
+- **CI (`windows-latest`, final run 42030971635, 2026-11-05):** 20 of 20 passed, on real Windows, without real Chrome, a real AI client or a real instance.
+  - **AC1:** setup, then uninstall removing the folder and the registry entry. A folder granting `Users` write access is refused, and the home folder accepted.
+  - **AC2, in part:** the wrapper the registry entry leads to starts the host and it answers `ready`. It was started by the test, as Chrome would, not by Chrome.
+  - **AC3:** the runtime folder and `broker.key` each have one entry, the current user.
+  - **AC4:** the real handshake over the real pipe, and `client-e2e.test.ts` with the built server over STDIO, with real `authz.ts`, and with ServiceNow mocked.
+- **What CI found, each fixed:**
+  1. **The install check failed open.** Every `Get-Acl` failed and the check took the empty answer as safe. A folder with no answer now refuses, and errors stop the read.
+  2. **The cause:** Windows PowerShell inherited `PSModulePath` from PowerShell 7, which breaks loading `Get-Acl`. It's now removed for that process. A real user starting from PowerShell 7 would have hit this.
+  3. **Restricting a folder left an entry set directly on it,** such as `Users: read`, which a stronger test showed. In normal use the folder held only SYSTEM and Administrators, so nothing leaked, but the check that protects the key wasn't doing its job. It now resets the folder and its contents first.
+- **What was checked on the Mac (2026-11-05):** AC6 by the full test suite. T-043's live run used the changed broker code, before these three fixes, which only change Windows paths.
+- **Still unverified:** AC5. Chrome finding the host by itself, the extension talking to it, real reads, and Claude Desktop or ChatGPT Desktop on Windows.
 
 ### T-045 — Skills in Codex
 

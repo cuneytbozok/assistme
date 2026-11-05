@@ -4,7 +4,7 @@ sn-mcp lets Claude or ChatGPT Desktop read your ServiceNow instances through you
 
 ## Requirements
 
-- macOS. Windows support is new and **hasn't been tested on a real Windows PC yet**: see [Windows](#windows)
+- macOS, or Windows, which passes automated tests but **hasn't been tried on a real PC yet**: see [Windows](#windows)
 - Google Chrome
 - Node.js 22.18 or newer (`node --version`)
 - A ServiceNow instance you can sign in to
@@ -141,7 +141,7 @@ After upgrading Node, run `npm run setup` again: the native host records which N
 
 ## Windows
 
-**Not tested on a real Windows PC yet, and the first automated run found a problem that isn't fixed: setup's check of folder permissions may not work.** The steps are the same, in PowerShell:
+**Not tried on a real PC yet.** Install, the host, its permissions and the connection to the server pass automated tests on Windows, but real Chrome, your AI client and a real instance haven't been tested together. The steps are the same, in PowerShell:
 
 - Keep the project and Node where only you can write. Your home folder is fine. `C:\src` isn't, because every user can write to new folders under `C:\`, and setup refuses it. Node in `C:\Program Files\nodejs` is fine.
 - Setup registers the host for your user, under `HKCU\Software\Google\Chrome\NativeMessagingHosts`, and runtime files go in `%USERPROFILE%\AppData\Local\sn-mcp`.

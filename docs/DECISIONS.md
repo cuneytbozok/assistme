@@ -330,12 +330,12 @@ Format: Status · Context · Decision · Alternatives considered · Consequences
 
 ## ADR-015 — Windows support
 
-- **Status:** Accepted (2026-11-05), requested by the user. **Implemented without ever running on Windows** (T-044 is BLOCKED).
+- **Status:** Accepted (2026-11-05), requested by the user. Passes in Windows CI; **never run on a real PC with real Chrome** (T-044 is BLOCKED).
 - **Context:** The broker's protection relies on a 0700 folder, a 0600 socket file and owner checks, none of which exist on Windows.
 - **Decision:** Same broker, handshake and protocol, with these replacements:
   - **Endpoint:** a named pipe named from a hash of the runtime folder. Node can't set a pipe's DACL, so the Windows default applies: full control for the creator, SYSTEM and administrators, read for others. A process can only use the pipe with write access, and it must then pass the mutual HMAC proof, whose key is in the protected folder. An impostor pipe learns only the `hello` metadata, as on macOS; libuv's first-instance flag makes the broker's own listen fail rather than share a name.
-  - **Runtime folder:** `%USERPROFILE%\AppData\Local\sn-mcp`, from the home folder rather than `%LOCALAPPDATA%`, because Chrome and AI clients pass different environments. `icacls` sets its ACL to the current user's SID at every start, failing closed (exit 78). It enforces rather than checks, and SIDs avoid localized names.
-  - **Install safety:** every folder above the node, host, wrapper and manifest paths is read through PowerShell's `Get-Acl`, by SID. Write access for anyone but the user, SYSTEM, administrators and TrustedInstaller refuses the install, the same rule as macOS. So does a failed check. The drive root is skipped.
+  - **Runtime folder:** `%USERPROFILE%\AppData\Local\sn-mcp`, from the home folder rather than `%LOCALAPPDATA%`, because Chrome and AI clients pass different environments. `icacls` resets the folder and its contents, then limits it to the current user's SID, at every start, failing closed (exit 78). Without the reset, entries set directly on the folder stayed (found in CI). It enforces rather than checks, and SIDs avoid localized names.
+  - **Install safety:** every folder above the node, host, wrapper and manifest paths is read through PowerShell's `Get-Acl`, by SID. Write access for anyone but the user, SYSTEM, administrators and TrustedInstaller refuses the install, the same rule as macOS. So does a failed check, or a folder with no answer. PowerShell runs without the inherited `PSModulePath`, which breaks `Get-Acl` when started from PowerShell 7. The drive root is skipped.
   - **Chrome:** `native-host.cmd` plus `HKCU\Software\Google\Chrome\NativeMessagingHosts\com.snmcp.bridge`, for this user only.
 - **Consequences:** A clone in `C:\src` or a Node in a shared tools folder is refused, since they inherit "Authenticated Users: Modify" from `C:\`. The code stays in the home folder, as on macOS. Chrome only; Edge has a separate registry path.
 
