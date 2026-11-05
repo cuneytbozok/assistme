@@ -1,6 +1,6 @@
 # Handoff
 
-_Last updated: 2026-11-05 (after T-025)_
+_Last updated: 2026-11-05 (after T-026)_
 
 ## Current project state
 
@@ -54,7 +54,8 @@ _Last updated: 2026-11-05 (after T-025)_
 - **Last completed task:** T-023 — Response shaping, automatic pagination, completeness contract. `query_records` now paginates with cursors, supports `fields:["*"]` and `max_chars`, and never drops rows silently (ACL-hidden rows handled via the count).
 - **T-024 DONE:** `query_records` is complete (filters, raw query, text, order, display mode, cursors). Tools now live in `server/src/mcp/tools/` with a shared `ToolContext`; tests use `test/mcp-harness.ts`.
 - **T-025 DONE:** `get_record` with `tools/support.ts` (`SnClient`, budget), `tools/record-lookup.ts`, `dataResponse`, signed composite cursor state.
-- **Next task:** T-026 (`discover_tables` + `describe_table`).
+- **T-026 DONE:** `discover_tables`, `describe_table`; `beginTool` is the shared opening for data tools.
+- **Next task:** T-027 (`get_field_content`).
 - **Verify live in T-034:** `sysparm_offset` counts pre-ACL rows (ADR-011 addendum).
 - **Waiting on the user:** T-015 live run (second instance); `REQUEST_DENIED` vs `status: denied` (T-015 AC6); fail-closed dictionary validation (ADR-005 addendum).
 - **Role-agnostic (ADR-012, 2026-11-04):** no ServiceNow role handling of any kind. Don't add role checks, dedicated accounts or impersonation features.

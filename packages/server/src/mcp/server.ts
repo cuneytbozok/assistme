@@ -33,6 +33,8 @@ import {
   UNTRUSTED_NOTE,
 } from './tools/common.js';
 import type { CallOutcome, ToolContext } from './tools/context.js';
+import { registerDescribeTable } from './tools/describe-table.js';
+import { registerDiscoverTables } from './tools/discover-tables.js';
 import { registerGetRecord } from './tools/get-record.js';
 import { registerQueryRecords } from './tools/query-records.js';
 
@@ -387,6 +389,8 @@ export function createMcpServer(
   };
   registerQueryRecords(server, tools);
   registerGetRecord(server, tools);
+  registerDiscoverTables(server, tools);
+  registerDescribeTable(server, tools);
 
   return server;
 }

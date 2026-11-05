@@ -329,6 +329,46 @@ export class MetadataService {
     throw new MetadataError('INVALID_FIELD', 'Empty field path.');
   }
 
+  /**
+   * Every field's choices for a table in one read (for describe_table). For each field, the most
+   * specific table in the chain that defines any wins, as in `choices`.
+   */
+  allChoices(ctx: MetaContext, table: string): Promise<Map<string, ChoiceInfo[]>> {
+    return this.cached(`${ctx.instanceKey}|allChoices|${table}`, async () => {
+      const info = await this.table(ctx, table);
+      const rows = await this.rows(
+        ctx,
+        'sys_choice',
+        [
+          { field: 'name', op: 'in', value: info.chain },
+          { field: 'inactive', op: '=', value: 'false' },
+        ],
+        ['name', 'element', 'value', 'label', 'sequence', 'language'],
+        'sequence',
+      );
+      const depth = new Map(info.chain.map((t, i) => [t, i]));
+      const out = new Map<string, ChoiceInfo[]>();
+      const owner = new Map<string, number>();
+      for (const r of rows) {
+        if (str(r.language) && str(r.language) !== 'en') continue;
+        const element = str(r.element);
+        const d = depth.get(str(r.name));
+        if (!element || d === undefined) continue;
+        const prior = owner.get(element);
+        if (prior !== undefined && prior < d) continue;
+        if (prior === undefined || d < prior) out.set(element, []);
+        owner.set(element, d);
+        const seq = Number.parseInt(str(r.sequence), 10);
+        out.get(element)?.push({
+          value: str(r.value),
+          label: str(r.label),
+          ...(Number.isFinite(seq) ? { sequence: seq } : {}),
+        });
+      }
+      return out;
+    });
+  }
+
   /** Choices for a field, from the most specific table in the chain that defines any. */
   choices(ctx: MetaContext, table: string, field: string): Promise<ChoiceInfo[]> {
     return this.cached(`${ctx.instanceKey}|choices|${table}|${field}`, async () => {

@@ -35,7 +35,7 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 | T-023 | Response shaping, pagination, completeness      | 018      | DONE        |
 | T-024 | `query_records` full                            | 023      | DONE        |
 | T-025 | `get_record`                                    | 024      | DONE        |
-| T-026 | `discover_tables` + `describe_table`            | 017, 023 | TODO        |
+| T-026 | `discover_tables` + `describe_table`            | 017, 023 | DONE        |
 | T-027 | `get_field_content`                             | 025      | TODO        |
 | T-028 | `aggregate_records`                             | 024      | TODO        |
 | T-029 | `get_related_records`                           | 026, 028 | TODO        |
@@ -1037,7 +1037,7 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 
 ### T-026 — `discover_tables` + `describe_table`
 
-- **Status:** TODO
+- **Status:** DONE
 - **Purpose:** Dynamic discovery of any accessible table (AC-10).
 - **Dependencies:** T-017, T-023
 - **Deliverables:** `discover_tables(search, limit)` via `sys_db_object` name/label `contains` (paginated); `describe_table(table, include_inherited, include_choices)` from the metadata service, with suggestions on `NOT_FOUND`.
@@ -1045,7 +1045,17 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 - **Acceptance criteria:** a custom `u_`/`x_` table fixture is discoverable and describable; inherited fields are marked with their source table; output is compact.
 - **Verification:** `npm test`.
 - **DoD:** —
-- **Evidence:** —
+- **Evidence (2026-11-05):**
+  - Implemented: `tools/discover-tables.ts`, `tools/describe-table.ts`, `MetadataService.allChoices` (one read for all choices), `beginTool` and `countedMeta` in `tools/support.ts`.
+  - Tests: `test/discover-describe.test.ts` (8 tests; mock). Root build, tests and lint exit 0.
+  - **Acceptance criteria:**
+    - Custom tables ✔ `x_acme_vendor_task` found by name, `u_widget` by label, both describable.
+    - Inherited fields ✔ `inherited_from: task` on `number`; own fields have none; `include_inherited: false` leaves only own fields; `incident.state` (child override) is not marked inherited.
+    - Compact ✔ each field entry under 150 characters. A 401-field table at `max_chars` 8,000 pages by cursor with every field exactly once.
+    - Discovery walk ✔ 300+ tables through cursors, sorted, no duplicates.
+    - NOT_FOUND ✔ with suggestions ("incidnt" → incident).
+  - **Decisions:** `describe_table` refuses credential tables (`TABLE_DENIED`), and `discover_tables` lists them marked `blocked` instead of hiding them. Password-type fields are listed with `sensitive: true` (names only, never values). Metadata requests that reach ServiceNow count in `requests_used`; cache hits don't.
+  - **Mutation checks** (each reverted): no `inherited_from`, cursor dropped on budget stop, no `blocked` mark, credential table describable, choice ownership ignored; all fail tests.
 
 ### T-027 — `get_field_content`
 

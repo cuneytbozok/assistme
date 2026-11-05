@@ -6,9 +6,11 @@ import type { CallToolResult } from '@modelcontextprotocol/server';
 import type { ErrorCode, Operation } from '@sn-mcp/shared';
 import { z } from 'zod';
 import type { ServerConfig } from '../../config.js';
+import type { ToolCursorBase } from '../cursor.js';
 import { mapBridgeError } from '../errors.js';
+import type { MetaContext } from '../metadata.js';
 import type { Row } from '../paginate.js';
-import { type Provenance, provenance } from '../results.js';
+import { type Provenance, provenance, toolError } from '../results.js';
 import type { Ok } from './common.js';
 import type { ToolContext } from './context.js';
 
@@ -217,4 +219,107 @@ export function isFatal(code: ErrorCode): boolean {
     'SESSION_EXPIRED',
     'RATE_LIMITED',
   ].includes(code);
+}
+
+/** Everything a data tool starts from, after the checks every tool shares. */
+export interface ToolStart<S> {
+  id: string;
+  hints: string[];
+  maxChars: number;
+  instance: string;
+  sn: SnClient;
+  mc: MetaContext;
+  /** The decoded state when the call continues a cursor. */
+  state?: S;
+}
+
+/**
+ * Shared opening of a data tool: scope (never defaulted), result size, cursor signature and
+ * tool, and the target instance. A cursor is bound to its instance: an argument or a scope that
+ * disagrees is refused.
+ */
+export function beginTool<S extends ToolCursorBase = ToolCursorBase>(
+  ctx: ToolContext,
+  args: {
+    scope_id?: string | undefined;
+    instance?: string | undefined;
+    cursor?: string | undefined;
+    max_chars?: number | undefined;
+  },
+  cursor?: { tool: string; schema: z.ZodType<S> },
+): ToolStart<S> | CallToolResult {
+  const id = ctx.requireScope(args.scope_id);
+  if (typeof id !== 'string') return id;
+  const hints: string[] = [];
+  const maxChars = resolveMaxChars(args.max_chars, ctx.config, hints);
+  let state: S | undefined;
+  if (args.cursor !== undefined) {
+    if (!cursor) return toolError('INVALID_INPUT', 'This tool does not take a cursor.');
+    try {
+      state = ctx.cursors.decodeState(cursor.schema, args.cursor, cursor.tool);
+    } catch (e) {
+      return toolError(
+        'INVALID_INPUT',
+        (e as Error).message,
+        'Run the call again without a cursor.',
+      );
+    }
+    if (args.instance !== undefined && args.instance !== state.instance) {
+      return toolError(
+        'INVALID_INPUT',
+        `This cursor is for instance "${state.instance}", not "${args.instance}".`,
+      );
+    }
+  }
+  const target = ctx.scopes.resolveTarget(id, state?.instance ?? args.instance);
+  if (!target.ok) {
+    if (state && target.code === 'INSTANCE_NOT_IN_SCOPE') {
+      return toolError(
+        'INVALID_INPUT',
+        `This cursor is for instance "${state.instance}", which this scope doesn't cover.`,
+        target.hint,
+      );
+    }
+    return toolError(target.code, target.message, target.hint);
+  }
+  const sn = new SnClient(ctx, id, target.instance);
+  return {
+    id,
+    hints,
+    maxChars,
+    instance: target.instance,
+    sn,
+    mc: countedMeta(ctx.metaContext(id, target.instance), sn),
+    ...(state ? { state } : {}),
+  };
+}
+
+/** Metadata reads that really reach ServiceNow count in `requests_used` (cache hits don't). */
+export function countedMeta(mc: MetaContext, sn: SnClient): MetaContext {
+  return {
+    instanceKey: mc.instanceKey,
+    fetch: (req) => {
+      sn.requests++;
+      return mc.fetch(req);
+    },
+  };
+}
+
+export const isToolError = (v: unknown): v is CallToolResult =>
+  typeof v === 'object' && v !== null && 'content' in v;
+
+/** The `omitted` entry for "more results exist": says why and gives the exact next call. */
+export function moreOmission(
+  tool: string,
+  scopeId: string,
+  cursor: string,
+  reason: 'limit' | 'response_budget' | 'error' | 'batch',
+  note: string,
+): {
+  kind: 'rows';
+  reason: string;
+  note: string;
+  next: { tool: string; args: Record<string, unknown> };
+} {
+  return { kind: 'rows', reason, note, next: { tool, args: { scope_id: scopeId, cursor } } };
 }

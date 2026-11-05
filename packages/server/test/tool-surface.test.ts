@@ -17,6 +17,8 @@ import { answerMetadata } from './fake-sn.js';
 
 const APPROVED = [
   'claim_scope',
+  'describe_table',
+  'discover_tables',
   'get_record',
   'list_instances',
   'query_records',
@@ -114,6 +116,26 @@ describe('AC1: tool surface snapshot', () => {
       .sort((a, b) => a.name.localeCompare(b.name));
     expect(snapshot).toEqual([
       { name: 'claim_scope', inputs: ['request_id'], readOnly: true, destructive: false },
+      {
+        name: 'describe_table',
+        inputs: [
+          'cursor',
+          'include_choices',
+          'include_inherited',
+          'instance',
+          'max_chars',
+          'scope_id',
+          'table',
+        ],
+        readOnly: true,
+        destructive: false,
+      },
+      {
+        name: 'discover_tables',
+        inputs: ['cursor', 'instance', 'limit', 'max_chars', 'scope_id', 'search'],
+        readOnly: true,
+        destructive: false,
+      },
       {
         name: 'get_record',
         inputs: [
