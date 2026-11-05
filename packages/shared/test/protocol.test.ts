@@ -106,6 +106,7 @@ describe('protocol fixtures', () => {
       'scope.request',
       'scope.claim',
       'scope.release',
+      'scope.check',
       'registry.get',
       'challenge',
       'auth_ok',

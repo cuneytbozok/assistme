@@ -23,6 +23,11 @@ export interface ServerConfig {
   maxResponseChars: number;
   pageSize: number;
   fieldPreviewChars: number;
+  /** Default line window of get_field_content (no hard maximum). */
+  fieldChunkLines: number;
+  /** In-process cache for chunked field reads (never persisted). */
+  fieldCacheBytes: number;
+  fieldCacheTtlMs: number;
   highVolumeTables: readonly string[];
   /** Extra denied table patterns (SN_MCP_DENIED_TABLES); added to the shared defaults. */
   extraDeniedTables: readonly string[];
@@ -64,6 +69,13 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
       50,
       100_000,
     ),
+    fieldChunkLines: SERVER_DEFAULTS.fieldChunkLines,
+    fieldCacheBytes:
+      int(env.SN_MCP_FIELD_CACHE_MB, SERVER_DEFAULTS.fieldCacheBytes / (1024 * 1024), 1, 4096) *
+      1024 *
+      1024,
+    fieldCacheTtlMs:
+      int(env.SN_MCP_FIELD_CACHE_TTL_S, SERVER_DEFAULTS.fieldCacheTtlMs / 1000, 1, 86_400) * 1000,
     highVolumeTables: patterns,
     extraDeniedTables: parseTablePatterns(env.SN_MCP_DENIED_TABLES),
   };

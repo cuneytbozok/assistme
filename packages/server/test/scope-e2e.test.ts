@@ -66,6 +66,14 @@ function realAuthzExtension(ext: MockExtension) {
         return { ok: true as const, status: 200, body: [], bytes: 2 };
       fetched.push(host);
       const table = (op as { table?: string }).table;
+      if ((op as { kind?: string }).kind === 'table.get') {
+        return {
+          ok: true as const,
+          status: 200,
+          body: { number: Array.from({ length: 2000 }, (_, i) => `line ${i}`).join('\n') },
+          bytes: 50,
+        };
+      }
       return {
         ok: true as const,
         status: 200,
@@ -158,6 +166,26 @@ async function setup() {
 }
 
 describe('T-012 scope enforcement end to end (real authz.ts)', () => {
+  it("T-027: revoking in the popup stops reads from the server's local field copy too", async () => {
+    const s = await setup();
+    const call = await s.connect();
+    const scope = await s.scopeFor(call, ['alpha']);
+    const args = { scope_id: scope, table: 'task', sys_id: 'a'.repeat(32), field: 'number' };
+    const first = await call('get_field_content', args);
+    expect(first.body.data.lines[0].text).toBe('line 0');
+    expect(first.body.complete).toBe(false);
+    const before = s.fetched.length;
+    const cached = await call('get_field_content', { ...args, start_line: 401 });
+    expect(cached.body.data.from_local_copy).toBe(true);
+    expect(s.fetched.length).toBe(before); // served from memory, after the real extension agreed
+
+    expect(await s.grants.revokeAll()).toBeGreaterThan(0);
+    const after = await call('get_field_content', { ...args, start_line: 801 });
+    expect(after.isError).toBe(true);
+    expect(after.body.error.code).toBe('SCOPE_UNKNOWN');
+    expect(JSON.stringify(after.body)).not.toContain('line 800');
+  });
+
   it('AC3: a scope for alpha cannot read beta; a compare scope covers only its pair', async () => {
     const s = await setup();
     const call = await s.connect();

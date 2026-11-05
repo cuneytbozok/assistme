@@ -1,6 +1,7 @@
 import { createHash, randomBytes } from 'node:crypto';
 import { APPROVAL_CODE_RE, REQUEST_ID_RE, SCOPE_ID_RE } from '@sn-mcp/shared';
 import { describe, expect, it } from 'vitest';
+import { type AuthzDeps, handleForward } from '../src/background/authz.js';
 import { type GrantStorage, Grants, makeApprovalCode } from '../src/background/grants.js';
 import type { InstanceEntry } from '../src/background/registry.js';
 
@@ -270,5 +271,69 @@ describe('grants (minimal model)', () => {
       ),
     );
     expect((await grants.snapshot()).pending).toHaveLength(20);
+  });
+});
+
+describe('scope.check (T-027): the whole access decision, without a request', () => {
+  const forward = (client: typeof A, scopeId: string, instance: string) => ({
+    v: 1,
+    kind: 'forward',
+    client,
+    request: { v: 1, kind: 'scope.check', id: 'm1', scopeId, instance },
+  });
+
+  function deps(g: Grants, over: Partial<AuthzDeps> = {}): AuthzDeps & { executed: string[] } {
+    const executed: string[] = [];
+    return {
+      grants: g,
+      registry: async () => REGISTRY,
+      hasPermission: async () => true,
+      execute: async (host) => {
+        executed.push(host);
+        return { ok: false, code: 'SN_API_ERROR', message: 'must not run' };
+      },
+      executed,
+      ...over,
+    };
+  }
+
+  it('valid only for the client, instance and time of the grant; never executes', async () => {
+    const { grants, clock } = setup();
+    const { scopeId } = await approvedScope(grants);
+    const d = deps(grants);
+    const code = async (c: typeof A, s: string, i: string) => {
+      const r = await handleForward(forward(c, s, i), d);
+      return r?.ok ? 'ok' : r?.error.code;
+    };
+    expect(await handleForward(forward(A, scopeId, 'dev'), d)).toMatchObject({
+      ok: true,
+      result: { type: 'scope.check', valid: true },
+    });
+    expect(await code(B, scopeId, 'dev')).toBe('SCOPE_UNKNOWN');
+    expect(await code(A, scopeId, 'prod')).toBe('INSTANCE_NOT_IN_SCOPE');
+    expect(await code(A, `scp_${'Q'.repeat(22)}`, 'dev')).toBe('SCOPE_UNKNOWN');
+    clock.t += 13 * 3_600_000;
+    expect(await code(A, scopeId, 'dev')).toBe('SCOPE_EXPIRED');
+    expect(d.executed).toEqual([]);
+  });
+
+  it('ends at once on revoke, on a changed registration, and without host permission', async () => {
+    const { grants } = setup();
+    const { scopeId } = await approvedScope(grants);
+    const code = async (d: AuthzDeps) => {
+      const r = await handleForward(forward(A, scopeId, 'dev'), d);
+      return r?.ok ? 'ok' : r?.error.code;
+    };
+    expect(await code(deps(grants))).toBe('ok');
+    expect(
+      await code(
+        deps(grants, { registry: async () => [entry('dev', 'dev', 'other.service-now.com')] }),
+      ),
+    ).toBe('SCOPE_UNKNOWN');
+    expect(await code(deps(grants, { hasPermission: async () => false }))).toBe(
+      'INSTANCE_NOT_REGISTERED',
+    );
+    expect(await grants.revokeAll()).toBeGreaterThan(0);
+    expect(await code(deps(grants))).toBe('SCOPE_UNKNOWN');
   });
 });

@@ -103,6 +103,11 @@ export const FIXTURES: Fixture[] = [
     value: { v: 1, kind: 'scope.release', id: 'm4', scopeId: SCOPE_ID },
   },
   {
+    name: 'scope.check',
+    schema: ClientToBrokerSchema,
+    value: { v: 1, kind: 'scope.check', id: 'm6', scopeId: SCOPE_ID, instance: 'dev' },
+  },
+  {
     name: 'registry.get',
     schema: ClientToBrokerSchema,
     value: { v: 1, kind: 'registry.get', id: 'm5' },
@@ -189,6 +194,17 @@ export const FIXTURES: Fixture[] = [
       id: 'm4',
       ok: true,
       result: { type: 'scope.release', released: true },
+    },
+  },
+  {
+    name: 'response scope.check',
+    schema: BrokerToClientSchema,
+    value: {
+      v: 1,
+      kind: 'response',
+      id: 'm6',
+      ok: true,
+      result: { type: 'scope.check', valid: true },
     },
   },
   {

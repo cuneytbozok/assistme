@@ -197,6 +197,19 @@ export const ScopeReleaseSchema = z.strictObject({
   scopeId: ScopeIdSchema,
 });
 
+/**
+ * "Is this grant still valid for this instance?" No request reaches ServiceNow. The server asks
+ * before answering from its in-process field cache, so the extension still decides every read
+ * (T-027) and a revoked scope stops working at once, cached or not.
+ */
+export const ScopeCheckSchema = z.strictObject({
+  v,
+  kind: z.literal('scope.check'),
+  id: MessageIdSchema,
+  scopeId: ScopeIdSchema,
+  instance: AliasSchema,
+});
+
 export const RegistryGetSchema = z.strictObject({
   v,
   kind: z.literal('registry.get'),
@@ -208,6 +221,7 @@ export const RequestEnvelopeSchema = z.discriminatedUnion('kind', [
   ScopeRequestSchema,
   ScopeClaimSchema,
   ScopeReleaseSchema,
+  ScopeCheckSchema,
   RegistryGetSchema,
 ]);
 export type RequestEnvelope = z.infer<typeof RequestEnvelopeSchema>;
@@ -251,6 +265,11 @@ export const ScopeReleaseResultSchema = z.strictObject({
   released: z.boolean(),
 });
 
+export const ScopeCheckResultSchema = z.strictObject({
+  type: z.literal('scope.check'),
+  valid: z.literal(true),
+});
+
 export const RegistryResultSchema = z.strictObject({
   type: z.literal('registry.get'),
   instances: z.array(ClientInstanceInfoSchema).max(50),
@@ -261,6 +280,7 @@ export const ResultSchema = z.discriminatedUnion('type', [
   ScopeRequestResultSchema,
   ScopeClaimResultSchema,
   ScopeReleaseResultSchema,
+  ScopeCheckResultSchema,
   RegistryResultSchema,
 ]);
 export type Result = z.infer<typeof ResultSchema>;
@@ -357,6 +377,7 @@ export const ClientToBrokerSchema = z.discriminatedUnion('kind', [
   ScopeRequestSchema,
   ScopeClaimSchema,
   ScopeReleaseSchema,
+  ScopeCheckSchema,
   RegistryGetSchema,
 ]);
 export type ClientToBroker = z.infer<typeof ClientToBrokerSchema>;

@@ -21,6 +21,8 @@ const scopeFor = (inst: string, n = 1) =>
 export interface Harness {
   call: (name: string, args: Record<string, unknown>) => Promise<any>;
   sn: FakeServiceNow;
+  /** The user revokes a scope in the popup. */
+  revoke: (scope: string) => void;
   dataRequests: {
     kind: string;
     table: string;
@@ -61,6 +63,7 @@ export async function harness(
     error: { code, message },
   });
   const pendingInstance = new Map<string, string>();
+  const revoked = new Set<string>();
   const bridge = {
     cachedRegistry: {
       instances: Object.entries(HOSTS).map(([alias, host]) => ({
@@ -97,7 +100,11 @@ export async function harness(
             expiresAt: '2099-01-01T00:00:00.000Z',
           });
         }
+        case 'scope.check':
+          if (revoked.has(req.scopeId)) return fail('SCOPE_UNKNOWN', 'Unknown scope.');
+          return reply({ type: 'scope.check', valid: true });
         case 'sn.op': {
+          if (revoked.has(req.scopeId)) return fail('SCOPE_UNKNOWN', 'Unknown scope.');
           const op = req.op;
           buildRequest(HOSTS[req.instance] as string, op, 'tok'); // the extension would accept it
           const isMeta = ['sys_db_object', 'sys_dictionary', 'sys_choice'].includes(op.table);
@@ -178,7 +185,13 @@ export async function harness(
     const r = await client.callTool({ name, arguments: args });
     return JSON.parse((r.content as { text: string }[])[0]?.text ?? '{}');
   };
-  return { call, sn, dataRequests, close: () => client.close() };
+  return {
+    call,
+    sn,
+    dataRequests,
+    revoke: (scope) => revoked.add(scope),
+    close: () => client.close(),
+  };
 }
 
 export async function claim(h: Harness, instance: string): Promise<string> {

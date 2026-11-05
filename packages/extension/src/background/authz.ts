@@ -35,6 +35,44 @@ function okResponse(id: string, result: Result): ResponseEnvelope {
   return { v, kind: 'response', id, ok: true, result };
 }
 
+type AccessCheck =
+  | { ok: true; entry: InstanceEntry }
+  | { ok: false; code: ErrorCode; message: string };
+
+/** Every check that decides whether this client may read this instance now (no request made). */
+async function checkAccess(
+  d: AuthzDeps,
+  clientKeyId: string,
+  request: { scopeId: string; instance: string },
+): Promise<AccessCheck> {
+  const grant = await d.grants.authorize(clientKeyId, request.scopeId, request.instance);
+  if (!grant.ok) return { ok: false, code: grant.code, message: grant.message };
+  const entry = (await d.registry()).find((e) => e.alias === request.instance);
+  if (!entry) {
+    return {
+      ok: false,
+      code: 'INSTANCE_NOT_REGISTERED',
+      message: `No registered instance "${request.instance}".`,
+    };
+  }
+  if (!targetMatches(grant.value.targets ?? [], entry)) {
+    // The registration changed after approval (env or host). Never follow it.
+    return {
+      ok: false,
+      code: 'SCOPE_UNKNOWN',
+      message: `The registration of "${entry.alias}" changed after approval. Request a new scope.`,
+    };
+  }
+  if (!(await d.hasPermission(originPattern(entry.host)))) {
+    return {
+      ok: false,
+      code: 'INSTANCE_NOT_REGISTERED',
+      message: `Host permission for ${entry.host} was removed.`,
+    };
+  }
+  return { ok: true, entry };
+}
+
 /** Returns the response to send back, or undefined if the message was not a valid forward. */
 export async function handleForward(
   raw: unknown,
@@ -81,32 +119,15 @@ export async function handleForward(
         const released = await d.grants.release(client.keyId, request.scopeId);
         return okResponse(id, { type: 'scope.release', released });
       }
+      case 'scope.check': {
+        const access = await checkAccess(d, client.keyId, request);
+        if (!access.ok) return errorResponse(id, access.code, access.message);
+        return okResponse(id, { type: 'scope.check', valid: true });
+      }
       case 'sn.op': {
-        const grant = await d.grants.authorize(client.keyId, request.scopeId, request.instance);
-        if (!grant.ok) return errorResponse(id, grant.code, grant.message);
-        const entry = (await d.registry()).find((e) => e.alias === request.instance);
-        if (!entry) {
-          return errorResponse(
-            id,
-            'INSTANCE_NOT_REGISTERED',
-            `No registered instance "${request.instance}".`,
-          );
-        }
-        if (!targetMatches(grant.value.targets ?? [], entry)) {
-          // The registration changed after approval (env or host). Never follow it.
-          return errorResponse(
-            id,
-            'SCOPE_UNKNOWN',
-            `The registration of "${entry.alias}" changed after approval. Request a new scope.`,
-          );
-        }
-        if (!(await d.hasPermission(originPattern(entry.host)))) {
-          return errorResponse(
-            id,
-            'INSTANCE_NOT_REGISTERED',
-            `Host permission for ${entry.host} was removed.`,
-          );
-        }
+        const access = await checkAccess(d, client.keyId, request);
+        if (!access.ok) return errorResponse(id, access.code, access.message);
+        const { entry } = access;
         const r = await d.execute(entry.host, request.op);
         if (!r.ok) return errorResponse(id, r.code, r.message);
         return okResponse(id, {

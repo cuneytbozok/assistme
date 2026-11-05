@@ -320,7 +320,7 @@ Optimize *how* Claude retrieves information, not *how much* it may investigate. 
   - All of them page through results with cursors and report `requests_used`. Their requests go through the same concurrency queue.
 - **Caches** (in-process only, never persisted; ADR-010):
   - Metadata (`sys_db_object`, `sys_dictionary`, `sys_choice`): 15 min TTL per instance.
-  - Field content for chunked reads: TTL and LRU size as configured; bypassed with `refresh: true`.
+  - Field content for chunked reads: TTL and LRU size as configured; bypassed with `refresh: true`. Keyed by scope; the server sends `scope.check` before using a hit, so the extension still decides every read (ADR-003 addendum).
 - **Hints, not refusals:** on high-volume tables or unselective queries, the result suggests filters, time ranges or `aggregate_records` (§6.4).
 
 **Response contract** (completeness is mandatory: a result is either `complete: true` or says exactly what is missing and how to get it):

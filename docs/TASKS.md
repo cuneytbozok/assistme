@@ -36,7 +36,7 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 | T-024 | `query_records` full                            | 023      | DONE        |
 | T-025 | `get_record`                                    | 024      | DONE        |
 | T-026 | `discover_tables` + `describe_table`            | 017, 023 | DONE        |
-| T-027 | `get_field_content`                             | 025      | TODO        |
+| T-027 | `get_field_content`                             | 025      | DONE        |
 | T-028 | `aggregate_records`                             | 024      | TODO        |
 | T-029 | `get_related_records`                           | 026, 028 | TODO        |
 | T-030 | `get_record_history`                            | 025      | TODO        |
@@ -1059,7 +1059,7 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 
 ### T-027 — `get_field_content`
 
-- **Status:** TODO
+- **Status:** DONE
 - **Purpose:** Read scripts, logs and payloads of any length, completely when needed (FR-6.3).
 - **Dependencies:** T-025
 - **Deliverables:**
@@ -1074,7 +1074,18 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
   4. Password fields are refused.
 - **Verification:** `npm test`.
 - **DoD:** —
-- **Evidence:** —
+- **Evidence (2026-11-05):**
+  - Implemented: `tools/get-field-content.ts` (`readWindow` is pure and fuzzed), `mcp/field-cache.ts` (LRU by size + TTL, memory only), `SN_MCP_FIELD_CACHE_MB` / `SN_MCP_FIELD_CACHE_TTL_S`, and a new protocol message `scope.check` (see below).
+  - Tests: `test/get-field-content.test.ts` (14), a real-`authz.ts` revoke test in `scope-e2e.test.ts`, `scope.check` tests in `extension/test/grants.test.ts`, protocol fixtures. All mock. Root build, tests and lint exit 0.
+  - **Acceptance criteria:**
+    - AC1 ✔ A 20,000-line fixture and a 2 MB single-line fixture (with characters JSON must escape, plus emoji) each reassemble to the identical string by following `next` until `complete: true`. Also empty values, trailing newlines, blank lines, CRLF, 200 fuzzed values/budgets. Surrogate pairs are never split. Each result stays under `max_chars`.
+    - AC2 ✔ Reading a whole field makes one `table.get` with `fields:[script]`; later windows report `requests_used: 0`; `refresh: true` fetches the changed value.
+    - AC3 ✔ Evicts least recently used at the size limit, refuses a value bigger than the cache (the read still completes, with a hint), expires by TTL; the module imports nothing, so it can't touch the disk.
+    - AC4 ✔ Password-type and credential-named fields → `FORBIDDEN_OPERATION`, denied tables → `TABLE_DENIED`, unknown fields → `INVALID_FIELD`, all before any data request.
+  - **Security decision (not in the original task; ADR-003 addendum):** a cache hit doesn't reach the extension, which would have kept a revoked scope readable for the cache TTL and broken rule 5. The server now sends `scope.check` before using a hit: the extension runs the same checks as `sn.op` (grant, client, expiry, instance, registration, host permission) and makes no ServiceNow request. Entries are also keyed by scope. Tested with the real `authz.ts`: revoking in the "popup" stops the next chunk.
+  - **Other decisions:** journal fields are read with `display_value=true` because the Table API gives their text only as a display value (to confirm live in T-034).
+  - **Mutation checks** (each reverted): `scope.check` result ignored, wrong `next` position, cache not keyed by scope, no eviction, `refresh` ignored, journal read raw; all fail tests. Removing the surrogate guard changes nothing (an escaped lone surrogate costs more than a whole pair, so the size search already avoids it); it stays as a safeguard, and a test pins the behaviour.
+  - **Deploy note:** the extension must be reloaded for `scope.check`; an old extension doesn't answer it, so cached reads fail closed with `TIMEOUT`.
 
 ### T-028 — `aggregate_records`
 

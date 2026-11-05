@@ -6,6 +6,7 @@ import type { CallToolResult } from '@modelcontextprotocol/server';
 import type { BridgeClient, BridgeRequest } from '../../bridge/client.js';
 import type { ServerConfig } from '../../config.js';
 import type { CursorCodec } from '../cursor.js';
+import type { FieldCache } from '../field-cache.js';
 import type { MetaContext, MetadataService } from '../metadata.js';
 import type { ScopeStore } from '../scope-store.js';
 import type { Ok } from './common.js';
@@ -20,6 +21,7 @@ export interface ToolContext {
   cursors: CursorCodec;
   config: ServerConfig;
   meta: MetadataService;
+  fieldCache: FieldCache;
   metaContext: (scopeId: string, instance: string) => MetaContext;
   metadataError: (e: unknown, scopeId: string) => CallToolResult;
   call: <T extends string>(
