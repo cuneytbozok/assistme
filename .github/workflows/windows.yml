@@ -1,0 +1,46 @@
+name: Windows
+
+# The only automated evidence of Windows support: the Mac this project is developed on can't run it.
+# It doesn't cover real Chrome, real AI clients or a real instance.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+
+      # Setup refuses folders other users can write to, as the runner's work and tool folders are,
+      # so both go under the home folder, where a real install would be.
+      - name: Move the project and Node into the home folder
+        shell: pwsh
+        run: |
+          Copy-Item (Split-Path (Get-Command node).Source) "$HOME\node" -Recurse
+          "$HOME\node" | Out-File -Append -Encoding utf8 $env:GITHUB_PATH
+          Copy-Item $env:GITHUB_WORKSPACE "$HOME\AssistMe" -Recurse
+
+      - name: Install and build
+        shell: pwsh
+        working-directory: ${{ github.workspace }}
+        run: |
+          Set-Location "$HOME\AssistMe"
+          npm ci
+          npm run build
+
+      - name: Test
+        shell: pwsh
+        working-directory: ${{ github.workspace }}
+        run: |
+          Set-Location "$HOME\AssistMe\packages\server"
+          npx vitest run test/windows.test.ts test/client-e2e.test.ts

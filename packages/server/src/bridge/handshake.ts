@@ -6,7 +6,6 @@
  */
 
 import { connect, type Socket } from 'node:net';
-import { join } from 'node:path';
 import {
   AUTH_TIMEOUT_MS,
   AuthOkSchema,
@@ -25,7 +24,7 @@ import {
   readBrokerKey,
 } from '../native-host/auth.js';
 import { encodeFrame, FrameDecoder, MAX_FROM_EXTENSION_BYTES } from '../native-host/framing.js';
-import { checkSocketFile, SOCKET_FILE } from '../native-host/socket-guard.js';
+import { brokerEndpoint, checkSocketFile } from '../native-host/socket-guard.js';
 
 export class BridgeAuthError extends Error {
   constructor(
@@ -57,7 +56,7 @@ export async function connectToBroker(
   timeoutMs = AUTH_TIMEOUT_MS,
 ): Promise<AuthenticatedConnection> {
   const uid = currentUid();
-  const path = join(dir, SOCKET_FILE);
+  const path = brokerEndpoint(dir);
   let key: Buffer;
   try {
     checkSocketFile(path, uid);

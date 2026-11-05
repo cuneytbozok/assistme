@@ -89,7 +89,9 @@ export function removeBrokerKey(dir: string, key: Buffer): void {
   }
 }
 
+/** Windows has no uid, and its checks don't use one (ADR-015). */
 export function currentUid(): number {
+  if (process.platform === 'win32') return -1;
   if (typeof process.getuid !== 'function') throw new Error('POSIX uid required');
   return process.getuid();
 }

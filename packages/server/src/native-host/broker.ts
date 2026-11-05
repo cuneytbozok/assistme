@@ -44,10 +44,12 @@ import {
 import type { Logger } from './logger.js';
 import {
   acquireLock,
+  BrokerStartError,
   checkSocketFile,
   ensureRuntimeDir,
   prepareSocketPath,
 } from './socket-guard.js';
+import { isWindows } from './windows.js';
 
 export interface BrokerOptions {
   dir: string;
@@ -136,16 +138,24 @@ export class Broker {
       const previous = process.umask(0o077);
       try {
         await new Promise<void>((resolve, reject) => {
-          this.server?.once('error', reject);
+          this.server?.once('error', (e: NodeJS.ErrnoException) =>
+            reject(
+              e.code === 'EADDRINUSE'
+                ? new BrokerStartError('BROKER_CONFLICT', 'the broker endpoint is already in use')
+                : e,
+            ),
+          );
           this.server?.listen(path, () => resolve());
         });
       } finally {
         process.umask(previous);
       }
-      chmodSync(path, 0o600);
-      checkSocketFile(path, uid);
       this.socketPath = path;
-      this.socketIno = lstatSync(path).ino;
+      if (!isWindows()) {
+        chmodSync(path, 0o600);
+        checkSocketFile(path, uid);
+        this.socketIno = lstatSync(path).ino;
+      }
     } catch (e) {
       this.cleanupFiles();
       throw e;

@@ -14,7 +14,12 @@ mkdirSync(out, { recursive: true });
 for (const skill of ['servicenow-readonly-troubleshooting', 'servicenow-development-guide']) {
   const zip = join(out, `${skill}.zip`);
   rmSync(zip, { force: true });
-  execFileSync('zip', ['-q', '-r', '-X', zip, skill, '-x', '*.DS_Store', '-x', '*__pycache__*'], {
+  // Windows has no zip, but its tar writes one from the file name (-a).
+  const [tool, args] =
+    process.platform === 'win32'
+      ? ['tar', ['-a', '-c', '-f', zip, '--exclude=__pycache__', skill]]
+      : ['zip', ['-q', '-r', '-X', zip, skill, '-x', '*.DS_Store', '-x', '*__pycache__*']];
+  execFileSync(tool as string, args as string[], {
     cwd: join(ROOT, 'plugin/skills'),
     stdio: 'inherit',
   });
