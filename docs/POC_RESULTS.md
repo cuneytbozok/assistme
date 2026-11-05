@@ -8,7 +8,7 @@
   - The newest `sys_upgrade_history` entry is an app upgrade (`sn_creatorstudio`), not the platform build.
   - The UI is Next Experience (Polaris) with classic pages in an iframe.
 - **Method:**
-  - A dev-only diagnostics page plus a service-worker handler, built with `npm run build:diag` (commit `08aa721`; the code was removed after this task).
+  - A dev-only diagnostics page plus a service-worker handler, built with `npm run build:diag` (commit `46c1a2f`; the code was removed after this task).
   - The user ran it in their own Chrome: run 1 logged in; run 2 after logging out and in again; run 3 logged out.
   - Only `GET` requests to `/api/now/table/*` and `/api/now/stats/*`. No tab was navigated.
 - **What was recorded:** token values were never recorded, only presence, length (72) and an 8-hex SHA-256 fingerprint. No cookie values were accessed (the extension has no `cookies` permission).

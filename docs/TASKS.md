@@ -232,7 +232,7 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
   - **Live run:**
     - The user ran the dev-only diagnostics build in their own Chrome 156 against `dev469966.service-now.com` (PDI, DEV, local login) at 16:32–16:39 UTC.
     - Three states were covered: logged in; logged out and back in; logged out.
-    - The spike code is in commit `08aa721` and was removed afterwards (DoD).
+    - The spike code is in commit `46c1a2f` and was removed afterwards (DoD).
   - **Results:** full results are in `docs/POC_RESULTS.md`.
   - **Acceptance criteria:**
     - AC1 ✔ H1, H2, H3, H4, H5, H7 and H8 are confirmed. H6 is untested (no SSO instance), with the reason recorded.

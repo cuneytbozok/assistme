@@ -2,7 +2,7 @@
 
 ## (a) Recovery drill
 
-A subagent with no chat context ran `show progress` and `review current task`, read-only, against commit `9ca39ba`. It wasn't a session the user opened, and it couldn't run the verification steps.
+A subagent with no chat context ran `show progress` and `review current task`, read-only, against commit `456af3f`. It wasn't a session the user opened, and it couldn't run the verification steps.
 
 **Result:** it identified the state correctly: T-041 current, 38 DONE, T-015 blocked and why, T-039 dropped, milestones, no git remote. It spot-checked figures against `final-live-run.json`.
 

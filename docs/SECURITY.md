@@ -151,7 +151,7 @@ Security-relevant codes: `TABLE_DENIED` (credential table, also via dot-walk),
 ## 7. Reporting a vulnerability
 
 This is a personal project, not a hosted service. Please report security issues privately to the
-repository owner (see the git history for contact details) rather than in a public issue. Include
+repository owner, through GitHub, rather than in a public issue. Include
 the affected component (extension, broker, MCP server), steps to reproduce, and impact. Never
 include real session cookies, tokens or customer data in a report.
 
