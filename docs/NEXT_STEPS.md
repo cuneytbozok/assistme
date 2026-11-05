@@ -63,7 +63,9 @@ Otherwise the connector runs twice. You can do this yourself, or tell me "B1 is 
 
 **Tell me:** whether both worked, and any error, exactly as shown.
 
-## Latest update (do this first)
+## Latest update
+
+**Status:** done.
 
 Access now stays open for follow-up questions. To get that in Claude Desktop:
 
@@ -77,6 +79,8 @@ Access now stays open for follow-up questions. To get that in Claude Desktop:
 3. Press Cmd+Q and reopen.
 
 ## C. Chrome: test revoking and logging out
+
+**Status:** done on 2026-11-05. All passed.
 
 **Where:** a Claude Desktop chat, plus Chrome.
 

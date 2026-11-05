@@ -15,7 +15,7 @@ _Last updated: 2026-11-05 (after T-039 preparation)_
 **The user's checklist, in order:**
 
 1. Done 2026-11-05: extension reloaded, T-034 live runs passed.
-2. Fully quit and reopen Claude Desktop: its `sn-mcp` server is still the old build.
+2. Done 2026-11-05: Claude Desktop restarted, and the revoke, logout and follow-up checks passed in the user's own Chrome (T-015 evidence). No sign-in dialog.
 3. Claude Code: registered and skills installed for the user on 2026-11-05. In a fresh signed-in session: check `/mcp`, try a query, and ask something that should load a skill (T-035, T-038).
 4. Done 2026-11-05: Claude Desktop. The bundle and skills are installed, and a real chat worked (user report). Only Cowork remains for T-036. Backup of the old config: `claude_desktop_config.json.before-sn-mcp-bundle`.
 6. Done 2026-11-05: the setup round trip on the real machine (T-037). It waits only on T-036.

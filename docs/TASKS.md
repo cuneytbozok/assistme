@@ -693,7 +693,13 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 - **Blocked (2026-11-04):** the user has no second instance to register as PROD, and the registry refuses the same host twice, so the PDI can't also be registered under a PROD alias. Resume when a second instance exists, or if the user approves a test-only duplicate-host exception.
   - Before the run: reload the extension and restart Claude Desktop (both run older builds).
   - Must include T-013 AC4: log out in the user's own profile → `SESSION_EXPIRED` with no sign-in dialog. Fallback: the DNR rule in the ADR-002 addendum.
-- **Evidence:** —
+- **Evidence so far (2026-11-05, live on `dev469966`, in the user's own Chrome, reported by the user; not acceptance, no second instance):**
+  - AC3 ✔ Revoking in the popup mid-conversation: the next call was refused, and the incident wasn't shown.
+  - AC7 ✔ Logging out of ServiceNow gave `SESSION_EXPIRED`. Logging back in recovered with no new approval.
+  - T-013 AC4 ✔ No sign-in dialog appeared when logged out, in the user's own profile.
+  - Also: a follow-up question in the same chat needed no new code, and Revoke appeared while access was open.
+  - **Still needs a second instance:** AC1, AC2, AC5's cross-client check as listed for this task, AC4 (PROD expiry) and AC6.
+
 
 ## Phase 3 — Read-only & query hardening (Milestone M3)
 
