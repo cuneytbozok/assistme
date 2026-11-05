@@ -341,7 +341,7 @@ Format: Status · Context · Decision · Alternatives considered · Consequences
 
 ## ADR-016 — Mistral Vibe as a local STDIO client
 
-- **Status:** Accepted (2026-11-05), requested by the user. Tested on Vibe 3.1.0, on a Mac, with a scripted model; **no real model has used it yet** (T-046).
+- **Status:** Accepted (2026-11-05), requested by the user. Tested on Vibe 3.1.0, on a Mac, with a scripted model and in one real run with Mistral Medium 3.5 (T-046).
 - **Context:** Vibe supports STDIO servers, but differs from the other clients in ways that matter here, all read from its installed source and measured on the real binary:
   - It doesn't pass the server's `instructions` to its model. Rule 7's warning and the approval steps would be missing.
   - Its model doesn't get MCP tools directly. It finds them with `search_tool_functions` and calls `tools.mcp_sn_mcp.<name>()` from TypeScript in `run_typescript`.
@@ -354,4 +354,4 @@ Format: Status · Context · Decision · Alternatives considered · Consequences
   - `command` is an array, because Vibe splits a string on spaces. Timeouts of 30 s and 360 s, as in ADR-014.
   - We don't set Vibe's per-tool `permission = "always"`. Whether Vibe asks before a tool is the user's choice, and it never replaces the popup (rule 4).
   - This registers no model provider. The local model in `test/e2e/vibe-client.ts` is a test script and isn't shipped, so rule 10 is unaffected.
-- **Consequences:** `prompt` is a copy, so it goes stale until the user replaces the block after an update. Each Vibe tool call asks for permission by default, including `claim_scope` while polling. `vibe -p` shows only the final answer, so it can't show the approval code in time; interactive sessions are the supported use. Tool results go to whichever model Vibe uses and stay in its session files, as with any client's transcripts. Vibe is young and changes quickly, and this relies on its current behaviour, so re-run `npm run e2e:vibe` after upgrading it.
+- **Consequences:** `prompt` is a copy, so it goes stale until the user replaces the block after an update. Each Vibe tool call asks for permission by default, including `claim_scope` while polling. `vibe -p` shows only the final answer, so it can't show the approval code in time; interactive sessions are the supported use. Tool results go to whichever model Vibe uses and stay in its session files, as with any client's transcripts. Vibe is young and changes quickly, and this relies on its current behaviour, so re-run `npm run e2e:vibe` after upgrading it. In the one real run the model released its access straight after answering, against the guidance, so a follow-up question may ask for a new approval.

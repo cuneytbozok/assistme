@@ -12,7 +12,7 @@ Run `npm run setup`, and copy the printed values into **Settings → MCP servers
 
 ## Mistral Vibe
 
-Run `npm run setup`, and add the printed block to `~/.vibe/config.toml`: see [INSTALL.md](INSTALL.md#mistral-vibe). Then start `vibe` and ask it to list your instances. No real model has used it yet, so tell me if it can't find the tools or doesn't show you the approval code.
+Run `npm run setup`, and add the printed block to `~/.vibe/config.toml`: see [INSTALL.md](INSTALL.md#mistral-vibe). Then start `vibe` and ask it to list your instances. This is already done on your Mac, and it worked in one real run, so the only thing left is to use it. It may release its access after each answer, so a follow-up question can ask for a new approval. Tell me if that gets in the way, or if a larger read goes wrong.
 
 ## Windows
 
