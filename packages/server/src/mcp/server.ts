@@ -39,6 +39,7 @@ import { registerDescribeTable } from './tools/describe-table.js';
 import { registerDiscoverTables } from './tools/discover-tables.js';
 import { registerGetFieldContent } from './tools/get-field-content.js';
 import { registerGetRecord } from './tools/get-record.js';
+import { registerGetRecordHistory } from './tools/get-record-history.js';
 import { registerGetRelatedRecords } from './tools/get-related-records.js';
 import { registerQueryRecords } from './tools/query-records.js';
 
@@ -407,6 +408,7 @@ export function createMcpServer(
   registerGetFieldContent(server, tools);
   registerAggregateRecords(server, tools);
   registerGetRelatedRecords(server, tools);
+  registerGetRecordHistory(server, tools);
 
   return server;
 }

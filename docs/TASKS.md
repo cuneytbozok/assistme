@@ -39,7 +39,7 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 | T-027 | `get_field_content`                             | 025      | DONE        |
 | T-028 | `aggregate_records`                             | 024      | DONE        |
 | T-029 | `get_related_records`                           | 026, 028 | DONE        |
-| T-030 | `get_record_history`                            | 025      | TODO        |
+| T-030 | `get_record_history`                            | 025      | DONE        |
 | T-031 | `search_code`                                   | 026      | TODO        |
 | T-032 | `compare_records`                               | 025, 011 | TODO        |
 | T-033 | Tool contract review + TOOLS.md                 | 024–032  | TODO        |
@@ -1141,7 +1141,7 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 
 ### T-030 — `get_record_history`
 
-- **Status:** TODO
+- **Status:** DONE
 - **Purpose:** Full audit and journal timeline of any age (replaces `get_audit_history`).
 - **Dependencies:** T-025
 - **Deliverables:**
@@ -1153,7 +1153,21 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 - **Acceptance criteria:** merged ordering is correct across page boundaries; a 3-year, 1,500-entry fixture history is fully retrievable; one source being denied gives `complete:false` with an `omitted` entry; long journal entries follow the field contract.
 - **Verification:** `npm test`.
 - **DoD:** —
-- **Evidence:** —
+- **Evidence (2026-11-05):**
+  - Implemented: `tools/get-record-history.ts`, `tools/window-reader.ts` (exact resume by window start + readable rows used).
+  - Tests: `test/get-record-history.test.ts` (10; mock). Root build, tests and lint exit 0.
+  - **Acceptance criteria:**
+    - Merged ordering ✔ across page boundaries, both directions, at page sizes 1, 7, 13 and a small `max_chars`, with shared timestamps in the fixture.
+    - 3-year, 1,500-entry history ✔ fully retrieved through cursors, every entry exactly once; another record's entries never appear.
+    - One source denied ✔ `complete: false`, `omitted: [{kind: "source", source: "sys_audit", reason: "acl_denied", …}]`, and the journal still reads. Both denied → `ACL_DENIED`.
+    - Long journal entries ✔ preview plus an `omitted` field entry whose `get_field_content` call returns the full text.
+  - **Internal conditions** come only from structured filters, validated with `planQuery` like any other query (an unknown field would return every row).
+  - **Beyond the task:**
+    - Audit rows for credential fields are listed without values (`redacted: true`, plus a `sensitive` omission): `sys_audit` holds old and new values, so otherwise it would leak them around the field checks.
+    - `WindowReader` resumes exactly even when ACLs hide rows (test: every 4th/5th hidden, nothing lost or repeated).
+    - Default order is newest first (`order` to change). A transient failure stops the merge with a cursor rather than continuing out of order.
+  - **Mutation checks** (each reverted): merge ignores `order`, no credential redaction, denied source treated as fatal, window not skipped on resume, resume by offset alone, `documentkey` condition removed; all fail tests.
+  - **Found, not changed:** `paginate.ts` (T-023) can repeat rows when a budget stop falls inside a window containing ACL-hidden rows (it resumes at start + rows taken). Nothing is lost, but rows can repeat. Noted in HANDOFF for T-033.
 
 ### T-031 — `search_code`
 

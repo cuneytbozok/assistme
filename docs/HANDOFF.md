@@ -1,6 +1,6 @@
 # Handoff
 
-_Last updated: 2026-11-05 (after T-029)_
+_Last updated: 2026-11-05 (after T-030)_
 
 ## Current project state
 
@@ -58,7 +58,8 @@ _Last updated: 2026-11-05 (after T-029)_
 - **T-027 DONE:** `get_field_content`, `field-cache.ts`, and the new `scope.check` message. **The extension must be reloaded** for it (old extensions fail closed).
 - **T-028 DONE:** `aggregate_records` (Stats API, all groups through cursors).
 - **T-029 DONE:** `get_related_records` (all reverse references via the dictionary, counts + samples, batches of 60 relations per call).
-- **Next task:** T-030 (`get_record_history`).
+- **T-030 DONE:** `get_record_history`, `tools/window-reader.ts`. Known issue for T-033: `paginate.ts` can repeat rows after a budget stop inside a window with ACL-hidden rows (no loss).
+- **Next task:** T-031 (`search_code`).
 - **Verify live in T-034:** `sysparm_offset` counts pre-ACL rows (ADR-011 addendum).
 - **Waiting on the user:** T-015 live run (second instance); `REQUEST_DENIED` vs `status: denied` (T-015 AC6); fail-closed dictionary validation (ADR-005 addendum).
 - **Role-agnostic (ADR-012, 2026-11-04):** no ServiceNow role handling of any kind. Don't add role checks, dedicated accounts or impersonation features.
