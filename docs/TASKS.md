@@ -51,7 +51,7 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 | T-039 | Official now-sdk skill evaluation               | 038      | DROPPED     |
 | T-040 | Full acceptance matrix                          | 037      | DONE        |
 | T-041 | Recovery drill + install from scratch (M6)      | 040      | DONE        |
-| T-042 | Compare within one instance, and record versions | 032     | TODO        |
+| T-042 | Compare within one instance, and record versions | 032     | BLOCKED     |
 
 ---
 
@@ -1446,7 +1446,7 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 
 ### T-042 — Compare within one instance, and record versions
 
-- **Status:** TODO
+- **Status:** BLOCKED
 - **Purpose:** Let the user compare two records, or two versions of one record, on a single instance. Requested by the user on 2026-11-05. It also lets `compare_records` run live for the first time.
 - **Dependencies:** T-032
 - **Deliverables:**
@@ -1462,4 +1462,18 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 - **Decision (user, 2026-11-05):** no extra protection for `sys_update_version` payloads. They're XML copies of records, so field-level credential protection doesn't look inside them. The user accepts this. Don't add a guard, and don't describe payloads as credential-free.
 - **Verification:** `npm test`. Live scenario added to `test/e2e/scenarios.ts`; the **user will run the live test later**, in their own time, so leave it clearly pending.
 - **DoD:** bundle version bumped and rebuilt; record what remains unverified. AC-8 stays open until two real instances are compared.
-- **Evidence:** —
+- **Blocked (2026-11-05):** the code and mock tests are finished, and this waits only for the user's live test (`docs/NEXT_STEPS.md`). No live run was started and no scope requested in this work. The task said to confirm the format live first; it was built first instead, on an assumption (ADR-013).
+- **Evidence so far (2026-11-05, mock only, so not connectivity evidence; rule 11):**
+  - `npm run build`, `npm run lint` and `npm run pack:mcpb` exit 0; `npm test`: 261, 442 and 311 passed. Bundle 0.1.3 at `packages/server/sn-mcp.mcpb`; `tools/list` 11,938 of 12,000 bytes. No change under `packages/extension` or `packages/shared`.
+  - AC1 (mock): two records on a single scope, with per-side `AMBIGUOUS_MATCH` and `NOT_FOUND`. A record compared with itself is refused.
+  - AC2 (mock): no read reaches the other instance's fake, `instance` isn't an input, and cursors from another instance or pair are refused.
+  - AC3 (mock): the `payload.script` diff applies back exactly, and so does a raw diff in 8 other payload forms.
+  - AC4 (mock): bookkeeping is listed in `ignored_fields`, an over-long line is reported with a read of the whole payload on each side, and which comparison was used is in `hints`.
+  - Mutation checks: same-record refusal off, `match_b` requirement off, payload expansion off, payload bookkeeping shown, repeated elements allowed, and the cut line's next call pointing at `payload.script` each fail tests.
+- **Unverified:**
+  - Nothing here has run live, including `compare_records` itself.
+  - **The real fields and payload format of `sys_update_version` have never been read.** Assumed: `name` is `<table>_<sys_id>`, and `payload` is `<record_update ...><table action="..."><field>…` with one record. A wrong format falls back to a raw text diff with a hint. The new scenario reports `mode`, `assumed_fields_missing`, `payload_root`, `payload_lines`, `payload_has_cdata`, `diffs_applied` and `lines_cut`: read those, not only the pass.
+  - Whether `sysparm_display_value=all` changes `payload` (mocked as equal). The code uses `value`.
+  - Whether a very large or multi-record payload behaves as mocked. Multi-record payloads fall back to raw text.
+  - The skills weren't updated: the tool description and `docs/TOOLS.md` carry the usage, and a change would need another upload.
+- **To finish:** the user runs the live test, then read the metrics, correct the assumptions if needed, and mark DONE only if all four criteria hold live.

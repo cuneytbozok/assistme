@@ -7,7 +7,13 @@ import { runScenarios, SCENARIOS } from '../../../test/e2e/scenarios.ts';
 import { dictionaryFixture, type FakeServiceNow } from './fake-sn.js';
 import { claim, harness } from './mcp-harness.js';
 
-function instance(): FakeServiceNow {
+/** The assumed format of a version's payload: unconfirmed until a live run (T-042). */
+const xml = (script: string) =>
+  `<?xml version="1.0"?><record_update table="sys_script_include"><sys_script_include action="INSERT"><active>true</active><script><![CDATA[${script}]]></script><sys_mod_count>1</sys_mod_count></sys_script_include></record_update>`;
+
+function instance(
+  payloads: string[] = [xml('var v = 1;'), xml('var v = 2;\nvar w;')],
+): FakeServiceNow {
   const sn = dictionaryFixture();
   const dict = (name: string, element: string, type = 'string', extra = {}) =>
     sn.insert('sys_dictionary', {
@@ -29,6 +35,7 @@ function instance(): FakeServiceNow {
     'sys_journal_field',
     'cmdb_ci',
     'x_acme_app',
+    'sys_update_version',
   ]) {
     sn.insert('sys_db_object', { name: t, label: t, super_class: '' });
   }
@@ -38,6 +45,19 @@ function instance(): FakeServiceNow {
   dict('sys_script', 'script', 'script');
   dict('sys_script_include', 'script', 'script_plain');
   dict('sys_script_include', 'name', 'string', { display: 'true' });
+  dict('sys_script_include', 'active', 'boolean');
+  dict('sys_update_version', 'name', 'string', { display: 'true' });
+  dict('sys_update_version', 'payload', 'xml');
+  dict('sys_update_version', 'state');
+  dict('sys_update_version', 'sys_created_on', 'glide_date_time');
+  payloads.forEach((payload, i) => {
+    sn.insert('sys_update_version', {
+      name: 'sys_script_include_abc',
+      payload,
+      state: i === payloads.length - 1 ? 'current' : 'previous',
+      sys_created_on: `2026-01-0${i + 1} 00:00:00`,
+    });
+  });
   dict('cmdb_ci', 'name', 'string', { display: 'true' });
   for (const f of ['documentkey', 'user', 'fieldname', 'oldvalue', 'newvalue', 'sys_created_on'])
     dict('sys_audit', f);
@@ -54,7 +74,13 @@ function instance(): FakeServiceNow {
   for (let i = 0; i < 2600; i++)
     sn.insert('syslog', { level: String(i % 3), sys_created_on: '2020-01-01 00:00:00' });
   sn.insert('sys_script_include', {
+    name: 'Small',
+    active: 'true',
+    script: 'var small;\nvar different;',
+  });
+  sn.insert('sys_script_include', {
     name: 'Big',
+    active: 'true',
     script: Array.from({ length: 3000 }, (_, i) => `var short_description${i};`).join('\n'),
   });
   sn.insert('sys_script', { script: 'current.short_description = 1;' });
@@ -114,8 +140,44 @@ describe('T-034 scenario logic (mock)', () => {
     expect(notPassed.map((r) => `${r.name}: ${r.note}`)).toEqual([]);
     expect(results).toHaveLength(SCENARIOS.length);
     const text = JSON.stringify(results);
-    expect(text).not.toMatch(/INC0000060|beth|web01|short_description\d/);
+    expect(text).not.toMatch(/INC0000060|beth|web01|short_description\d|var v =|abc/);
     await h.close();
+  });
+
+  const versions = async (payloads: string[]) => {
+    const h = await harness({ sn: instance(payloads) });
+    const scope = await claim(h, 'dev');
+    const [r] = await runScenarios(h.call, scope, undefined, 'two versions');
+    await h.close();
+    return r;
+  };
+
+  it('T-042 versions: reads by element in the assumed format, and rebuilds the script', async () => {
+    const r = await versions([xml('var v = 1;\nend'), xml('var v = 2;\nvar w;\nend')]);
+    expect(r?.status).toBe('pass');
+    expect(r?.metrics).toMatchObject({
+      mode: 'elements',
+      versions_of_record: 2,
+      record_table: 'sys_script_include',
+      payload_root: 'record_update',
+      payload_has_cdata: true,
+      diffs_applied: 1,
+    });
+    expect(r?.metrics?.assumed_fields_missing).toContain('source');
+    expect(Number(r?.metrics?.script_diff_lines)).toBeGreaterThan(0);
+  });
+
+  it('T-042 versions: another payload format passes and shows as raw in the metrics', async () => {
+    const r = await versions(['a\nb\nc', 'a\nB\nc']);
+    expect(r?.status).toBe('pass');
+    expect(r?.metrics).toMatchObject({ mode: 'raw', diffs_applied: 1, payload_lines: [3, 3] });
+    expect(r?.metrics?.payload_elements).toBeUndefined();
+  });
+
+  it('T-042 versions: no record with two versions is a skip that says what to do', async () => {
+    const r = await versions([xml('only one')]);
+    expect(r?.status).toBe('skip');
+    expect(r?.note).toMatch(/Save a script include twice/);
   });
 
   it('a scenario failure is reported, not thrown; a partial result with no omitted fails', async () => {

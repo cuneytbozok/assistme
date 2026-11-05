@@ -3,6 +3,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import { applyUnified, diffLines, unifiedDiff } from '../src/mcp/line-diff.js';
+import { parseUpdatePayload } from '../src/mcp/update-payload.js';
 import { dictionaryFixture, type FakeServiceNow } from './fake-sn.js';
 import { claim, claimCompare, type Harness, harness } from './mcp-harness.js';
 
@@ -55,20 +56,12 @@ const linesOf = (pages: any[], field: string) =>
   );
 
 describe('T-032 compare_records', () => {
-  it('a single-instance scope is refused, before any read', async () => {
+  it('with no scope, nothing is read', async () => {
     const h = await harness();
-    const scope = await claim(h, 'dev');
-    const r = await h.call('compare_records', {
-      scope_id: scope,
-      table: 'incident',
-      match_a: { number: 'X' },
-    });
-    expect(r.error.code).toBe('INVALID_INPUT');
-    expect(r.error.hint).toMatch(/instances/);
-    expect(h.dataRequests).toEqual([]);
     expect(
       (await h.call('compare_records', { table: 'incident', match_a: { number: 'X' } })).error.code,
     ).toBe('SCOPE_REQUIRED');
+    expect(h.dataRequests).toEqual([]);
     await h.close();
   });
 
@@ -369,6 +362,527 @@ describe('T-032 compare_records', () => {
     });
     expect(r.data.different_fields[0]).toMatchObject({ field: 'assigned_to', same_display: true });
     await h.close();
+  });
+});
+
+describe('T-042 compare_records on a single-instance scope', () => {
+  /** `prod` holds a different record under the same name: any read of it would show. */
+  async function oneInstance(scripts: Record<string, string>) {
+    const dev = instanceWithScripts(scripts);
+    const prod = instanceWithScripts({ A: 'FROM PROD' });
+    prod.calls.length = 0;
+    const h = await harness({ snByInstance: { dev, prod } });
+    return { h, dev, prod, scope: await claim(h, 'dev') };
+  }
+
+  it('match_b is required, before any read; the hint says how to compare two instances', async () => {
+    const { h, scope } = await oneInstance({ A: 'x' });
+    const r = await h.call('compare_records', {
+      scope_id: scope,
+      table: 'sys_script_include',
+      match_a: { name: 'A' },
+    });
+    expect(r.error.code).toBe('INVALID_INPUT');
+    expect(r.error.message).toMatch(/match_b is required/);
+    expect(r.error.hint).toMatch(/instances/);
+    expect(h.dataRequests).toEqual([]);
+    await h.close();
+  });
+
+  it('compares two records, naming one instance, and never touches another', async () => {
+    const { h, prod, scope } = await oneInstance({
+      A: 'var a = 1;\nvar b = 2;\nreturn a;',
+      B: 'var a = 1;\nvar b = 3;\nreturn a;',
+    });
+    const r = await h.call('compare_records', {
+      scope_id: scope,
+      table: 'sys_script_include',
+      match_a: { name: 'A' },
+      match_b: { name: 'B' },
+    });
+    expect(r.ok).toBe(true);
+    expect(r.complete).toBe(true);
+    expect(r.data.identical).toBe(false);
+    expect(r.data.different_fields).toEqual([{ field: 'name', a: 'A', b: 'B' }]);
+    expect(r.data.diffs[0].lines).toEqual([
+      '@@ -1,3 +1,3 @@',
+      ' var a = 1;',
+      '-var b = 2;',
+      '+var b = 3;',
+      ' return a;',
+    ]);
+    expect(r.data.a).toMatchObject({ instance: 'dev', host: 'dev.service-now.com' });
+    expect(r.data.b).toMatchObject({ instance: 'dev', host: 'dev.service-now.com' });
+    expect(r.data.a.sys_id).not.toBe(r.data.b.sys_id);
+    expect(r.provenance.instance).toBe('dev');
+    expect(r.provenance.source).toBe('table sys_script_include');
+    // Two lookups and two reads of the records: each counted once, not per side twice.
+    expect(r.requests_used).toBeGreaterThanOrEqual(4);
+    expect(r.requests_used).toBeLessThan(12);
+    expect(prod.calls).toEqual([]);
+    await h.close();
+  });
+
+  it('a single-instance scope can never name or reach another instance', async () => {
+    const { h, prod, scope } = await oneInstance({ A: 'x', B: 'y' });
+    const r = await h
+      .call('compare_records', {
+        scope_id: scope,
+        instance: 'prod',
+        table: 'sys_script_include',
+        match_a: { name: 'A' },
+        match_b: { name: 'B' },
+      })
+      .catch(() => undefined);
+    expect(r?.ok).not.toBe(true);
+    expect(prod.calls).toEqual([]);
+    await h.close();
+  });
+
+  it('ambiguity and absence are reported per side, on that one instance', async () => {
+    const { h, dev, scope } = await oneInstance({ A: 'x', B: 'y' });
+    dev.insert('sys_script_include', { name: 'B', script: 'z', active: 'true' });
+    const amb = await h.call('compare_records', {
+      scope_id: scope,
+      table: 'sys_script_include',
+      match_a: { name: 'A' },
+      match_b: { name: 'B' },
+    });
+    expect(amb.error.code).toBe('AMBIGUOUS_MATCH');
+    expect(amb.error.side).toBe('b');
+    expect(amb.error.candidates).toHaveLength(2);
+    expect(amb.error.list_all.args.instance).toBe('dev');
+    const all = await h.call(amb.error.list_all.tool, amb.error.list_all.args);
+    expect(all.data.records).toHaveLength(2);
+    const noA = await h.call('compare_records', {
+      scope_id: scope,
+      table: 'sys_script_include',
+      match_a: { name: 'Absent' },
+      match_b: { name: 'A' },
+    });
+    expect(noA.error.code).toBe('NOT_FOUND');
+    expect(noA.error.side).toBe('a');
+    const noB = await h.call('compare_records', {
+      scope_id: scope,
+      table: 'sys_script_include',
+      match_a: { name: 'A' },
+      match_b: { name: 'Absent' },
+    });
+    expect(noB.error.code).toBe('NOT_FOUND');
+    expect(noB.error.side).toBe('b');
+    const missingId = await h.call('compare_records', {
+      scope_id: scope,
+      table: 'sys_script_include',
+      match_a: { name: 'A' },
+      match_b: { sys_id: 'f'.repeat(32) },
+    });
+    expect(missingId.error.code).toBe('NOT_FOUND');
+    expect(missingId.error.side).toBe('b');
+    await h.close();
+  });
+
+  it('a record compared with itself is refused, however it was found, not called identical', async () => {
+    const { h, dev, scope } = await oneInstance({ A: 'x' });
+    const id = dev.tables.get('sys_script_include')?.[0]?.sys_id as string;
+    for (const match_b of [{ name: 'A' }, { sys_id: id }]) {
+      const r = await h.call('compare_records', {
+        scope_id: scope,
+        table: 'sys_script_include',
+        match_a: { sys_id: id },
+        match_b,
+      });
+      expect(r.error.code).toBe('INVALID_INPUT');
+      expect(r.error.message).toMatch(/same record/);
+    }
+    await h.close();
+  });
+
+  it('a long diff is fully retrievable through cursors, from one snapshot', async () => {
+    const a = Array.from({ length: 5000 }, (_, i) => `line ${i} of the script`).join('\n');
+    const b = a
+      .split('\n')
+      .map((l, i) => (i % 40 === 0 ? `${l} changed` : l))
+      .join('\n');
+    const { h, scope } = await oneInstance({ A: a, B: b });
+    const before = h.dataRequests.length;
+    const pages = await walk(h, scope, {
+      table: 'sys_script_include',
+      match_a: { name: 'A' },
+      match_b: { name: 'B' },
+      max_chars: 8000,
+    });
+    expect(pages.length).toBeGreaterThan(5);
+    expect(pages.at(-1).complete).toBe(true);
+    expect(applyUnified(a, linesOf(pages, 'script'))).toBe(b);
+    const gets = h.dataRequests.slice(before).filter((d) => d.kind === 'table.get');
+    expect(gets).toHaveLength(2);
+    await h.close();
+  });
+
+  it('cursors stay with their instances; a revoked scope gets no more pages', async () => {
+    const big = (p: string) => Array.from({ length: 2000 }, (_, i) => `${p} ${i}`).join('\n');
+    const dev = instanceWithScripts({ A: big('a'), B: big('b') });
+    const prod = instanceWithScripts({ A: big('c'), B: big('d') });
+    const h = await harness({ snByInstance: { dev, prod } });
+    const devScope = await claim(h, 'dev');
+    const prodScope = await claim(h, 'prod');
+    const pairScope = await claimCompare(h);
+    const first = await h.call('compare_records', {
+      scope_id: devScope,
+      table: 'sys_script_include',
+      match_a: { name: 'A' },
+      match_b: { name: 'B' },
+    });
+    expect(first.page.next_cursor).toBeTruthy();
+    for (const scope_id of [prodScope, pairScope]) {
+      const other = await h.call('compare_records', {
+        scope_id,
+        cursor: first.page.next_cursor,
+      });
+      expect(other.error.code).toBe('INVALID_INPUT');
+    }
+    const pairFirst = await h.call('compare_records', {
+      scope_id: pairScope,
+      table: 'sys_script_include',
+      match_a: { name: 'A' },
+    });
+    const widen = await h.call('compare_records', {
+      scope_id: devScope,
+      cursor: pairFirst.page.next_cursor,
+    });
+    expect(widen.error.code).toBe('INVALID_INPUT');
+    h.revoke(devScope);
+    const denied = await h.call('compare_records', {
+      scope_id: devScope,
+      cursor: first.page.next_cursor,
+    });
+    expect(denied.error.code).toBe('SCOPE_UNKNOWN');
+    await h.close();
+  });
+
+  it('credential tables and fields stay refused and stripped', async () => {
+    const dev = dictionaryFixture();
+    dev.insert('u_api_config', { u_label: 'c', u_endpoint: 'one', u_auth: 'first-secret' });
+    dev.insert('u_api_config', { u_label: 'd', u_endpoint: 'two', u_auth: 'second-secret' });
+    const h = await harness({ sn: dev });
+    const scope = await claim(h, 'dev');
+    const r = await h.call('compare_records', {
+      scope_id: scope,
+      table: 'u_api_config',
+      match_a: { u_label: 'c' },
+      match_b: { u_label: 'd' },
+    });
+    expect(JSON.stringify(r)).not.toMatch(/first-secret|second-secret/);
+    expect(r.complete).toBe(false);
+    expect(r.omitted.find((o: { reason: string }) => o.reason === 'sensitive').fields).toEqual([
+      'u_auth',
+    ]);
+    const denied = await h.call('compare_records', {
+      scope_id: scope,
+      table: 'discovery_credentials',
+      match_a: { name: 'x' },
+      match_b: { name: 'y' },
+    });
+    expect(denied.error.code).toBe('TABLE_DENIED');
+    await h.close();
+  });
+});
+
+describe('T-042 two versions of a record (assumed payload format; mock only)', () => {
+  /** The format assumed until a live run confirms it: docs/TASKS.md, T-042. */
+  const payload = (script: string, o: { active?: string; mod?: string; extra?: string } = {}) =>
+    `<?xml version="1.0" encoding="UTF-8"?><record_update table="sys_script_include"><sys_script_include action="INSERT_OR_UPDATE"><active>${o.active ?? 'true'}</active><name>MyUtil &amp; co</name><script><![CDATA[${script}]]></script><sys_id>abc</sys_id><sys_mod_count>${o.mod ?? '1'}</sys_mod_count><sys_updated_on>2026-01-0${o.mod ?? '1'}</sys_updated_on>${o.extra ?? ''}</sys_script_include></record_update>`;
+
+  function versions(rows: { payload?: string; state?: string }[]) {
+    const sn = dictionaryFixture();
+    sn.insert('sys_db_object', { name: 'sys_update_version', label: 'V', super_class: '' });
+    for (const element of ['name', 'payload', 'state', 'source', 'sys_updated_on'])
+      sn.insert('sys_dictionary', {
+        name: 'sys_update_version',
+        element,
+        column_label: element,
+        internal_type: element === 'payload' ? 'xml' : 'string',
+        reference: '',
+        max_length: '8000000',
+        mandatory: 'false',
+        display: element === 'name' ? 'true' : 'false',
+      });
+    const ids = rows.map(
+      (r, i) =>
+        sn.insert('sys_update_version', {
+          name: 'sys_script_include_abc',
+          state: r.state ?? (i === rows.length - 1 ? 'current' : 'previous'),
+          source: 'x',
+          sys_updated_on: `2026-01-0${i + 1}`,
+          ...(r.payload === undefined ? {} : { payload: r.payload }),
+        }).sys_id as string,
+    );
+    // Like the real API with sysparm_display_value=all.
+    const get = sn.get.bind(sn);
+    sn.get = (req) => {
+      const row = get(req);
+      if (!row) return row;
+      return Object.fromEntries(
+        Object.entries(row).map(([k, v]) => [k, { value: v, display_value: v }]),
+      ) as typeof row;
+    };
+    return { sn, ids };
+  }
+
+  async function compare(rows: { payload?: string; state?: string }[], extra = {}) {
+    const { sn, ids } = versions(rows);
+    const h = await harness({ sn });
+    const scope = await claim(h, 'dev');
+    const first = {
+      table: 'sys_update_version',
+      match_a: { sys_id: ids[0] },
+      match_b: { sys_id: ids[1] },
+      ...extra,
+    };
+    return { h, scope, first, ids };
+  }
+
+  const scriptA = 'var a = 1;\nvar b = "<x>&amp;";\nreturn a;\n';
+  const scriptB = 'var a = 1;\nvar b = "<y>&amp;";\nvar c;\nreturn a;\n';
+
+  it('two versions diff element by element, and the script diff applies back exactly', async () => {
+    const { h, scope, first } = await compare([
+      { payload: payload(scriptA, { mod: '1' }) },
+      { payload: payload(scriptB, { active: 'false', mod: '2' }) },
+    ]);
+    const r = await h.call('compare_records', { scope_id: scope, ...first });
+    expect(r.ok).toBe(true);
+    expect(r.complete).toBe(true);
+    expect(r.data.different_fields).toEqual(
+      expect.arrayContaining([
+        { field: 'payload.active', a: 'true', b: 'false' },
+        { field: 'state', a: 'previous', b: 'current' },
+      ]),
+    );
+    const diff = r.data.diffs.find((d: { field: string }) => d.field === 'payload.script');
+    expect(diff.lines).toContain('+var c;');
+    expect(applyUnified(scriptA, diff.lines)).toBe(scriptB);
+    expect(r.data.diffs.map((d: { field: string }) => d.field)).toEqual(['payload.script']);
+    // Bookkeeping is listed, not silently dropped; so is what element mode leaves out.
+    expect(r.data.ignored_fields).toEqual(
+      expect.arrayContaining(['payload.sys_mod_count', 'payload.sys_updated_on', 'sys_updated_on']),
+    );
+    expect(r.hints.join(' ')).toMatch(/element by element.*get_field_content.*payload/);
+    expect(JSON.stringify(r.data)).not.toContain('<record_update');
+    await h.close();
+  });
+
+  it('naming payload in fields gives the same element diff, and only that', async () => {
+    const { h, scope, first } = await compare(
+      [{ payload: payload(scriptA) }, { payload: payload(scriptB) }],
+      { fields: ['payload'] },
+    );
+    const r = await h.call('compare_records', { scope_id: scope, ...first });
+    expect(r.data.different_fields).toBeUndefined();
+    expect(r.data.diffs.map((d: { field: string }) => d.field)).toEqual(['payload.script']);
+    expect(r.data.equal_fields).toBe(3); // @action, active, name
+    expect(r.data.ignored_fields).toContain('payload.sys_mod_count');
+    await h.close();
+  });
+
+  it('a changed action, or an element on one side, is shown', async () => {
+    const del = payload(scriptA).replace('INSERT_OR_UPDATE', 'DELETE');
+    const { h, scope, first } = await compare(
+      [
+        { payload: payload(scriptA) },
+        { payload: del.replace('</sys_script_include>', '<u_x>1</u_x></sys_script_include>') },
+      ],
+      { fields: ['payload'] },
+    );
+    const r = await h.call('compare_records', { scope_id: scope, ...first });
+    expect(r.data.different_fields).toEqual([
+      { field: 'payload.@action', a: 'INSERT_OR_UPDATE', b: 'DELETE' },
+    ]);
+    expect(r.data.only_on_b).toEqual([{ field: 'payload.u_x', value: '1' }]);
+    await h.close();
+  });
+
+  it('two versions with the same payload are identical, and not reported as anything else', async () => {
+    const same = payload(scriptA);
+    const { h, scope, first } = await compare([{ payload: same }, { payload: same }], {
+      fields: ['payload'],
+    });
+    const r = await h.call('compare_records', { scope_id: scope, ...first });
+    expect(r.data.identical).toBe(true);
+    expect(r.data.equal_fields).toBe(1);
+    expect(r.hints).toBeUndefined();
+    await h.close();
+  });
+
+  it.each([
+    ['not XML', 'just some\ntext', 'other\ntext'],
+    ['another root', '<unload><a>1</a></unload>', '<unload><a>2</a></unload>'],
+    [
+      'several records',
+      '<record_update><x><a>1</a></x><y><a>1</a></y></record_update>',
+      '<record_update><x><a>2</a></x><y><a>1</a></y></record_update>',
+    ],
+    [
+      'a repeated element',
+      '<record_update><x><a>1</a><a>2</a></x></record_update>',
+      '<record_update><x><a>1</a><a>3</a></x></record_update>',
+    ],
+    [
+      'different tables',
+      '<record_update><x><a>1</a></x></record_update>',
+      '<record_update><y><a>1</a></y></record_update>',
+    ],
+    ['cut off', '<record_update><x><a>1</a></x>', '<record_update><x><a>2</a></x>'],
+    ['one side empty', '', payload('x')],
+    [
+      'a DTD',
+      '<!DOCTYPE x [<!ENTITY e "boom">]><record_update><x><a>&e;</a></x></record_update>',
+      payload('x'),
+    ],
+  ])('%s: compared as raw text, with a hint, and still exact', async (_name, a, b) => {
+    const { h, scope, first } = await compare([{ payload: a }, { payload: b }], {
+      fields: ['payload'],
+    });
+    const r = await h.call('compare_records', { scope_id: scope, ...first });
+    expect(r.ok).toBe(true);
+    expect(r.complete).toBe(true);
+    expect(r.hints.join(' ')).toMatch(/raw text/);
+    const inline = r.data.different_fields?.[0];
+    if (inline) {
+      expect(inline).toMatchObject({ field: 'payload', a, b });
+    } else {
+      expect(applyUnified(a, r.data.diffs[0].lines)).toBe(b);
+    }
+    await h.close();
+  });
+
+  it('no payload field at all still compares what exists', async () => {
+    const { h, scope, first } = await compare([{ state: 'previous' }, { state: 'current' }]);
+    const r = await h.call('compare_records', { scope_id: scope, ...first });
+    expect(r.ok).toBe(true);
+    expect(r.data.different_fields).toEqual([{ field: 'state', a: 'previous', b: 'current' }]);
+    expect(r.hints).toBeUndefined();
+    await h.close();
+  });
+
+  it('a very long line is cut and reported, with a read of the whole payload on each side', async () => {
+    const long = (c: string) => c.repeat(30_000);
+    const { h, scope, first, ids } = await compare(
+      [{ payload: payload(long('a')) }, { payload: payload(long('b')) }],
+      { fields: ['payload'], max_chars: 4000 },
+    );
+    const pages = await walk(h, scope, first);
+    const cuts = pages.flatMap((p) =>
+      p.omitted.filter((o: { kind: string }) => o.kind === 'field'),
+    );
+    // One for the old line and one for the new line of the script.
+    expect(cuts.map((c) => c.field)).toEqual(['payload.script', 'payload.script']);
+    const cut = cuts[0];
+    expect(cut.next.map((n: any) => n.args.sys_id)).toEqual(ids);
+    for (const n of cut.next) {
+      expect(n.args.field).toBe('payload');
+      const read = await h.call(n.tool, n.args);
+      expect(read.ok, JSON.stringify(read).slice(0, 300)).toBe(true);
+    }
+    await h.close();
+  });
+
+  it('versions of a record found by field values use the usual per-side checks', async () => {
+    const { h, scope } = await compare([
+      { payload: payload(scriptA), state: 'previous' },
+      { payload: payload(scriptB), state: 'previous' },
+      { payload: payload(scriptB), state: 'current' },
+    ]);
+    const amb = await h.call('compare_records', {
+      scope_id: scope,
+      table: 'sys_update_version',
+      match_a: { state: 'previous' },
+      match_b: { state: 'current' },
+    });
+    expect(amb.error.code).toBe('AMBIGUOUS_MATCH');
+    expect(amb.error.side).toBe('a');
+    await h.close();
+  });
+
+  it('element names are not filtered by name: the user accepted this for payloads', async () => {
+    const extra = (v: string) => ({ extra: `<u_password>${v}</u_password>` });
+    const { h, scope, first } = await compare(
+      [{ payload: payload('x', extra('one')) }, { payload: payload('x', extra('two')) }],
+      { fields: ['payload'] },
+    );
+    const r = await h.call('compare_records', { scope_id: scope, ...first });
+    expect(r.data.different_fields).toEqual([{ field: 'payload.u_password', a: 'one', b: 'two' }]);
+    await h.close();
+  });
+});
+
+describe('parseUpdatePayload', () => {
+  const wrap = (inner: string, attrs = ' action="INSERT"') =>
+    `<record_update table="t"><t${attrs}>${inner}</t></record_update>`;
+  const fieldsOf = (xml: string) => Object.fromEntries(parseUpdatePayload(xml)?.fields ?? []);
+
+  it('reads the assumed shape, with or without line breaks and a declaration', () => {
+    const multi = `<?xml version="1.0"?>\n<record_update sys_domain="global" table="t">\n  <t action="INSERT">\n    <a>1</a>\n    <b/>\n    <c></c>\n  </t>\n</record_update>\n`;
+    expect(parseUpdatePayload(multi)?.table).toBe('t');
+    expect(fieldsOf(multi)).toEqual({ '@action': 'INSERT', a: '1', b: '', c: '' });
+    expect(fieldsOf(wrap('<a>1</a>', ''))).toEqual({ a: '1' });
+    expect(fieldsOf(wrap('<a>1</a>', " action='X'"))).toEqual({ '@action': 'X', a: '1' });
+  });
+
+  it('decodes entities once, keeps CDATA as is, and keeps line breaks', () => {
+    expect(
+      fieldsOf(wrap('<a>x &amp;lt; &lt;y&gt; &quot;&apos; &#65;&#x42; &nope; &#xFFFFFF;</a>', ''))
+        .a,
+    ).toBe(`x &lt; <y> "' AB &nope; &#xFFFFFF;`);
+    expect(fieldsOf(wrap('<a><![CDATA[if (a < b && c) {\n</a>\n}]]></a>', '')).a).toBe(
+      'if (a < b && c) {\n</a>\n}',
+    );
+    expect(fieldsOf(wrap('<a><![CDATA[x]]]]><![CDATA[>y]]> &amp;</a>', '')).a).toBe('x]]>y &');
+    expect(fieldsOf(wrap('<a>  spaced\n</a>', '')).a).toBe('  spaced\n');
+  });
+
+  it('keeps nested markup as text, with attributes and same-named elements', () => {
+    const f = fieldsOf(
+      wrap('<a x="1"><a>in</a><b/></a><c display_value="C">id</c><!-- n --><d>e</d>', ''),
+    );
+    expect(f.a).toBe('<a>in</a><b/>');
+    expect(f.c).toBe('id');
+    expect(f.d).toBe('e');
+    const odd = parseUpdatePayload(
+      wrap('<__proto__>x</__proto__><constructor>y</constructor>', ''),
+    );
+    expect(odd?.fields.get('__proto__')).toBe('x');
+    expect(odd?.fields.get('constructor')).toBe('y');
+  });
+
+  it.each([
+    [''],
+    ['text'],
+    ['<a>1</a>'],
+    ['<record_update/>'],
+    ['<record_update></record_update>'],
+    ['<record_update><t>loose text</t></record_update>'],
+    ['<record_update><t><a>1</a></t>'],
+    ['<record_update><t><a>1</t></record_update>'],
+    ['<record_update><t><![CDATA[x]]></t></record_update>'],
+    ['<record_update><t><a><![CDATA[x</a></t></record_update>'],
+    ['<record_update><t><a>1</a></t><t><a>2</a></t></record_update>'],
+    ['<record_update><t/></record_update><record_update/>'],
+    ['<!DOCTYPE d><record_update><t><a>1</a></t></record_update>'],
+    ['<record_update><t a="1><a>1</a></t></record_update>'],
+  ])('refuses %j rather than guessing', (xml) => {
+    expect(parseUpdatePayload(xml)).toBeUndefined();
+  });
+
+  it('stays fast on large and on hostile input', () => {
+    const started = Date.now();
+    const big = 'line of a script < with & marks\n'.repeat(300_000);
+    expect(fieldsOf(wrap(`<s><![CDATA[${big}]]></s>`, '')).s).toBe(big);
+    parseUpdatePayload(wrap(`<s>${'<s '.repeat(200_000)}</s>`, ''));
+    parseUpdatePayload(wrap(`<s>${'<s a="'.repeat(200_000)}</s>`, ''));
+    parseUpdatePayload(wrap(`<s>${'<s>'.repeat(200_000)}</s>`, ''));
+    parseUpdatePayload(`<record_update>${'<![CDATA['.repeat(200_000)}`);
+    expect(Date.now() - started).toBeLessThan(5000);
   });
 });
 

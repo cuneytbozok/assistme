@@ -195,12 +195,25 @@ Which scripts and conditions contain text: every field of type `script`, `script
 
 ### `compare_records`
 
-One record across a compare scope's two instances. A single-instance scope is refused. Inputs: `table`, `match_a` (`{"sys_id": "…"}` or unique field values), `match_b` (default `match_a`), `fields`, `cursor`, `max_chars`. Returns `data.a` and `data.b` (instance, env, host, sys_id, link), `identical`, `equal_fields`, `ignored_fields`, `different_fields` (`{field, a, b, same_display?}`), `diffs` (`{field, total_lines, minimal?, lines}`, unified format), `only_on_a`, `only_on_b`. Bookkeeping fields such as `sys_updated_on` are left out unless named in `fields`. Ambiguity and absence errors carry `side`.
+Two records, in one of two ways:
 
-Pages come from one snapshot held in memory, after the extension confirms the scope for both instances. `minimal: false` means two very different values were reported as one replacement: still complete and correct.
+- **On a single-instance scope:** two different records on that instance. `match_b` is required, and a record compared with itself is refused (`INVALID_INPUT`).
+- **Across a compare scope's two instances:** the user must approve the pair. `match_b` defaults to `match_a`.
+
+Inputs: `table`, `match_a` (`{"sys_id": "…"}` or unique field values), `match_b`, `fields`, `cursor`, `max_chars`. Returns `data.a` and `data.b` (instance, env, host, sys_id, link), `identical`, `equal_fields`, `ignored_fields`, `different_fields` (`{field, a, b, same_display?}`), `diffs` (`{field, total_lines, minimal?, lines}`, unified format), `only_on_a`, `only_on_b`. Bookkeeping fields such as `sys_updated_on` are left out unless named in `fields`. Ambiguity and absence errors carry `side`.
+
+Pages come from one snapshot held in memory, after the extension confirms the scope for its instances. `minimal: false` means two very different values were reported as one replacement: still complete and correct.
+
+**Two versions of a record:** find the versions with `query_records` on `sys_update_version` (`name` is `<table>_<sys_id>`), then compare two rows by `sys_id`, older as `a`. When both `payload` values are one record in the expected XML form, they're compared element by element as `payload.<element>` (for example `payload.script`), with the record's action as `payload.@action`. Element attributes aren't compared, and a payload's own bookkeeping elements are listed in `ignored_fields`. Otherwise `payload` is compared as raw text. `hints` says which happened, and `get_field_content` with field `payload` reads the XML itself. **The fields and XML form are assumed, and haven't been read live yet (T-042).** Payloads are copies of records, and field-level credential protection doesn't look inside them, so they can contain a secret value (`docs/SECURITY.md`).
 
 ```json compare-example
 { "scope_id": "$COMPARE_SCOPE", "table": "incident", "match_a": { "number": "INC0000060" }, "fields": ["short_description", "priority"] }
+```
+
+On a single-instance scope, with two versions:
+
+```json
+{ "scope_id": "$SCOPE", "table": "sys_update_version", "match_a": { "sys_id": "$OLDER" }, "match_b": { "sys_id": "$NEWER" } }
 ```
 
 ## Known platform behaviour

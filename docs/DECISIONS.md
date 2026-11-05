@@ -300,3 +300,17 @@ Format: Status · Context · Decision · Alternatives considered · Consequences
   - T-022's `snc_read_only` evaluation and its acceptance criterion are removed; its general read-only tests stay.
   - PRODUCT_SPEC S-10, ARCHITECTURE §9 item 6 and SECURITY.md §5a are rewritten accordingly.
   - Don't add replacement authentication features.
+
+## ADR-013 — Compare within one instance, and record versions
+
+- **Status:** Accepted (2026-11-05). Requested by the user; the version format is unconfirmed until the live test (T-042).
+- **Context:** The user wants to compare two records, or two versions of a record, on one instance. `compare_records` refused single-instance scopes, and `tools/list` has a 12,000-byte limit, with 175 bytes left.
+- **Decision:**
+  - A single-instance scope reads both sides from its one instance, and `match_b` is required. A record compared with itself is `INVALID_INPUT`, not `identical: true`. The extension, shared rules and grants are unchanged, so a single scope can't reach another instance, and comparing two instances still needs a compare grant the user approved.
+  - Versions get **no new input and no new tool**: `compare_records` on two `sys_update_version` rows. That table's `payload` is compared element by element when both sides parse.
+  - The reader in `update-payload.ts` is small and hand-written, for one shape only, so there's no new dependency. Anything else falls back to a raw text diff with a hint: never a guess, never an error. It refuses DTDs and decodes only the standard entities.
+  - **No guard on payloads (user's decision).** Field-level credential protection doesn't look inside them, whether raw or by element. Filtering elements by name would suggest a protection that the raw read doesn't have.
+- **Consequences:**
+  - `tools/list` is 11,938 bytes, with 62 bytes left.
+  - The task said to confirm the real fields and format live first. This was built first instead, because the live test is the user's, later. The first live run's metrics (`mode`, `assumed_fields_missing`, `payload_root`) settle it. A wrong format means a less readable diff, not a wrong one.
+  - Finding the versions takes a `query_records` call first.

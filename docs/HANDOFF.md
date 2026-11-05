@@ -6,10 +6,18 @@ _Current state only, rewritten on 2026-11-05. History is in `docs/TASKS.md` and 
 
 The connector is built, installed and working on the user's Mac, in Claude Desktop, against one developer instance.
 
-- **Tasks:** 39 DONE, 1 BLOCKED (T-015), 1 DROPPED (T-039), 1 TODO (T-042).
+- **Tasks:** 39 DONE, 2 BLOCKED (T-015, T-042), 1 DROPPED (T-039).
 - **Milestones:** M1, M3, M4, M5 and M6 achieved. M6 by the user's decision, with AC-6, AC-7 and AC-8 left open: not all 19 criteria are evidenced. M2 not achieved (T-015).
 - **Acceptance:** `docs/ACCEPTANCE.md`: 15 passed, 3 open, 1 out of scope, none failed.
-- **Next:** T-042. The user will run its live test later. Anything else that remains needs the user: see `docs/NEXT_STEPS.md`.
+- **Next:** no task is eligible. T-042 is built and passes mock tests, and waits for the user's live test. Anything else that remains needs the user: see `docs/NEXT_STEPS.md`.
+
+## T-042: what's unverified
+
+Nothing below has run against a real instance:
+
+- `compare_records` hasn't run live at all.
+- **`sys_update_version`'s real fields and payload format are assumed, from general knowledge of ServiceNow.** The code assumes `name` is `<table>_<sys_id>` and `payload` is `<record_update ...><table action="..."><field>…`, with one record. If that's wrong, `payload` is compared as raw text with a hint: less readable, still exact.
+- After the live run, read the metrics, not only the pass: `mode` ("elements" is what's assumed; "raw" passes, but means the assumption is wrong), `assumed_fields_missing`, `payload_root`, `payload_lines`, `diffs_applied`, `lines_cut`. Then update the assumption notes in `docs/TOOLS.md` and `update-payload.ts`, and T-042's status.
 
 ## Decisions made by the user (2026-11-05)
 
@@ -25,13 +33,14 @@ The connector is built, installed and working on the user's Mac, in Claude Deskt
 - `cuneytbozok/assistme` is public, with commit emails replaced by the GitHub no-reply address.
 - `sys_update_version` is readable with no extra guard, though its XML payloads aren't covered by field-level credential protection.
 - `compare_records` stays untested between two real instances for now: AC-6, AC-7 and AC-8 stay open.
+- The skills weren't changed for T-042, so they needn't be uploaded again.
 
 ## The user's setup
 
 - **Instance:** `dev469966.service-now.com`, alias `dev469966`, environment dev. A personal developer instance, signed in as admin.
 - **Chrome:** unpacked extension from `packages/extension/dist`, ID `clipfeocpiljpcngmjpdbegciimchbol`.
 - **Native host:** installed by `npm run setup` from this folder. Runtime files are in `~/Library/Application Support/sn-mcp/`, which is 0700: `broker.sock`, `broker.key`, `broker.pid`, `broker.log` (metadata only). Exit codes: 64 bad origin, 78 unsafe path, 75 conflict.
-- **Claude Desktop:** the `.mcpb` bundle, version 0.1.2, named "ServiceNow (read-only)", plus both skills uploaded. `mcpServers` in `claude_desktop_config.json` is empty; the old entry's backup is `claude_desktop_config.json.before-sn-mcp-bundle`.
+- **Claude Desktop:** the `.mcpb` bundle, version 0.1.2, named "ServiceNow (read-only)", plus both skills uploaded. Version 0.1.3 (T-042) is built at `packages/server/sn-mcp.mcpb` but not installed: until the user installs it, Desktop still refuses `compare_records` on a single-instance scope. The live test doesn't depend on that, because it starts the built server itself. `mcpServers` in `claude_desktop_config.json` is empty; the old entry's backup is `claude_desktop_config.json.before-sn-mcp-bundle`.
 - **Claude Code:** Code sessions inside the Desktop app use the Desktop connector and skills. Nothing is registered separately: the `sn-mcp` registration and plugin were removed, because two connectors in one session don't share scopes.
 - **Git:** `origin` is https://github.com/cuneytbozok/assistme (public). Commits use the no-reply address set in this repo's git config.
 
@@ -53,6 +62,7 @@ The connector is built, installed and working on the user's Mac, in Claude Deskt
 - **Build order:** the `workspaces` order, shared → server → extension. The server resolves `@sn-mcp/shared` through `dist/`, so build shared before type-checking the server.
 - **Query module:** `compileFilter(input, {allowTextSearch})` for structured input; `parseEncodedQuery(q, {profile:'strict'})` for raw model input on the server, and `{profile:'enforce'}` in the extension.
 - **`docs/TASKS.md`:** `test/task-docs.test.ts` checks its structure, so a misplaced status or evidence block fails `npm test`.
+- **`tools/list`:** 11,938 of 12,000 bytes. A new input or longer description needs a cut elsewhere.
 - **Flaky test:** `resilience.test.ts` › "broker id prefixes differ per process" failed once in a full run, then passed 9 of 9 re-runs. Cause not found. If it fails again, keep the message.
 
 ## Ideas not done

@@ -266,7 +266,7 @@ Hypotheses H1–H8 were tested live (`docs/POC_RESULTS.md`). **Path A was chosen
 | `get_related_records` | scope_id, table, sys_id, samples, cursor                                                             | all reverse refs via dictionary + counts + samples; paginated                         |
 | `get_record_history`  | scope_id, table, sys_id, limit, cursor, since?, until?                                               | `sys_audit` + `sys_journal_field`; full history, any age                              |
 | `search_code`         | scope_id, pattern, tables?, limit, cursor                                                            | all script fields from dictionary; ±3-line snippets; continues across tables          |
-| `compare_records`     | scope_id (compare grant), table, match_a, match_b?, fields                                           | per-side ambiguity check; field diff + unified diff                                   |
+| `compare_records`     | scope_id (compare grant, or single: match_b required), table, match_a, match_b?, fields              | per-side ambiguity check; field diff + unified diff; version payloads by element      |
 
 All ServiceNow tools are annotated `readOnlyHint: true`. There is no generic HTTP tool. Every data tool also accepts `max_chars` (§8.3).
 

@@ -157,4 +157,4 @@ include real session cookies, tokens or customer data in a report.
 
 ## Accepted by the user: record copies
 
-`sys_update_version` holds XML copies of records, and it's readable (2026-11-05). Field-level credential protection doesn't look inside those copies, so a copy of a record with a secret value could show it. The user accepted this rather than adding a guard.
+`sys_update_version` holds XML copies of records, and it's readable (2026-11-05). Field-level credential protection doesn't look inside those copies, so a copy of a record with a secret value could show it. This holds for `get_field_content`, and for `compare_records`, which shows those copies as raw text or element by element (T-042). The user accepted this rather than adding a guard.
