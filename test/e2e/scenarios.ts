@@ -8,7 +8,10 @@
  */
 
 import { applyUnified } from '../../packages/server/src/mcp/line-diff.ts';
-import { parseUpdatePayload } from '../../packages/server/src/mcp/update-payload.ts';
+import {
+  describePayload,
+  parseUpdatePayload,
+} from '../../packages/server/src/mcp/update-payload.ts';
 
 // biome-ignore lint/suspicious/noExplicitAny: tool results are checked field by field at run time
 export type Result = any;
@@ -789,9 +792,10 @@ export const SCENARIOS: {
     },
   },
   {
-    // Read the metrics: `mode` "raw" passes, because the connector falls back, but it means the
-    // payload isn't in the expected format. A pass needs a script diff that applied back exactly:
-    // the first live run passed with none, because that record's two versions had the same script.
+    // Read the metrics. A pass needs a script that really changed, and a diff that applied back
+    // exactly: the first live run passed with no diff, and the second with a raw diff that may not
+    // have touched the script. An element diff is preferred; `mode` "raw" means the payload isn't
+    // in the expected form, and `raw_shapes` says why, with names only.
     name: 'compare_records: two versions from sys_update_version (T-042)',
     run: async (call, scope) => {
       const table = 'sys_update_version';
@@ -892,13 +896,30 @@ export const SCENARIOS: {
           ignored_fields: c.ignored.size,
           lines_cut: c.cut,
         };
-        const scriptDiff = c.lines.has('payload.script') || c.lines.has('payload');
-        return { metrics, proved: scriptDiff && applied > 0 };
+        // Whether a raw diff includes a script change, read from the XML itself.
+        const scriptOf = (xml: string) => /<script\b[^>]*>([\s\S]*?)<\/script>/.exec(xml)?.[1];
+        const rawScriptChanged = mode === 'raw' && scriptOf(rawA) !== scriptOf(rawB);
+        return {
+          metrics: {
+            ...metrics,
+            ...(mode === 'raw' ? { raw_script_changed: rawScriptChanged } : {}),
+          },
+          byElement: c.lines.has('payload.script') && applied > 0,
+          byRaw: c.lines.has('payload') && applied > 0 && rawScriptChanged,
+          shapes: mode === 'raw' ? [describePayload(rawA), describePayload(rawB)] : undefined,
+        };
       };
 
       const seen = new Set<unknown>();
       let checked = 0;
       let last: Record<string, unknown> | undefined;
+      let rawProof: Record<string, unknown> | undefined;
+      const rawShapes: unknown[] = [];
+      const summary = () => ({
+        pairs_checked: checked,
+        pairs_raw: rawShapes.length,
+        raw_shapes: rawShapes.slice(0, 5),
+      });
       for (const prefix of ['sys_script_include_', 'sys_script_', 'sys_']) {
         const r = ok(
           await call('aggregate_records', {
@@ -919,7 +940,9 @@ export const SCENARIOS: {
           const pair = await comparePair(name, g.count);
           checked++;
           last = pair.metrics;
-          if (pair.proved) return { ...pair.metrics, pairs_checked: checked };
+          if (pair.shapes) rawShapes.push(pair.shapes);
+          if (pair.byElement) return { ...pair.metrics, ...summary() };
+          if (pair.byRaw) rawProof ??= pair.metrics;
         }
       }
       if (!last) {
@@ -927,9 +950,10 @@ export const SCENARIOS: {
           'No record has two versions yet. Save a script include twice on this instance, then run this again.',
         );
       }
+      if (rawProof) return { ...rawProof, ...summary() };
       throw new Skip(
         `Compared the newest two versions of ${checked} records, and none changed a script. Change a script include's script on this instance, save it, then run this again.`,
-        { ...last, pairs_checked: checked },
+        { ...last, ...summary() },
       );
     },
   },

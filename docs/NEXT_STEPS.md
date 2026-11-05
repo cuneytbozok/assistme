@@ -4,9 +4,9 @@ The connector is installed and working in Claude Desktop, and every required ste
 
 ## 1. The live test for T-042
 
-The first run passed, but the two versions it found had the same script, so the script diff itself hasn't been shown live. To finish:
+Two runs passed, but neither showed a version diff with a changed script: the first pair had the same script, and the second came back as raw text, with no sign of whether its script changed. To finish:
 
-1. Run the test again. It now looks through up to 25 records for a pair of versions with a changed script. It needs one approval code in the extension popup.
+1. Run the test again. It now needs a script that really changed, and reports why a payload came back as raw text, with names only. It needs one approval code in the extension popup.
 2. If it reports `SKIP`, none of them changed a script. In ServiceNow, change the script of a script include you can spare and save it, then run it again. That's your edit on your dev instance: the connector only reads.
 3. Tell me when it's done. I'll read the numbers, and record the result.
 

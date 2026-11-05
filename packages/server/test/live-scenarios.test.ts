@@ -183,11 +183,59 @@ describe('T-034 scenario logic (mock)', () => {
     expect(Number(r?.metrics?.script_diff_lines)).toBeGreaterThan(0);
   });
 
-  it('T-042 versions: another payload format passes and shows as raw in the metrics', async () => {
+  it('T-042 versions: a raw diff with no script change is a skip, with the shapes', async () => {
     const r = await versions(['a\nb\nc', 'a\nB\nc']);
-    expect(r?.status).toBe('pass');
-    expect(r?.metrics).toMatchObject({ mode: 'raw', diffs_applied: 1, payload_lines: [3, 3] });
+    expect(r?.status).toBe('skip');
+    expect(r?.metrics).toMatchObject({
+      mode: 'raw',
+      diffs_applied: 1,
+      payload_lines: [3, 3],
+      raw_script_changed: false,
+      pairs_raw: 1,
+      raw_shapes: [[{ failed_at: 'root' }, { failed_at: 'root' }]],
+    });
     expect(r?.metrics?.payload_elements).toBeUndefined();
+  });
+
+  const twoRecords = (script: string) =>
+    xml(script).replace(
+      '</record_update>',
+      '<sys_translated_text action="delete_multiple" query="SECRET_VALUE"/></record_update>',
+    );
+
+  it('T-042 versions: a raw diff with a script change passes, and says why it was raw', async () => {
+    const r = await versions([twoRecords('var v = 1;\nend'), twoRecords('var v = 2;\nend')]);
+    expect(r?.status).toBe('pass');
+    expect(r?.metrics).toMatchObject({ mode: 'raw', raw_script_changed: true, diffs_applied: 1 });
+    expect(r?.metrics?.raw_shapes).toEqual([
+      [0, 1].map(() => ({
+        failed_at: 'records',
+        roots: ['record_update'],
+        records: [
+          { name: 'sys_script_include', action: 'INSERT' },
+          { name: 'sys_translated_text', action: 'delete_multiple' },
+        ],
+      })),
+    ]);
+    expect(JSON.stringify(r)).not.toContain('SECRET_VALUE');
+  });
+
+  it('T-042 versions: an element diff is preferred to a raw one found first', async () => {
+    const sn = instance([twoRecords('var v = 1;\nend'), twoRecords('var v = 2;\nend')]);
+    for (const script of ['var e = 1;\nend', 'var e = 2;\nend']) {
+      sn.insert('sys_update_version', {
+        name: 'sys_script_include_def',
+        payload: xml(script),
+        state: 'previous',
+        sys_created_on: script.includes('1') ? '2026-01-01 00:00:00' : '2026-01-02 00:00:00',
+      });
+    }
+    const h = await harness({ sn });
+    const [r] = await runScenarios(h.call, await claim(h, 'dev'), undefined, 'two versions');
+    await h.close();
+    expect(r?.status).toBe('pass');
+    expect(r?.metrics).toMatchObject({ mode: 'elements', pairs_checked: 2, pairs_raw: 1 });
+    expect(Number(r?.metrics?.script_diff_lines)).toBeGreaterThan(0);
   });
 
   it('T-042 versions: versions with the same script are a skip, not a pass, with the metrics', async () => {

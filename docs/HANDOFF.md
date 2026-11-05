@@ -9,16 +9,17 @@ The connector is built, installed and working on the user's Mac, in Claude Deskt
 - **Tasks:** 39 DONE, 2 BLOCKED (T-015, T-042), 1 DROPPED (T-039).
 - **Milestones:** M1, M3, M4, M5 and M6 achieved. M6 by the user's decision, with AC-6, AC-7 and AC-8 left open: not all 19 criteria are evidenced. M2 not achieved (T-015).
 - **Acceptance:** `docs/ACCEPTANCE.md`: 15 passed, 3 open, 1 out of scope, none failed.
-- **Next:** no task is eligible. T-042 passed a first live run, but its version script diff (AC3) still needs one more live run by the user. Anything else that remains needs the user: see `docs/NEXT_STEPS.md`.
+- **Next:** no task is eligible. T-042 passed two live runs, but its version script diff (AC3) still needs another live run by the user. Anything else that remains needs the user: see `docs/NEXT_STEPS.md`.
 
 ## T-042: what's unverified
 
-First live run on `dev469966`, 2026-11-05: 2 of 2 passed (`docs/evidence/T-042/first-live-run.json`).
+Two live runs on `dev469966`, 2026-11-05, each 2 of 2 passed (`docs/evidence/T-042/first-live-run.json`, `second-live-run.json`). A third is needed.
 
-- **Confirmed live, on one instance:** two records compare (an 850-line script diff applied back exactly, with per-side errors), and `sys_update_version` has every assumed field. Its `payload` (dictionary type `compressed`) reads as multi-line `record_update` XML with CDATA, and was compared by element.
-- **Not shown live:** a script diff between two versions (AC3). The pair found had no script change: `diff_fields` 0, `diffs_applied` 0. The scenario now searches up to 25 records and skips, rather than passes, if none changed a script. That rewrite hasn't run live.
-- **Also not live:** reaching another instance (no second instance exists; mock and the unchanged extension only), an over-long line being cut, and record types other than one script include.
-- After the next run, read `script_diff_lines`, `diffs_applied`, `pairs_checked`, `mode` and `lines_cut`.
+- **Confirmed live, on one instance:** two records compare (an 850-line script diff applied back exactly, with per-side errors), and `sys_update_version` has every assumed field. A script include's `payload` (dictionary type `compressed`) was compared by element.
+- **Not shown live:** a version diff with a changed script (AC3). The first pair had no script change. The second pair, on `sys_script`, was `mode: raw`: side a parsed with 46 elements, and side b or the pair as a whole didn't, for a reason the metrics don't show. Its raw diff applied back, but nothing shows the script changed.
+- **The scenario now** needs a script that really changed, prefers an element diff, and reports `raw_shapes` (names only). That rewrite hasn't run live. **Whether the parser should handle that `sys_script` form is undecided until `raw_shapes` shows what it is.**
+- **Also not live:** reaching another instance (no second instance exists; mock and the unchanged extension only), and an over-long line being cut.
+- After the next run, read `mode`, `script_diff_lines`, `raw_script_changed`, `diffs_applied`, `pairs_checked`, `pairs_raw`, `raw_shapes` and `lines_cut`.
 
 ## Decisions made by the user (2026-11-05)
 

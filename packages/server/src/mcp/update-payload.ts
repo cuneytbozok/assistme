@@ -3,8 +3,8 @@
  * diffed element by element instead of as XML text.
  *
  * Expected: `<record_update ...><table action="..."><field>value</field>...` with one record, and
- * scripts in CDATA. Seen live on one instance, for one script include (T-042). Other record types
- * are unseen. Anything else returns undefined, and the caller diffs the raw text instead, so another
+ * scripts in CDATA. Seen live for a script include, and for one of two `sys_script` versions; the
+ * other's form isn't known yet (T-042). Anything else returns undefined, and the caller diffs the raw text instead, so another
  * form gives a less readable diff but never a wrong one.
  *
  * The content is untrusted: no DTDs or custom entities, one forward pass (no backtracking over the
@@ -80,7 +80,12 @@ function findClose(s: string, name: string, from: number, end: number) {
 }
 
 /** The elements directly inside [start, end), or undefined if anything else is there. */
-function children(s: string, start: number, end: number): Element[] | undefined {
+function children(
+  s: string,
+  start: number,
+  end: number,
+  seen: string[] = [],
+): Element[] | undefined {
   const out: Element[] = [];
   let i = start;
   while (i < end) {
@@ -104,12 +109,14 @@ function children(s: string, start: number, end: number): Element[] | undefined 
     if (after > end) return undefined;
     if (tag[3] === '/') {
       out.push({ name, attrs, start: after, end: after });
+      seen.push(name);
       i = after;
       continue;
     }
     const closed = findClose(s, name, after, end);
     if (!closed) return undefined;
     out.push({ name, attrs, start: after, end: closed.close });
+    seen.push(name);
     i = closed.after;
   }
   return out;
@@ -138,6 +145,66 @@ function textOf(s: string, start: number, end: number): string {
     i = stop + 3;
   }
   return out;
+}
+
+/** Why a payload does or doesn't parse: element names and actions only, never values. */
+export interface PayloadShape {
+  /** Where parsing stops. Undefined means the payload parses. */
+  failed_at?: 'root' | 'root_content' | 'records' | 'record_content' | 'repeated';
+  roots?: string[];
+  records?: { name: string; action?: string }[];
+  elements?: number;
+  /** The last element read before `record_content` failed, or the repeated one. */
+  near?: string;
+}
+
+const MAX_SHAPE_RECORDS = 20;
+
+function actionOf(attrs: string): string | undefined {
+  const m = /\saction\s*=\s*(?:"([^"]*)"|'([^']*)')/.exec(attrs);
+  const value = m?.[1] ?? m?.[2];
+  return value !== undefined && /^[\w-]{1,40}$/.test(value) ? value : undefined;
+}
+
+/** For diagnosis in the live scenarios, so a fallback can be explained without record content. */
+export function describePayload(xml: string): PayloadShape {
+  const roots = children(xml, 0, xml.length);
+  if (!roots) return { failed_at: 'root' };
+  const names = roots.map((r) => r.name).slice(0, MAX_SHAPE_RECORDS);
+  const root = roots[0];
+  if (roots.length !== 1 || root?.name !== 'record_update') {
+    return { failed_at: 'root', roots: names };
+  }
+  const records = children(xml, root.start, root.end);
+  if (!records) return { failed_at: 'root_content', roots: names };
+  const shape: PayloadShape = {
+    roots: names,
+    records: records.slice(0, MAX_SHAPE_RECORDS).map((r) => {
+      const action = actionOf(r.attrs);
+      return { name: r.name, ...(action ? { action } : {}) };
+    }),
+  };
+  const record = records[0];
+  if (records.length !== 1 || !record) return { ...shape, failed_at: 'records' };
+  const seen: string[] = [];
+  const elements = children(xml, record.start, record.end, seen);
+  if (!elements) {
+    const near = seen.at(-1);
+    return {
+      ...shape,
+      failed_at: 'record_content',
+      elements: seen.length,
+      ...(near ? { near } : {}),
+    };
+  }
+  const distinct = new Set<string>();
+  for (const e of elements) {
+    if (distinct.has(e.name)) {
+      return { ...shape, failed_at: 'repeated', elements: elements.length, near: e.name };
+    }
+    distinct.add(e.name);
+  }
+  return { ...shape, elements: elements.length };
 }
 
 /** The record in a payload, or undefined when the payload isn't the expected shape. */

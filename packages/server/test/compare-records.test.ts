@@ -3,7 +3,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import { applyUnified, diffLines, unifiedDiff } from '../src/mcp/line-diff.js';
-import { parseUpdatePayload } from '../src/mcp/update-payload.js';
+import { describePayload, parseUpdatePayload } from '../src/mcp/update-payload.js';
 import { dictionaryFixture, type FakeServiceNow } from './fake-sn.js';
 import { claim, claimCompare, type Harness, harness } from './mcp-harness.js';
 
@@ -813,6 +813,52 @@ describe('T-042 two versions of a record (assumed payload format; mock only)', (
     const r = await h.call('compare_records', { scope_id: scope, ...first });
     expect(r.data.different_fields).toEqual([{ field: 'payload.u_password', a: 'one', b: 'two' }]);
     await h.close();
+  });
+});
+
+describe('describePayload', () => {
+  it.each([
+    ['text', { failed_at: 'root' }],
+    ['<a/>', { failed_at: 'root', roots: ['a'] }],
+    [
+      '<record_update>loose</record_update>',
+      { failed_at: 'root_content', roots: ['record_update'] },
+    ],
+    [
+      '<record_update><x action="DELETE"/><y action="a b"/></record_update>',
+      {
+        failed_at: 'records',
+        roots: ['record_update'],
+        records: [{ name: 'x', action: 'DELETE' }, { name: 'y' }],
+      },
+    ],
+    [
+      '<record_update><x><a>secret</a>loose</x></record_update>',
+      {
+        failed_at: 'record_content',
+        roots: ['record_update'],
+        records: [{ name: 'x' }],
+        elements: 1,
+        near: 'a',
+      },
+    ],
+    [
+      '<record_update><x><a>1</a><a>2</a></x></record_update>',
+      {
+        failed_at: 'repeated',
+        roots: ['record_update'],
+        records: [{ name: 'x' }],
+        elements: 2,
+        near: 'a',
+      },
+    ],
+    [
+      '<record_update><x><a>1</a></x></record_update>',
+      { roots: ['record_update'], records: [{ name: 'x' }], elements: 1 },
+    ],
+  ])('%s', (xml, shape) => {
+    expect(describePayload(xml)).toEqual(shape);
+    expect(shape.failed_at === undefined).toBe(parseUpdatePayload(xml) !== undefined);
   });
 });
 
