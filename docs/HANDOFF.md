@@ -20,7 +20,7 @@ _Last updated: 2026-11-05 (after T-039 preparation)_
 4. Claude Desktop (`packages/server/sn-mcp.mcpb` is rebuilt and current): install it, then remove the old `sn-mcp` entry from `claude_desktop_config.json`, quit and reopen. Try a query, a revoke, a logout, and Cowork (T-036).
 5. Upload both zips from `dist-skill/` in Claude Desktop (T-038).
 6. Done 2026-11-05: the setup round trip on the real machine (T-037). It waits only on T-036.
-7. Dropped: the official SDK skill (T-039). The user's Claude Code does have `fluent@servicenow`; ask whether to remove it.
+7. Dropped: the official SDK skill (T-039). The user's Claude Code has `fluent@servicenow`, and the user chose to keep it (2026-11-05). Don't ask again.
 8. A second instance for T-015, if one is available. That also allows a live `compare_records` run, which T-034 can't cover.
 
 **Decisions made 2026-11-05 by the user:** the word "javascript" is allowed and only the `javascript:` prefix is refused (ADR-005 addendum); dictionary validation stays fail-closed, with Claude telling the user what they can't read; a denied request stays `status: "denied"` (T-015 AC6 changed).

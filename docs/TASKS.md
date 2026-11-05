@@ -1304,7 +1304,7 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 - **Verification:** manual, with a transcript in evidence.
 - **DoD:** —
 - **Blocker:** the acceptance check needs the user: a fresh Claude Code session (the CLI here isn't signed in, and logging it in needs the user's credentials) and T-034 first.
-- **Done for the user (2026-11-05):** `claude mcp add --scope user` with the installed CLI (2.1.317). `claude mcp list` reports `sn-mcp ✔ Connected`, which shows the server starts and answers, not that a signed-in session can use it.
+- **Done for the user (2026-11-05):** `claude mcp add --scope user` with the installed CLI (2.1.317). `claude mcp list` reports `sn-mcp ✔ Connected`, which shows the server starts and answers, not that a signed-in session can use it. After registering, the running Code session in the Desktop app listed the new tools (such as `search_code` and `compare_records`), but none was called from it.
 - **Evidence so far (2026-11-05, not acceptance):** `.mcp.json.example`; `claude mcp add` (user scope) and `.mcp.json` (project scope) instructions in `docs/INSTALL.md`. A test checks the example points at the built server. **Unverified:** AC, `/mcp` listing the server and a scoped query on DEV.
 
 ### T-036 — `.mcpb` Desktop Extension
@@ -1377,6 +1377,7 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
   - **Added 2026-11-05 (user decision):** the third-party `plugin/skills/servicenow-development-guide`, pinned; `npm run pack:skill` now builds both zips. Same install checks apply.
   - **Installed in Claude Code for the user (2026-11-05):** `claude plugin marketplace add` and `claude plugin install sn-mcp-skills@sn-mcp` both succeeded, and `claude plugin list` shows it enabled.
   - **Bug found by installing:** with the plugin rooted at the repo, Claude Code copied the whole project into its cache (233 MB, including `node_modules`). The skills now live in `plugin/`, and the cache is 428 KB with both skills and no `node_modules`. A test keeps that folder to the manifest and skills.
+  - After installing, the running Code session in the Desktop app listed both skills as `sn-mcp-skills:…`. Neither was loaded or used.
   - **Unverified:** Claude actually using the skills in a signed-in session; uploading the zips in Desktop.
 
 ### T-039 — Official now-sdk skill evaluation
@@ -1390,7 +1391,7 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 - **Verification:** manual in Claude Code, with a transcript in evidence.
 - **DoD:** —
 - **Dropped (2026-11-05, user decision):** the SDK skill isn't part of this project. No acceptance criterion was evaluated, and `explain` and the deny rules were never verified. AC-17 goes out of scope, and T-040 no longer waits on this task.
-- **What remains:** a note in `docs/SKILLS.md` and `.claude/settings.example.json`, because the user's Claude Code has `fluent@servicenow` installed.
+- **What remains:** a note in `docs/SKILLS.md` and `.claude/settings.example.json`, because the user's Claude Code has `fluent@servicenow` installed. The user chose to keep that plugin (2026-11-05).
 
 ## Phase 7 — Acceptance (Milestone M6)
 
