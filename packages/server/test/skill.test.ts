@@ -104,8 +104,63 @@ describe('T-038 skill', () => {
       });
       expect(list).toContain('servicenow-troubleshooting/SKILL.md');
       expect(list).toContain('servicenow-troubleshooting/references/cmdb-ire.md');
+      const other = execFileSync('unzip', ['-Z1', join(out, 'servicenow.zip')], {
+        encoding: 'utf8',
+      });
+      expect(other).toContain('servicenow/SKILL.md');
+      expect(other).toContain('servicenow/references/glide-api.md');
+      expect(other).toContain('servicenow/LICENSE');
     } finally {
       rmSync(out, { recursive: true, force: true });
     }
+  });
+});
+
+describe('the third-party servicenow skill', () => {
+  const DIR = join(REPO, 'skills/servicenow');
+  const walk = (dir: string): string[] =>
+    readdirSync(dir, { withFileTypes: true }).flatMap((e) =>
+      e.isDirectory() ? walk(join(dir, e.name)) : [join(dir, e.name)],
+    );
+  const files = walk(DIR);
+  const main = readFileSync(join(DIR, 'SKILL.md'), 'utf8');
+
+  it('is pinned to a commit, with its licence kept', () => {
+    const p = readFileSync(join(DIR, 'PROVENANCE.md'), 'utf8');
+    expect(p).toMatch(/`[0-9a-f]{40}`/);
+    expect(p).toContain('https://github.com/Vanka07/servicenow-skill');
+    expect(readFileSync(join(DIR, 'LICENSE'), 'utf8')).toMatch(/MIT License/);
+  });
+
+  it('keeps the note about the read-only connector', () => {
+    expect(main).toContain('## Using this with the sn-mcp connector');
+    expect(main).toMatch(/The connector only reads/);
+    expect(main).toMatch(/untrusted data/);
+    expect(/^---\nname: servicenow\n/.test(main)).toBe(true);
+  });
+
+  it('has no hidden characters or text aimed at steering the assistant', () => {
+    const hidden = /[\u00ad\u200b-\u200f\u202a-\u202e\u2060-\u2064\ufeff\u{e0000}-\u{e007f}]/u;
+    const steering =
+      /(ignore|disregard) (all|any|previous|prior|the above)|system prompt|do not (tell|mention|inform)|without (asking|telling|informing)|exfiltrat/i;
+    for (const f of files) {
+      const text = readFileSync(f, 'utf8');
+      expect(hidden.test(text), f).toBe(false);
+      expect(steering.test(text), f).toBe(false);
+    }
+  });
+
+  it('its helper imports no network or process modules', () => {
+    const py = readFileSync(join(DIR, 'scripts/snow_helper.py'), 'utf8');
+    const imports = py.match(/^(?:import|from) .+$/gm) ?? [];
+    expect(imports.length).toBeGreaterThan(0);
+    for (const line of imports) {
+      expect(line).not.toMatch(/\b(subprocess|socket|urllib|http|requests|os|ftplib|ssl)\b/);
+    }
+  });
+
+  it('does not stand in for the troubleshooting skill', () => {
+    expect(main).toContain('`servicenow-troubleshooting`');
+    expect(skillMd).not.toContain('references/glide-api.md');
   });
 });

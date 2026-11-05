@@ -1412,6 +1412,7 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
     - The zip contains `servicenow-troubleshooting/SKILL.md` ✔ test.
   - `claude plugin validate .` (Claude Code 2.1.317, already installed) → exit 0, "Validation passed with warnings"; the warnings are optional plugin-directory checks, which don't apply as this isn't being submitted.
   - The T-034 live run checked the 34 tables named: 2 names were wrong and are fixed; `discovery_schedule` is absent on the PDI, because Discovery isn't fully there. Field names in the references aren't checked live.
+  - **Added 2026-11-05 (user decision):** the third-party `skills/servicenow`, pinned; `npm run pack:skill` now builds both zips. Same install checks apply.
   - **Unverified:** installing in Claude Code, uploading in Desktop.
 
 ## Phase 7 — Acceptance (Milestone M6)
