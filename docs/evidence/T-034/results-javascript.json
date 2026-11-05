@@ -1,0 +1,42 @@
+{
+  "note": "Live run against a real instance. Shapes, counts and sizes only; no record content.",
+  "started": "2026-11-05T07:23:18.635Z",
+  "finished": "2026-11-05T07:23:23.829Z",
+  "instance": "dev469966",
+  "env": "dev",
+  "tools": 14,
+  "tools_list_bytes": 11798,
+  "released": true,
+  "counts": {
+    "pass": 2,
+    "fail": 0,
+    "skip": 0
+  },
+  "results": [
+    {
+      "name": "the word javascript works: a table named with it, and searching for it (ADR-005)",
+      "status": "pass",
+      "metrics": {
+        "table_described": true,
+        "matches": 5
+      },
+      "measure": {
+        "calls": 3,
+        "max_result_chars": 5392,
+        "requests_used": 7
+      }
+    },
+    {
+      "name": "unsafe and broadening queries are refused before any read (AC-14)",
+      "status": "pass",
+      "metrics": {
+        "refused": 4
+      },
+      "measure": {
+        "calls": 4,
+        "max_result_chars": 313,
+        "requests_used": 0
+      }
+    }
+  ]
+}

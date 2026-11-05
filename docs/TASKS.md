@@ -1311,7 +1311,7 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
     - `sysparm_offset` counting pre-ACL rows (ADR-011 addendum): the user is an admin, so little was hidden.
     - 22 tables refused `ACL_DENIED` even for admin, reported as such; not investigated further.
     - A table named with "javascript" couldn't be read at the time. The user chose to allow the word (ADR-005 addendum): see the re-check below.
-  - **Change after the run (2026-11-05, user decision):** only the `javascript:` prefix is refused now, not the word (ADR-005 addendum). 102 attack cases, 12 of them new and aimed at hiding the prefix, are all refused in the shared validator, and 4 disguises are checked against the extension's real builder. A new live scenario checks the named table and a search for the word. **Not yet run live:** it needs an extension reload and one approval.
+  - **Change after the run (2026-11-05, user decision):** only the `javascript:` prefix is refused now, not the word (ADR-005 addendum). 102 attack cases, 12 of them new and aimed at hiding the prefix, are all refused in the shared validator, and 4 disguises are checked against the extension's real builder. **Live on 2026-11-05** (`results-javascript.json`, extension reloaded, approved by the user): `automation_pipeline_transformer_javascript` was described, a search for the word in `sys_script_include` returned 5 matches, `javascript:` stayed refused, and the 4 unsafe queries were still refused with 0 requests.
   - **DoD ✔** M4 achieved.
 
 ### T-035 — Claude Code registration
