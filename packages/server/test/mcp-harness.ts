@@ -21,7 +21,14 @@ const scopeFor = (inst: string, n = 1) =>
 export interface Harness {
   call: (name: string, args: Record<string, unknown>) => Promise<any>;
   sn: FakeServiceNow;
-  dataRequests: { offset: number; limit: number; fields?: string[]; displayValue?: string }[];
+  dataRequests: {
+    kind: string;
+    table: string;
+    offset: number;
+    limit: number;
+    fields?: string[];
+    displayValue?: string;
+  }[];
   close: () => Promise<void>;
 }
 
@@ -37,6 +44,8 @@ export async function harness(
     cursors?: CursorCodec;
     /** Rows the user's ACLs hide: removed from a page AFTER windowing, like ServiceNow does. */
     hidden?: (row: Record<string, unknown>) => boolean;
+    /** Tables the signed-in user's ACLs refuse (HTTP 403 → ACL_DENIED). */
+    denyTables?: string[];
   } = {},
 ): Promise<Harness> {
   const sn = opts.sn ?? dictionaryFixture();
@@ -94,6 +103,8 @@ export async function harness(
           const isMeta = ['sys_db_object', 'sys_dictionary', 'sys_choice'].includes(op.table);
           if (!isMeta) {
             dataRequests.push({
+              kind: op.kind,
+              table: op.table,
               displayValue: op.displayValue,
               offset: op.offset,
               limit: op.limit,
@@ -102,6 +113,35 @@ export async function harness(
             if (opts.tooLarge?.(op))
               return fail('RESPONSE_TOO_LARGE', 'The response exceeded 10485760 bytes.');
           }
+          if (op.kind === 'table.get' || op.kind === 'stats.aggregate') {
+            if (opts.denyTables?.includes(op.table))
+              return fail('ACL_DENIED', 'Insufficient rights to read this table.');
+            const body =
+              op.kind === 'table.get'
+                ? sn.get({
+                    table: op.table,
+                    sysId: op.sysId,
+                    ...(op.fields ? { fields: op.fields } : {}),
+                  })
+                : sn.stats({
+                    table: op.table,
+                    ...(op.query ? { query: op.query } : {}),
+                    ...(op.groupBy ? { groupBy: op.groupBy } : {}),
+                    ...(op.aggregates ? { aggregates: op.aggregates } : {}),
+                  });
+            if (body === undefined) return fail('NOT_FOUND', 'No Record found');
+            return reply({
+              type: 'sn.op',
+              instance: req.instance,
+              host: HOSTS[req.instance],
+              env: 'dev',
+              status: 200,
+              body,
+              bytes: 10,
+            });
+          }
+          if (opts.denyTables?.includes(op.table))
+            return fail('ACL_DENIED', 'Insufficient rights to read this table.');
           const { rows, total } = sn.list({
             table: op.table,
             ...(op.query ? { query: op.query } : {}),

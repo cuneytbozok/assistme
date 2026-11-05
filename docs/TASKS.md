@@ -34,7 +34,7 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 | T-022 | Read-only verification (M3)                     | 021      | DONE        |
 | T-023 | Response shaping, pagination, completeness      | 018      | DONE        |
 | T-024 | `query_records` full                            | 023      | DONE        |
-| T-025 | `get_record`                                    | 024      | TODO        |
+| T-025 | `get_record`                                    | 024      | DONE        |
 | T-026 | `discover_tables` + `describe_table`            | 017, 023 | TODO        |
 | T-027 | `get_field_content`                             | 025      | TODO        |
 | T-028 | `aggregate_records`                             | 024      | TODO        |
@@ -1011,7 +1011,7 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 
 ### T-025 — `get_record`
 
-- **Status:** TODO
+- **Status:** DONE
 - **Purpose:** Fetch exactly one record, never guessing.
 - **Dependencies:** T-024
 - **Deliverables:**
@@ -1024,7 +1024,16 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 - **Acceptance criteria:** ambiguous, not-found and unique cases are tested; the ambiguity result includes a working "list all" call; references are expanded with provenance; `requests_used` is reported.
 - **Verification:** `npm test`.
 - **DoD:** —
-- **Evidence:** —
+- **Evidence (2026-11-05):**
+  - Implemented: `server/src/mcp/tools/get-record.ts`, `tools/record-lookup.ts` (unique resolution, reused by T-032), `tools/support.ts` (per-call `SnClient`, budget, tiebreak, bounded concurrency), `dataResponse` in `response.ts` (the envelope for non-list results), `extra` on `toolError`, `encodeState`/`decodeState` in `cursor.ts` (for composite tools). `fake-sn` gained `get` and `stats`; the harness answers `table.get`/`stats.aggregate` and `denyTables`.
+  - Tests: `test/get-record.test.ts` (9 tests; mock). Root build, tests and lint exit 0.
+  - **Acceptance criteria:**
+    - Unique ✔ by `sys_id` (1 request) and `match` (2 requests); not found ✔ both ways.
+    - Ambiguous ✔ 9 matches → `AMBIGUOUS_MATCH`, `total: 9`, 5 candidates, and `list_all` (`query_records`) run as given returns all 9.
+    - References ✔ compact summaries with `source` and `link`; denied tables and unreadable references are in `omitted`, the second with a `get_record` call; `document_id` fields get a hint to call with an explicit table.
+    - `requests_used` ✔ asserted.
+  - **Beyond the task:** ACL-hidden rows can't fake uniqueness. A first window showing one readable row keeps reading while the count says more follow (test: readable rows 1 and 13 of 14 → `AMBIGUOUS_MATCH`). One readable row among hidden ones is returned, with a hint.
+  - **Mutation checks** (each reverted): never ambiguous, first window only, denied reference expanded, no credential stripping, no `list_all` all fail tests.
 
 ### T-026 — `discover_tables` + `describe_table`
 

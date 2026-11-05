@@ -25,8 +25,13 @@ export function ok(payload: Record<string, unknown> & { provenance: Provenance }
   return { content: [{ type: 'text', text: JSON.stringify(body) }], structuredContent: body };
 }
 
-export function toolError(code: ErrorCode, message: string, hint?: string): CallToolResult {
-  const body = { ok: false, error: { code, message, hint: hint ?? DEFAULT_HINTS[code] } };
+export function toolError(
+  code: ErrorCode,
+  message: string,
+  hint?: string,
+  extra?: Record<string, unknown>,
+): CallToolResult {
+  const body = { ok: false, error: { code, message, hint: hint ?? DEFAULT_HINTS[code], ...extra } };
   return {
     isError: true,
     content: [{ type: 'text', text: JSON.stringify(body) }],

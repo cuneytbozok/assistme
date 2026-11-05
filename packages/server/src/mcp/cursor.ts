@@ -28,6 +28,13 @@ export const CursorStateSchema = z.strictObject({
 });
 export type CursorState = z.infer<typeof CursorStateSchema>;
 
+/** Every composite tool's cursor names its tool and instance (T-029 onward). */
+export interface ToolCursorBase {
+  v: 1;
+  tool: string;
+  instance: string;
+}
+
 export class CursorError extends Error {}
 
 const b64 = (b: Buffer | string) => Buffer.from(b).toString('base64url');
@@ -46,6 +53,30 @@ export class CursorCodec {
 
   /** Verifies the signature and shape. Throws CursorError with a user-facing message. */
   decode(cursor: string): CursorState {
+    const parsed = CursorStateSchema.safeParse(this.verify(cursor));
+    if (!parsed.success) throw new CursorError('This cursor is unreadable.');
+    return parsed.data;
+  }
+
+  /** Signs a composite tool's own state (it always names its tool and instance). */
+  encodeState<S extends ToolCursorBase>(schema: z.ZodType<S>, state: S): string {
+    const payload = b64(JSON.stringify(schema.parse(state)));
+    return `${payload}.${b64(this.mac(payload))}`;
+  }
+
+  /** Verifies a composite tool's cursor: the signature, then the tool it belongs to, then shape. */
+  decodeState<S extends ToolCursorBase>(schema: z.ZodType<S>, cursor: string, tool: string): S {
+    const raw = this.verify(cursor) as { tool?: unknown };
+    if (raw?.tool !== tool) {
+      throw new CursorError(`This cursor belongs to ${String(raw?.tool)}, not ${tool}.`);
+    }
+    const parsed = schema.safeParse(raw);
+    if (!parsed.success) throw new CursorError('This cursor is unreadable.');
+    return parsed.data;
+  }
+
+  /** Checks the signature and returns the decoded JSON payload. */
+  private verify(cursor: string): unknown {
     const parts = cursor.split('.');
     if (parts.length !== 2 || !parts[0] || !parts[1] || cursor.length > 8000) {
       throw new CursorError('This is not a cursor issued by this connector.');
@@ -63,14 +94,10 @@ export class CursorCodec {
         'This cursor has been modified, or was issued by a previous connector process. Start the query again without a cursor.',
       );
     }
-    let raw: unknown;
     try {
-      raw = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
+      return JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
     } catch {
       throw new CursorError('This cursor is unreadable.');
     }
-    const parsed = CursorStateSchema.safeParse(raw);
-    if (!parsed.success) throw new CursorError('This cursor is unreadable.');
-    return parsed.data;
   }
 }

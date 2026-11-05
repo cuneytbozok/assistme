@@ -89,13 +89,12 @@ export class FakeServiceNow {
     }
   }
 
-  /** Mirrors GET /api/now/table/{table}: returns rows (projected) and the total count. */
-  list(req: { table: string; query?: string; fields?: string[]; limit: number; offset: number }) {
-    this.calls.push({ ...req, query: req.query ?? '' });
-    let rows = [...(this.tables.get(req.table) ?? [])];
-    if (req.query) {
-      const p = parseEncodedQuery(req.query, { profile: 'enforce', allowTextSearch: true });
-      if (!p.ok) throw new Error(`fake SN: bad query ${req.query}`);
+  /** Rows of a table that satisfy an encoded query, in query order. */
+  private select(table: string, query?: string): Row[] {
+    let rows = [...(this.tables.get(table) ?? [])];
+    if (query) {
+      const p = parseEncodedQuery(query, { profile: 'enforce', allowTextSearch: true });
+      if (!p.ok) throw new Error(`fake SN: bad query ${query}`);
       const text = p.value.textSearch?.toLowerCase();
       if (text) {
         rows = rows.filter((row) =>
@@ -124,6 +123,13 @@ export class FakeServiceNow {
         });
       }
     }
+    return rows;
+  }
+
+  /** Mirrors GET /api/now/table/{table}: returns rows (projected) and the total count. */
+  list(req: { table: string; query?: string; fields?: string[]; limit: number; offset: number }) {
+    this.calls.push({ ...req, query: req.query ?? '' });
+    const rows = this.select(req.table, req.query);
     const total = rows.length;
     const page = rows.slice(req.offset, req.offset + req.limit).map((row) => {
       if (!req.fields) {
@@ -132,6 +138,59 @@ export class FakeServiceNow {
       return Object.fromEntries(req.fields.map((f) => [f, this.value(row, f) ?? '']));
     });
     return { rows: page, total };
+  }
+
+  /** Mirrors GET /api/now/table/{table}/{sys_id}: the projected row, or undefined (HTTP 404). */
+  get(req: { table: string; sysId: string; fields?: string[] }) {
+    this.calls.push({ table: req.table, query: `sys_id=${req.sysId}`, limit: 1, offset: 0 });
+    const row = this.tables.get(req.table)?.find((r) => r.sys_id === req.sysId);
+    if (!row) return undefined;
+    const keys = req.fields ?? Object.keys(row);
+    return Object.fromEntries(keys.map((f) => [f, this.value(row, f) ?? '']));
+  }
+
+  /**
+   * Mirrors GET /api/now/stats/{table}: `{stats}` without grouping, an array of
+   * `{stats, groupby_fields}` with it. Numbers come back as strings, like the real API.
+   */
+  stats(req: {
+    table: string;
+    query?: string;
+    groupBy?: string[];
+    aggregates?: { fn: 'avg' | 'min' | 'max' | 'sum'; field: string }[];
+  }): unknown {
+    this.calls.push({ table: req.table, query: req.query ?? '', limit: 0, offset: 0 });
+    const rows = this.select(req.table, req.query);
+    const summarize = (group: Row[]) => {
+      const stats: Record<string, unknown> = { count: String(group.length) };
+      for (const a of req.aggregates ?? []) {
+        const nums = group.map((r) => Number(this.value(r, a.field) ?? 0));
+        const sum = nums.reduce((x, y) => x + y, 0);
+        const v =
+          a.fn === 'sum'
+            ? sum
+            : a.fn === 'avg'
+              ? sum / Math.max(1, nums.length)
+              : a.fn === 'min'
+                ? Math.min(...nums)
+                : Math.max(...nums);
+        stats[a.fn] = { ...(stats[a.fn] as object), [a.field]: String(v) };
+      }
+      return stats;
+    };
+    if (!req.groupBy) return { stats: summarize(rows) };
+    const groups = new Map<string, Row[]>();
+    for (const r of rows) {
+      const key = JSON.stringify(req.groupBy.map((f) => String(this.value(r, f) ?? '')));
+      groups.set(key, [...(groups.get(key) ?? []), r]);
+    }
+    return [...groups.entries()].map(([key, group]) => ({
+      stats: summarize(group),
+      groupby_fields: (JSON.parse(key) as string[]).map((value, i) => ({
+        field: req.groupBy?.[i],
+        value,
+      })),
+    }));
   }
 }
 

@@ -1,5 +1,5 @@
 /**
- * MCP server: list_instances, request_scope, claim_scope, release_scope, query_records.
+ * MCP server: scope tools here; data tools in tools/.
  *
  * No tool accepts a URL, HTTP method or header; requests to ServiceNow are operation
  * descriptors that the extension turns into fixed GET requests (ADR-004). All tools are
@@ -8,8 +8,6 @@
  * Scope semantics (T-012): every data tool needs `scope_id`; there is no default scope. Scope
  * ids appear only in the claim_scope result. The extension authorizes every request; the local
  * ScopeStore can only narrow (expiry, instance coverage).
- *
- * `query_records` is the PoC version (no filters, limit ≤ 5); T-024 replaces it.
  */
 import { type CallToolResult, McpServer } from '@modelcontextprotocol/server';
 import {
@@ -34,7 +32,8 @@ import {
   ScopeIdInput,
   UNTRUSTED_NOTE,
 } from './tools/common.js';
-import type { CallOutcome } from './tools/context.js';
+import type { CallOutcome, ToolContext } from './tools/context.js';
+import { registerGetRecord } from './tools/get-record.js';
 import { registerQueryRecords } from './tools/query-records.js';
 
 export { ScopeIdInput, UNTRUSTED_NOTE };
@@ -375,7 +374,7 @@ export function createMcpServer(
     },
   );
 
-  registerQueryRecords(server, {
+  const tools: ToolContext = {
     bridge,
     scopes,
     cursors,
@@ -385,7 +384,9 @@ export function createMcpServer(
     metadataError,
     call,
     requireScope,
-  });
+  };
+  registerQueryRecords(server, tools);
+  registerGetRecord(server, tools);
 
   return server;
 }

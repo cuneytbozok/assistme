@@ -175,16 +175,19 @@ async function setup(withBroker = true) {
 }
 
 describe('tool surface', () => {
-  it('tools/list has exactly the five tools, all readOnlyHint', async () => {
+  // The exact list of tools is pinned in tool-surface.test.ts.
+  it('tools/list: every tool is annotated read-only and has a description and output schema', async () => {
     const { client } = await setup(false);
     const { tools } = await client.listTools();
-    expect(tools.map((t) => t.name).sort()).toEqual([
-      'claim_scope',
-      'list_instances',
-      'query_records',
-      'release_scope',
-      'request_scope',
-    ]);
+    expect(tools.map((t) => t.name)).toEqual(
+      expect.arrayContaining([
+        'claim_scope',
+        'list_instances',
+        'query_records',
+        'release_scope',
+        'request_scope',
+      ]),
+    );
     for (const t of tools) {
       expect(t.annotations?.readOnlyHint, t.name).toBe(true);
       expect(t.annotations?.destructiveHint, t.name).toBe(false);

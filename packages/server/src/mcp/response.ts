@@ -66,3 +66,43 @@ export function listResponse(r: {
     requests_used: r.requestsUsed,
   });
 }
+
+/**
+ * Envelope for tools that don't return a plain row list (T-025 onward). Same contract: `complete`
+ * is true only when nothing is left out; each omission says what is missing and, when it can be
+ * read, the exact call that gets it.
+ */
+export function dataResponse(r: {
+  provenance: Provenance;
+  data: Record<string, unknown>;
+  omitted?: Omission[];
+  page?: { returned: number; returned_total: number; next_cursor?: string; total?: number };
+  hints?: string[];
+  links?: string[];
+  untrusted: string;
+  requestsUsed: number;
+}) {
+  const omitted = r.omitted ?? [];
+  const hasMore = r.page?.next_cursor !== undefined;
+  return ok({
+    provenance: r.provenance,
+    data: r.data,
+    untrusted_content: r.untrusted,
+    complete: !hasMore && omitted.length === 0,
+    ...(r.page
+      ? {
+          page: {
+            returned: r.page.returned,
+            returned_total: r.page.returned_total,
+            has_more: hasMore,
+            next_cursor: r.page.next_cursor ?? null,
+            total: r.page.total ?? null,
+          },
+        }
+      : {}),
+    ...(omitted.length > 0 ? { omitted } : {}),
+    ...(r.hints && r.hints.length > 0 ? { hints: r.hints } : {}),
+    ...(r.links && r.links.length > 0 ? { links: r.links } : {}),
+    requests_used: r.requestsUsed,
+  });
+}

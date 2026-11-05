@@ -35,11 +35,14 @@ import { listResponse } from '../response.js';
 import { provenance, toolError } from '../results.js';
 import { type Ok, READ_ONLY, ResultEnvelope, ScopeIdInput, UNTRUSTED_NOTE } from './common.js';
 import type { ToolContext } from './context.js';
+import {
+  maxCharsInput,
+  RESPONSE_OVERHEAD_CHARS,
+  resolveMaxChars,
+  withTiebreak,
+} from './support.js';
 
 const DEFAULT_LIMIT = 20;
-/** Room for provenance, page info, row-omission entries and hints in each result. */
-const RESPONSE_OVERHEAD_CHARS = 2_500;
-const MIN_RESPONSE_CHARS = 4_000;
 const LARGE_TYPES = new Set([
   'html',
   'translated_html',
@@ -61,13 +64,6 @@ const LARGE_TYPES = new Set([
 function isLargeField(f: { type: string; maxLength?: number } | undefined): boolean {
   if (!f) return false;
   return LARGE_TYPES.has(f.type) || (f.maxLength ?? 0) > 4000;
-}
-
-/** Appends the stable sys_id tiebreak to the ordering (if there is room for one more key). */
-function withTiebreak(query: string): string {
-  const orders = query.match(/(^|\^)ORDERBY(DESC)?/g)?.length ?? 0;
-  if (/(^|\^)ORDERBY(DESC)?sys_id(\^|$)/.test(query) || orders >= 3) return query;
-  return query ? `${query}^ORDERBYsys_id` : 'ORDERBYsys_id';
 }
 
 export function registerQueryRecords(server: McpServer, ctx: ToolContext): void {
@@ -120,14 +116,7 @@ export function registerQueryRecords(server: McpServer, ctx: ToolContext): void 
           .optional()
           .describe('Also return the total number of matching rows (costs an extra count)'),
         cursor: z.string().max(8000).optional().describe('page.next_cursor from a previous call'),
-        max_chars: z
-          .int()
-          .min(1)
-          .max(Number.MAX_SAFE_INTEGER)
-          .optional()
-          .describe(
-            `Size of this result in characters (default ${config.responseChars}, up to ${config.maxResponseChars})`,
-          ),
+        max_chars: maxCharsInput(config),
       }),
       outputSchema: ResultEnvelope,
       annotations: READ_ONLY,
@@ -136,15 +125,7 @@ export function registerQueryRecords(server: McpServer, ctx: ToolContext): void 
       const id = requireScope(args.scope_id);
       if (typeof id !== 'string') return id;
       const hints: string[] = [];
-      let maxChars = args.max_chars ?? config.responseChars;
-      if (maxChars > config.maxResponseChars) {
-        hints.push(`max_chars ${maxChars} is above the ceiling; used ${config.maxResponseChars}.`);
-        maxChars = config.maxResponseChars;
-      }
-      if (maxChars < MIN_RESPONSE_CHARS) {
-        hints.push(`max_chars ${maxChars} is below the minimum; used ${MIN_RESPONSE_CHARS}.`);
-        maxChars = MIN_RESPONSE_CHARS;
-      }
+      const maxChars = resolveMaxChars(args.max_chars, config, hints);
 
       // 1. Where are we: a fresh query, or a continuation from a cursor.
       let state: CursorState;
