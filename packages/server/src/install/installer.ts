@@ -22,7 +22,7 @@ import { homedir } from 'node:os';
 import { basename, dirname, isAbsolute, join, parse } from 'node:path';
 import { EXTENSION_ORIGIN, NATIVE_HOST_NAME } from '@sn-mcp/shared';
 import {
-  aclProblem,
+  aclsProblem,
   ancestorsBelowRoot,
   currentUserSid,
   isWindows,
@@ -119,12 +119,12 @@ function assertSafeAncestorsWindows(path: string): void {
   }
   let problem: string | undefined;
   try {
-    const sid = currentUserSid();
-    problem = readAcls(dirs)
-      .map((acl) => aclProblem(acl, sid))
-      .find(Boolean);
-  } catch {
-    throw new InstallError(`Could not check the permissions of the folders above ${path}`);
+    problem = aclsProblem(dirs, readAcls(dirs), currentUserSid());
+  } catch (e) {
+    const detail = (e as { stderr?: string }).stderr?.trim().slice(0, 300);
+    throw new InstallError(
+      `Could not check the permissions of the folders above ${path}${detail ? `: ${detail}` : ''}`,
+    );
   }
   if (problem) throw new InstallError(problem);
 }

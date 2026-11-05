@@ -26,13 +26,32 @@ function systemTool(...parts: string[]): string {
   return win32.join(process.env.SystemRoot ?? 'C:\\Windows', 'System32', ...parts);
 }
 
-function run(tool: string, args: string[], env?: Record<string, string>): string {
+function run(tool: string, args: string[]): string {
   return execFileSync(tool, args, {
     encoding: 'utf8',
     stdio: ['ignore', 'pipe', 'pipe'],
     windowsHide: true,
-    ...(env ? { env: { ...process.env, ...env } } : {}),
   });
+}
+
+/**
+ * Windows PowerShell, without the inherited PSModulePath: started from PowerShell 7, that value
+ * leads it to modules it can't load, which include Get-Acl.
+ */
+function powershell(script: string, env: Record<string, string> = {}): string {
+  const inherited = Object.fromEntries(
+    Object.entries(process.env).filter(([k]) => k.toLowerCase() !== 'psmodulepath'),
+  ) as Record<string, string>;
+  return execFileSync(
+    systemTool('WindowsPowerShell', 'v1.0', 'powershell.exe'),
+    ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-Command', script],
+    {
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'pipe'],
+      windowsHide: true,
+      env: { ...inherited, ...env },
+    },
+  );
 }
 
 export function parseWhoamiSid(output: string): string {
@@ -92,7 +111,26 @@ export function aclProblem(acl: PathAcl, userSid: string): string | undefined {
   return undefined;
 }
 
+/**
+ * A folder with no answer counts as a problem: an unread folder must never pass as a safe one.
+ * That happened on the first real Windows run, when every read failed and nothing was reported.
+ */
+export function aclsProblem(
+  dirs: readonly string[],
+  acls: readonly PathAcl[],
+  userSid: string,
+): string | undefined {
+  for (const dir of dirs) {
+    const acl = acls.find((a) => a.path === dir);
+    if (!acl) return `Could not read the permissions of ${dir}`;
+    const problem = aclProblem(acl, userSid);
+    if (problem) return problem;
+  }
+  return undefined;
+}
+
 const READ_ACLS = `
+$ErrorActionPreference = 'Stop'
 $rows = foreach ($p in ($env:SN_MCP_ACL_PATHS | ConvertFrom-Json)) {
   if (-not (Test-Path -LiteralPath $p)) { continue }
   $acl = Get-Acl -LiteralPath $p
@@ -114,11 +152,7 @@ ConvertTo-Json -InputObject @($rows) -Depth 4 -Compress
 `;
 
 export function readAcls(paths: string[]): PathAcl[] {
-  const out = run(
-    systemTool('WindowsPowerShell', 'v1.0', 'powershell.exe'),
-    ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-Command', READ_ACLS],
-    { SN_MCP_ACL_PATHS: JSON.stringify(paths) },
-  );
+  const out = powershell(READ_ACLS, { SN_MCP_ACL_PATHS: JSON.stringify(paths) });
   return JSON.parse(out) as PathAcl[];
 }
 
@@ -176,10 +210,7 @@ export function renderCmdWrapper(nodePath: string, hostScript: string, capture =
 }
 
 export function processCommandLine(pid: number): string {
-  return run(systemTool('WindowsPowerShell', 'v1.0', 'powershell.exe'), [
-    '-NoProfile',
-    '-NonInteractive',
-    '-Command',
+  return powershell(
     `(Get-CimInstance Win32_Process -Filter "ProcessId=${Math.trunc(pid)}").CommandLine`,
-  ]);
+  );
 }

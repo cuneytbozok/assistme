@@ -4,17 +4,19 @@
  */
 import { execFileSync, spawn } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, rmSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { EXTENSION_ORIGIN } from '@sn-mcp/shared';
 import { describe, expect, it } from 'vitest';
 import { connectToBroker } from '../src/bridge/handshake.js';
+import { assertSafeAncestors, InstallError } from '../src/install/installer.js';
 import { encodeFrame } from '../src/native-host/framing.js';
 import { defaultRuntimeDir } from '../src/native-host/socket-guard.js';
 import {
   aclProblem,
+  aclsProblem,
   ancestorsBelowRoot,
   currentUserSid,
   type PathAcl,
@@ -71,6 +73,15 @@ describe('T-044 Windows logic', () => {
 
   it("refuses another user's folder", () => {
     expect(aclProblem(acl([], 'S-1-5-21-9-9-9-1002'), USER)).toContain('owned by another user');
+  });
+
+  it('treats a folder it could not read as a problem, never as safe', () => {
+    const dirs = ['C:\\a', 'C:\\a\\b'];
+    const row = (path: string) => ({ ...acl([ace(USER, MODIFY)]), path });
+    expect(aclsProblem(dirs, [], USER)).toContain('Could not read');
+    expect(aclsProblem(dirs, [row('C:\\a')], USER)).toContain('C:\\a\\b');
+    expect(aclsProblem(dirs, [row('C:\\a'), row('C:\\a\\b')], USER)).toBeUndefined();
+    expect(aclsProblem([], [], USER)).toBeUndefined();
   });
 
   it('checks each folder above a path, and not the drive root', () => {
@@ -185,8 +196,16 @@ describe.runIf(realWindows)('T-044 on real Windows (CI only)', () => {
     expect(() => execFileSync('reg', ['query', key], { stdio: 'pipe' })).toThrow();
   }, 120_000);
 
-  it('refuses to install from a folder other users can write to', () => {
-    const [root] = readAcls(['C:\\Windows\\Temp']);
-    expect(aclProblem(root as PathAcl, currentUserSid())).toBeTruthy();
-  }, 30_000);
+  it('refuses a folder other users can write to, and accepts the home folder', () => {
+    const shared = join(homedir(), `sn-mcp-shared-${process.pid}`);
+    mkdirSync(shared);
+    try {
+      expect(() => assertSafeAncestors(join(shared, 'host.js'), -1)).not.toThrow();
+      execFileSync('icacls', [shared, '/grant', '*S-1-5-32-545:(OI)(CI)M'], { stdio: 'pipe' });
+      expect(() => assertSafeAncestors(join(shared, 'host.js'), -1)).toThrow(InstallError);
+      expect(() => assertSafeAncestors(join(shared, 'host.js'), -1)).toThrow('can be written');
+    } finally {
+      rmSync(shared, { recursive: true, force: true });
+    }
+  }, 60_000);
 });
