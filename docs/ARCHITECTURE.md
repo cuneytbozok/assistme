@@ -154,7 +154,7 @@ Claude ──claim_scope({request_id})──▶ {scope_id, instances, env, expir
 - Every `sn.op` carries `scopeId`. The extension checks the hash, expiry, client binding, and that the target instance is in the grant, on **every** request.
 - There is no default scope and no fallback. Unknown or expired scopes return an error that tells Claude to request a new scope.
 - Scope IDs are never listed by any tool. `list_instances` reports only whether _this client_ has a pending request or active grant per instance.
-- `release_scope` revokes immediately.
+- `release_scope` revokes immediately. Claude keeps a scope for follow-up questions and releases it only when the user says they're finished, so the duration chosen at approval means something (user decision, 2026-11-05).
 - Server side (T-012): `scope-store.ts` remembers only the scopes this process claimed. It resolves the target for single scopes, requires `instance` for compare scopes, and fails fast on local expiry or on an instance not covered. It only narrows; unknown scope ids are still forwarded when an instance is given, and the extension decides. Scope errors from the extension drop the local entry (`errors.ts`).
 - Tabs never select the target. They are used only for token access to the already-granted host, if ADR-002 requires it.
 

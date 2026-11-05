@@ -78,6 +78,16 @@ describe('tools/list', () => {
   });
 });
 
+describe('keeping access for follow-up questions', () => {
+  it('tells Claude to keep the scope, and to release only when the user is finished', async () => {
+    expect(INSTRUCTIONS).toMatch(/follow-up questions/);
+    expect(INSTRUCTIONS).toMatch(/release_scope only when the user says they're finished/);
+    expect(INSTRUCTIONS).not.toMatch(/release_scope when you are done/);
+    const release = (await listTools()).find((t) => t.name === 'release_scope');
+    expect(release?.description).toMatch(/only when the user says/);
+  });
+});
+
 describe('compact published schemas validate as strictly as before', () => {
   const REJECTED: [string, Record<string, unknown>][] = [
     ['query_records', { table: 'BAD TABLE' }],

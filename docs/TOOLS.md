@@ -10,7 +10,7 @@ The connector's tool contracts. All tools are read-only (`readOnlyHint: true`). 
 2. `request_scope`: returns an approval code.
 3. Tell the user the code. They approve it in the extension popup. Claude can't.
 4. `claim_scope`: returns a `scope_id` once approved.
-5. Pass `scope_id` to data tools, then `release_scope` when finished.
+5. Pass `scope_id` to data tools, including for follow-up questions in that conversation. It lasts as long as the user chose when approving. Claude calls `release_scope` only when the user says they're finished.
 
 ## Result contract
 

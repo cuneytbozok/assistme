@@ -19,7 +19,7 @@ A method for finding out why something happened on a ServiceNow instance, using 
 1. `list_instances` shows what the user registered.
 2. `request_scope` returns an approval code. Tell the user the code and ask them to approve it in the sn-mcp extension popup. Only they can.
 3. `claim_scope` returns the `scope_id` once they've approved.
-4. Use that `scope_id` everywhere, and call `release_scope` when you finish.
+4. Use that `scope_id` everywhere, including for follow-up questions: it lasts as long as the user chose when approving. Call `release_scope` only when the user says they're finished.
 
 Be clear which instance you're on. Never move from one instance to another to get around a problem: ask the user. To compare two instances, request one scope covering both.
 

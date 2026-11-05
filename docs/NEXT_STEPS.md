@@ -63,30 +63,44 @@ Otherwise the connector runs twice. You can do this yourself, or tell me "B1 is 
 
 **Tell me:** whether both worked, and any error, exactly as shown.
 
+## Latest update (do this first)
+
+Access now stays open for follow-up questions. To get that in Claude Desktop:
+
+1. **Settings → Extensions:** remove the sn-mcp extension, then install this file again:
+
+   ```text
+   /Users/cuneytbozok/AssistMe/packages/server/sn-mcp.mcpb
+   ```
+
+2. **Skills:** replace `servicenow-readonly-troubleshooting` with the new zip from `/Users/cuneytbozok/AssistMe/dist-skill/`.
+3. Press Cmd+Q and reopen.
+
 ## C. Chrome: test revoking and logging out
 
 **Where:** a Claude Desktop chat, plus Chrome.
 
-Claude ends its access when it finishes a question, so the popup only shows **Revoke** while access is open. Ask it to keep access open for these tests.
+First install the update from "Latest update" above, so access stays open for follow-ups. The popup shows **Revoke** only while access is open.
 
 **C1. Revoke**
 
-1. In the chat, ask:
+1. In a new chat, ask:
 
-   > Request access to dev469966 and keep it open: don't release it until I say so.
+   > Find out why INC0000060 was closed on dev469966.
 
 2. Check the code, and approve it in the popup.
-3. Click the magnifying glass icon again. **Check:** an **Active access** section now shows, with a **Revoke** button.
-4. Click **Revoke**.
-5. In the chat, ask:
+3. **Check follow-ups:** ask "Who first handled it?". Claude should answer with no new code.
+4. Click the magnifying glass icon. **Check:** an **Active access** section shows, with a **Revoke** button.
+5. Click **Revoke**.
+6. In the chat, ask:
 
    > Using the access you already have, show me INC0000055. Don't request new access.
 
-6. **Check:** Claude says access has ended (`SCOPE_UNKNOWN`). It must not show the incident.
+7. **Check:** Claude says access has ended (`SCOPE_UNKNOWN`). It must not show the incident.
 
 **C2. Log out**
 
-1. Ask Claude to request access again and keep it open, and approve the new code.
+1. Ask Claude a question about the instance, and approve the new code.
 2. In your ServiceNow tab, log out. Stay on the logged-out page.
 3. Ask Claude:
 

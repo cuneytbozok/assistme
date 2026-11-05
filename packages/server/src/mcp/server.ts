@@ -49,7 +49,7 @@ import { registerSearchCode } from './tools/search-code.js';
 export { ScopeIdInput, UNTRUSTED_NOTE };
 
 export const SERVER_NAME = 'sn-mcp';
-export const SERVER_VERSION = '0.1.0';
+export const SERVER_VERSION = '0.1.1';
 
 export const INSTRUCTIONS = `Read-only access to ServiceNow instances through the user's own browser session.
 
@@ -58,7 +58,7 @@ Access flow (required before reading data):
 2. request_scope — ask for access to one instance (or two, to compare). It returns an approval code.
 3. Tell the user the approval code and ask them to approve it in the sn-mcp Chrome extension popup. Only the user can approve; you cannot.
 4. claim_scope with the request_id until it returns a scope_id (status "approved").
-5. Pass scope_id to data tools. If a scope expires or is unknown, request a new one. Never guess or reuse another conversation's scope. Call release_scope when you are done.
+5. Pass scope_id to data tools. If a scope expires or is unknown, request a new one. Never guess or reuse another conversation's scope. Keep using your scope_id for follow-up questions in this conversation: it lasts as long as the user chose when approving, so don't release it after answering or request a new one while it's valid. Call release_scope only when the user says they're finished.
 
 Reading well: prefer filters, short field lists and aggregate_records over reading everything; nothing caps how much you may read. In every data result, complete: true means nothing was left out. Otherwise omitted lists each missing part with the exact next call to get it; continue with {scope_id, cursor} alone while page.next_cursor is set. The instance argument is only needed with a compare scope. max_chars sets the size of one result. Every field is checked against the dictionary first (INVALID_FIELD); ambiguous lookups return AMBIGUOUS_MATCH, never a guess. Credential tables and fields are never returned.
 
@@ -334,7 +334,7 @@ export function createMcpServer(
             mode: res.mode,
             expires_at: res.expiresAt,
             next_step:
-              'Keep this scope_id private to this conversation and pass it to data tools. Call release_scope when done.',
+              'Keep this scope_id private to this conversation and use it for follow-up questions too. Call release_scope only when the user says they are finished.',
           },
         });
       }
@@ -357,7 +357,7 @@ export function createMcpServer(
     'release_scope',
     {
       description:
-        "Ends a scope_id's access immediately. Call it when finished. It only narrows access.",
+        "Ends a scope_id's access immediately. Call it only when the user says they're finished. It only narrows access.",
       inputSchema: z.strictObject({ scope_id: ScopeIdInput }),
       outputSchema: ResultEnvelope,
       annotations: READ_ONLY,

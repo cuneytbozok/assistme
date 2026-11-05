@@ -86,7 +86,8 @@ Keep the instance open in a Chrome tab while you work. That's how the connector 
 
 ## Good to know
 
-- **Ending access:** access ends when Claude finishes and releases it, when it expires, when you click **Revoke** in the popup, or when Chrome restarts. Then Claude simply asks again. The popup's **Active access** section and its **Revoke** button only show while access is open.
+- **Follow-up questions:** access stays open for the time you chose when approving, so follow-ups in the same chat don't need a new code. A new chat asks again.
+- **Ending access:** access ends when it expires, when you click **Revoke** in the popup, when you tell Claude you're finished, or when Chrome restarts. The popup's **Active access** section and its **Revoke** button only show while access is open.
 - **How long it lasts:** 4 hours by default on development and test, 15 minutes on production. You can choose when you approve.
 - **"Part of the query has been ignored" banners:** after a wide script search, these can appear the next time you load a ServiceNow page. They're harmless, and nothing is changed. Asking Claude to search specific tables avoids most of them.
 - **Tables Claude can't read:** Claude tells you, so you know an answer may be partial. Tables that hold credentials are always blocked.
