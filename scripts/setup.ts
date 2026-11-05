@@ -1,6 +1,6 @@
 /**
  * npm run setup: checks Node, builds everything, installs the native host, and prints the next
- * steps with this machine's paths. Safe to run again. `--skip-build` skips the build (tests).
+ * steps with this machine's paths. Runs TypeScript directly, which needs Node 22.18 or newer. Safe to run again. `--skip-build` skips the build (tests).
  */
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';

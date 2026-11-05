@@ -50,6 +50,8 @@ We are not building another AI assistant. Claude provides the reasoning, MCP pro
 | `docs/INSTALL.md`             | Local installation (created in T-037)                                                    |
 | `docs/POC_RESULTS.md`         | Live session-access hypothesis results (created in T-005)                                |
 | `docs/NEXT_STEPS.md`          | What the user still has to do, step by step                                              |
+| `docs/ACCEPTANCE.md`          | Acceptance matrix: each criterion, result and evidence                                   |
+| `docs/SKILLS.md`              | The optional skills                                                                      |
 
 ## Commands
 
@@ -67,7 +69,7 @@ At the start of every development session:
 
 1. Read `CLAUDE.md`, `docs/TASKS.md`, `docs/HANDOFF.md`.
 2. Inspect the repository and `git status`, `git log --oneline -15`.
-3. Reconcile the actual implementation against the docs. If they disagree, trust the code and git, and record the discrepancy in HANDOFF.
+3. Reconcile the actual implementation against the docs. If they disagree, trust the code and git, and record the discrepancy in HANDOFF. If TASKS and HANDOFF disagree, trust TASKS and fix HANDOFF.
 4. Resume the documented current or next task.
 
 Never claim a task is complete just because a previous chat said so. Verify it.
@@ -86,8 +88,8 @@ Never claim a task is complete just because a previous chat said so. Verify it.
 8. Run the task's verification procedure.
 9. Evaluate every acceptance criterion explicitly.
 10. Mark `DONE` only if all required verification succeeded, and record the evidence (commands, outputs, dates).
-11. If blocked, mark `BLOCKED`, record the blocker and what remains unverified, and never mark it DONE.
-12. Update TASKS.md and HANDOFF.md (state, files changed, tests run, blockers, next task).
+11. If blocked, mark `BLOCKED`, record the blocker and what remains unverified, and never mark it DONE. If the user decides not to do it, mark `DROPPED` and record that nothing was verified.
+12. Update TASKS.md and HANDOFF.md. Keep HANDOFF to current state only (state, setup, blockers, next task): history belongs in TASKS and git.
 13. Record architectural decisions in DECISIONS.md.
 14. Create a task-specific git commit (`T-0NN: <title>`), excluding unrelated user changes.
 15. Report the outcome and **stop**. Never auto-start another task.

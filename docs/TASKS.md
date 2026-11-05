@@ -50,7 +50,7 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 | T-038 | Custom troubleshooting skill                    | 034      | DONE        |
 | T-039 | Official now-sdk skill evaluation               | 038      | DROPPED     |
 | T-040 | Full acceptance matrix                          | 037      | DONE        |
-| T-041 | Recovery drill + install from scratch (M6)      | 040      | IN_PROGRESS |
+| T-041 | Recovery drill + install from scratch (M6)      | 040      | DONE        |
 
 ---
 
@@ -698,7 +698,8 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
   - AC7 ✔ Logging out of ServiceNow gave `SESSION_EXPIRED`. Logging back in recovered with no new approval.
   - T-013 AC4 ✔ No sign-in dialog appeared when logged out, in the user's own profile.
   - Also: a follow-up question in the same chat needed no new code, and Revoke appeared while access was open.
-  - **Still needs a second instance:** AC1, AC2, AC5's cross-client check as listed for this task, AC4 (PROD expiry) and AC6.
+  - **Still needs a second instance:** AC1, AC2, and a live `compare_records` run (AC-8 in `docs/ACCEPTANCE.md`, which this task now owns).
+  - **Could run on one instance, not done:** AC5 (second client), AC6 (deny or wrong code), and possibly AC4 (PROD expiry, by temporarily setting the environment to PROD).
 
 
 ## Phase 3 — Read-only & query hardening (Milestone M3)
@@ -1264,7 +1265,7 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 - **Status:** DONE
 - **Purpose:** Prove AC-10, AC-11, AC-12, AC-13 on a real instance.
 - **Dependencies:** T-033
-- **Deliverables:** `test/e2e/live.ts` (`npm run e2e:live -- --instance dev`) that uses an MCP stdio client and goes through the real approval flow, exercising every tool: discover a custom table, describe `incident`, query `syslog` with no time window and paginate past offset 2,000 by cursor, query records older than one year, read a large script include completely in chunks, search_code for a field name, related records for a CI, history of an incident, aggregate by state, and an ambiguous `get_record`. Results saved (redacted) to `docs/evidence/T-034/`.
+- **Deliverables:** `test/e2e/live.ts` (`npm run e2e:live -- --instance <alias>`) that uses an MCP stdio client and goes through the real approval flow, exercising every tool: discover a custom table, describe `incident`, query `syslog` with no time window and paginate past offset 2,000 by cursor, query records older than one year, read a large script include completely in chunks, search_code for a field name, related records for a CI, history of an incident, aggregate by state, and an ambiguous `get_record`. Results saved (redacted) to `docs/evidence/T-034/`.
 - **Files:** `test/e2e/live.ts`, `docs/evidence/T-034/*`
 - **Acceptance criteria:** every scenario passes on live DEV; no scenario is blocked by a volume limit; every partial result had `complete:false` with working continuations; response sizes and `requests_used` are recorded.
 - **Verification:** live run.
@@ -1426,7 +1427,7 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 
 ### T-041 — Recovery drill + install from scratch (Milestone M6)
 
-- **Status:** IN_PROGRESS
+- **Status:** DONE
 - **Purpose:** Prove AC-18 and AC-19.
 - **Dependencies:** T-040
 - **Deliverables:** (a) a fresh Claude Code session with no prior chat context runs `show progress` and `review current task` using only the repository docs; record the result. (b) Clean install dry run following INSTALL.md (after `npm run uninstall`, fresh clone into a temp directory) through to a scoped query in Desktop.
@@ -1434,4 +1435,8 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 - **Acceptance criteria:** the fresh session identifies the state correctly; the install succeeds following only the docs (any doc gaps are fixed).
 - **Verification:** manual.
 - **DoD:** M6 marked achieved; project feature-complete.
-- **Evidence:** —
+- **Evidence (2026-11-05):** `docs/evidence/T-041/README.md`.
+  - **(a) Recovery drill** ✔, with a caveat: a read-only subagent with no chat context identified the state correctly, but had to overrule `docs/HANDOFF.md`. HANDOFF is rewritten, and the gaps it found are fixed. The rewrite hasn't had its own cold read.
+  - **(b) Install from scratch** ◐: uninstall, clean clone, `npm install`, `npm run setup` and packaging all worked from the docs, Chrome started the clone's host, and the normal setup was restored and checked. **Skipped by the user's decision:** re-adding the extension from the clone, re-registering, and a scoped query through that clean install. They'd done the real install the same day, and it answered real questions (T-036).
+  - **DoD not fully met: M6 isn't marked achieved.** Its exit criterion is all 19 acceptance criteria evidenced, and AC-6, AC-7 and AC-8 are open. That is the user's decision (HANDOFF).
+

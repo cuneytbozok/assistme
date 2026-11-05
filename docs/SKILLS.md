@@ -13,7 +13,7 @@ Skills give Claude expertise. They add no tools and no access: everything still 
 
 A method for investigating ServiceNow problems, with references Claude loads only when needed: logs and transactions, business rules, Discovery and the ECC queue, CMDB identification, Flow Designer, and ACLs. It's guidance only: it never tells Claude to write anything.
 
-**Claude Code:** this also installs the `servicenow-development-guide` skill below.
+**Claude Code in a terminal:** this also installs the `servicenow-development-guide` skill below. Code sessions inside the Claude Desktop app already see the skills uploaded to Desktop, so they don't need it.
 
 ```text
 /plugin marketplace add /ABSOLUTE/PATH/TO/AssistMe
@@ -33,7 +33,7 @@ npm run pack:skill
 
 General ServiceNow development and product knowledge: scripting, business rules, flows, portals, ITSM, ITOM, HRSD, CSM, SecOps and more, in 28 references. It helps when you build things, and when Claude needs to know how a feature is meant to work.
 
-It's by a third party ([Vanka07/servicenow-skill](https://github.com/Vanka07/servicenow-skill), MIT), where it's called `servicenow`. The copy in `skills/servicenow-development-guide` is pinned to one commit: [PROVENANCE.md](../plugin/skills/servicenow-development-guide/PROVENANCE.md) records it, along with the one local change and how far it was reviewed.
+It's by a third party ([Vanka07/servicenow-skill](https://github.com/Vanka07/servicenow-skill), MIT), where it's called `servicenow`. The copy in `plugin/skills/servicenow-development-guide` is pinned to one commit: [PROVENANCE.md](../plugin/skills/servicenow-development-guide/PROVENANCE.md) records it, along with the one local change and how far it was reviewed.
 
 - **It can't write through the connector.** It can suggest code that changes data, including background scripts. Those change real data if you run them yourself, so review them and try them in a development instance first.
 - **Its ServiceNow content hasn't been checked for accuracy.** It's a small project. The note added to it tells Claude to confirm table and field names against the instance.

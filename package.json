@@ -10,7 +10,7 @@
     "packages/extension"
   ],
   "engines": {
-    "node": ">=22"
+    "node": ">=22.18"
   },
   "scripts": {
     "build": "npm run build --workspaces",

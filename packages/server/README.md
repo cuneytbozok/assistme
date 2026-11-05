@@ -17,6 +17,8 @@ The full contracts are in [docs/TOOLS.md](../../docs/TOOLS.md). All tools are re
 
 ### Registering with Claude
 
+For normal use, follow [docs/INSTALL.md](../../docs/INSTALL.md): the Claude Desktop bundle is the supported way. The config entry below is for development only, and shouldn't be used alongside the bundle.
+
 Use absolute paths. Node must be the same one the native host uses; `which node` shows it. After a Node upgrade, re-run `npm run install-native-host`.
 
 **Claude Desktop:** add this to `~/Library/Application Support/Claude/claude_desktop_config.json`, then fully quit and reopen Claude Desktop (Cmd+Q):
@@ -98,7 +100,7 @@ These are in `~/Library/Application Support/sn-mcp/`, a 0700 directory:
 
 ```bash
 npm run build
-npm run dev-client -w @sn-mcp/server -- --instance dev --table incident
+npm run dev-client -w @sn-mcp/server -- --instance <alias> --table incident
 ```
 
 What it does:

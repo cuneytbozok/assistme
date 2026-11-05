@@ -6,13 +6,15 @@ sn-mcp lets Claude read your ServiceNow instances through your own Chrome sessio
 
 - macOS
 - Google Chrome
-- Node.js 22 or newer (`node --version`)
+- Node.js 22.18 or newer (`node --version`)
 - A ServiceNow instance you can sign in to
 - Claude Desktop or Claude Code
 
 You don't need any API key, corporate credential or Docker.
 
 ## 1. Run the setup
+
+If you already have the project folder, skip the clone. Keep it somewhere private to you, such as your home folder: setup refuses folders other users can write to, such as `/tmp`.
 
 ```bash
 git clone <this repository> AssistMe
@@ -76,7 +78,7 @@ For one project, copy `.mcp.json.example` to `.mcp.json` in that project and put
 
 Start a new session and run `/mcp`: `sn-mcp` should be listed.
 
-Code sessions inside the Claude Desktop app use the Claude Desktop connector and need nothing extra.
+Code sessions inside the Claude Desktop app use the Claude Desktop connector and need nothing extra. Don't also register it with `claude mcp add` if you use those sessions: they'd see two connectors, and access approved through one doesn't work with the other.
 
 ## 5. Try it
 
@@ -137,8 +139,9 @@ Logs are in `~/Library/Application Support/sn-mcp/broker.log`. They hold metadat
 | `ACL_DENIED` | Your ServiceNow user can't read this | Ask a ServiceNow admin, or sign in with an account that can. If it mentions table definitions, the connector needs read access to `sys_db_object` and `sys_dictionary` |
 | `TIMEOUT` | ServiceNow took too long | Ask Claude to narrow the query, or raise the timeout in the extension settings |
 | `RESPONSE_TOO_LARGE` | One value is larger than the per-request limit | Raise "Max response" in the extension settings |
-| `SCOPE_UNKNOWN` right after you approved, in a Code session inside Claude Desktop | That session is using two connector builds: an old one still running in Claude Desktop, and a newer one | Fully quit and reopen Claude Desktop (Cmd+Q), then start a new session |
+| `SCOPE_UNKNOWN` right after you approved, in a Code session inside Claude Desktop | That session has two connectors, usually the Desktop one plus a `claude mcp add` registration. Access approved through one doesn't work with the other | Remove the extra one with `claude mcp remove sn-mcp`, fully quit and reopen Claude Desktop (Cmd+Q), then start a new session |
 | Tools are missing or out of date in Claude | Claude is running an old build | Fully quit and reopen Claude Desktop (Cmd+Q), or start a new Claude Code session |
+| You moved the project, and the extension still uses the old folder | Reloading doesn't change the folder | Remove the extension and use **Load unpacked** on the new folder, then add your instance again |
 | The extension shows a different ID | It was loaded from another folder or build | Remove it, and load `packages/extension/dist` again |
 | Chrome shows a sign-in dialog for ServiceNow | Not expected | Please report it with the instance type (`docs/DECISIONS.md`, ADR-002 addendum, has the fallback) |
 

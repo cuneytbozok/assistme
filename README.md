@@ -12,11 +12,11 @@ sn-mcp is an independent project, not affiliated with or endorsed by ServiceNow.
 ## What you need
 
 - A Mac with Google Chrome
-- [Node.js](https://nodejs.org) 22 or newer (run `node --version` to check)
+- [Node.js](https://nodejs.org) 22.18 or newer (run `node --version` to check)
 - A ServiceNow instance you can sign in to
 - [Claude Desktop](https://claude.ai/download) or Claude Code
 
-You don't need an API key, admin rights on ServiceNow, or Docker.
+You don't need an API key or Docker. Your ServiceNow account needs to be able to read table definitions (`sys_db_object` and `sys_dictionary`). So far the connector has only been tested with an admin account.
 
 ## Set it up
 

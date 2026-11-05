@@ -19,7 +19,7 @@ Rev. 2 (approved 2026-11-04). Detailed task definitions are in `TASKS.md`. Archi
 | 3 Read-only & query hardening | T-016 – T-022 | **M3 (T-022)** | Request builder, dictionary-aware validation, per-request safeguards and settings, sensitive-data handling, threat model, read-only verification                   |
 | 4 General-purpose tools       | T-023 – T-034 | **M4 (T-034)** | All tools implemented, documented, and live-verified on DEV                                                                            |
 | 5 Packaging                   | T-035 – T-037 | **M5 (T-037)** | Claude Code registration, `.mcpb` for Desktop, setup/uninstall, INSTALL.md                                                             |
-| 6 Skills                      | T-038 – T-039 | —              | Custom skill shipped; official skill evaluated with deny rules                                                                         |
+| 6 Skills                      | T-038 – T-039 | —              | Custom skill shipped; official skill dropped by the user (T-039)                                                                         |
 | 7 Acceptance                  | T-040 – T-041 | **M6 (T-041)** | All 19 acceptance criteria evidenced; recovery drill; install from scratch                                                             |
 
 ## Dependency graph
@@ -42,7 +42,7 @@ T-018 ─ T-023 ─┬─ T-024 ─┬─ T-025 ─┬─ T-027
 T-024…T-032 ─ T-033 ─ T-034 (M4) ─┬─ T-035
                                    ├─ T-036 ─ T-037 (M5)
                                    └─ T-038 ─ T-039
-T-037 + T-039 ─ T-040 ─ T-041 (M6)
+T-037 ─ T-040 ─ T-041 (M6)
 ```
 
 Tasks that can proceed while T-005 is blocked (no DEV instance): T-006, T-008 (mock broker), T-016, and the query/validation parts of T-003.
@@ -54,7 +54,7 @@ Tasks that can proceed while T-005 is blocked (no DEV instance): T-006, T-008 (m
 | Unit                           | shared validators + attack corpus, filter compiler, request builder, grant model, cursor signing, compaction/response shaping/completeness, framing, broker auth, redaction | vitest                      | No                               |
 | Integration (mocked, labelled) | MCP SDK client ↔ MCP server ↔ real broker ↔ fake extension (stdio); rogue client; squatted socket; reconnect/fault injection                         | vitest + child processes    | No                               |
 | Extension logic                | Pure modules (registry, grants, authz, request builder, safeguards) with chrome API stubs                                                               | vitest                      | No                               |
-| Live (opt-in)                  | Real chain against a real DEV instance through an MCP stdio client: `npm run e2e:live -- --instance dev`                                             | Node script                 | **Yes**                          |
+| Live (opt-in)                  | Real chain against a real DEV instance through an MCP stdio client: `npm run e2e:live -- --instance <alias>`                                             | Node script                 | **Yes**                          |
 | Manual client checks           | Claude Desktop chat, Claude Code, Cowork (best effort), with captured transcripts or screenshots                                                     | checklist in TASKS evidence | **Yes**                          |
 
 Rules:

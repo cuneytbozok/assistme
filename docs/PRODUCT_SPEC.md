@@ -115,7 +115,7 @@ Principle: optimize *how* Claude retrieves information, not *how much* it may in
 
 ### FR-9 Local installation
 
-- macOS, Node ≥22 (developed on 24).
+- macOS, Node ≥22.18 (developed on 24).
 - `npm run setup` builds the project and installs the native-host manifest. The user loads the unpacked extension and installs the `.mcpb` or registers in Claude Code.
 - No corporate credentials and no separate LLM API key are needed.
 

@@ -2,7 +2,7 @@
 
 Final build: version 0.1.2. Dates are 2026. "Live" means a real run against `dev469966`, a personal developer instance, with the user signed in as admin. Mocks don't count as connectivity proof (CLAUDE.md, rule 11), so results that rest on them are not called live.
 
-**Result: 13 passed, 5 open, 1 out of scope.** None failed.
+**Result: 15 passed, 3 open, 1 out of scope.** None failed. So M6's exit criterion, all 19 evidenced, isn't met.
 
 The final live run was on 5 Nov, 10:57–11:07 UTC: 16 of 16 scenarios passed, approved by the user in the popup ([results](evidence/T-040/final-live-run.json)). It holds counts, sizes, and table and field names, with no record content.
 
@@ -25,15 +25,14 @@ The final live run was on 5 Nov, 10:57–11:07 UTC: 16 of 16 scenarios passed, a
 | AC-15 | Session expiry is handled safely | **Pass** | Live, in the user's own Chrome: logging out gave `SESSION_EXPIRED` with no sign-in dialog, and logging back in recovered with no new approval (reported by the user) | T-013, T-015 | 5 Nov |
 | AC-16 | The broker rejects unauthenticated clients and detects squatted sockets | **Pass** | The real broker code with test clients: no key, wrong proof and a fake broker are all rejected; unsafe socket paths are refused | T-006, T-014 | 4 Nov |
 | AC-17 | Official SDK skill guidance | **Out of scope** | The user dropped it. The user's Claude Code does have `fluent@servicenow`, by their choice, and the SDK can act outside the connector ([SKILLS.md](SKILLS.md)) | T-039 | 5 Nov |
-| AC-18 | A new session can resume from the handoff docs | **Open** | To be shown in T-041 | T-041 | — |
-| AC-19 | Installable by following the docs | **Open** | The real setup, uninstall and setup passed, and the bundle was installed in Desktop. A clean install following only the docs is T-041 | T-037, T-041 | — |
+| AC-18 | A new session can resume from the handoff docs | **Pass, with a caveat** | A read-only agent with no chat context identified the state correctly, but had to overrule HANDOFF, which was then rewritten. The rewrite hasn't had its own cold read | [T-041](evidence/T-041/README.md) | 5 Nov |
+| AC-19 | Installable by following the docs | **Pass, with limits** | From the docs: uninstall, clean clone, install, setup and packaging worked, and Chrome started the clone's host. The real Chrome and Desktop install was done the same day, and answered real questions. **Skipped by the user:** repeating those steps from the clean clone, so no one has followed the docs end to end in one go | [T-041](evidence/T-041/README.md), T-036, T-037 | 5 Nov |
 
 ## Follow-ups
 
 | Open item | Needs | Task |
 | --------- | ----- | ---- |
 | AC-6, AC-7, AC-8 | A second instance | T-015 (BLOCKED) |
-| AC-18, AC-19 | The recovery drill and install from scratch | T-041 |
 
 ## Known limits
 
