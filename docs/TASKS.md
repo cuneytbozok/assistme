@@ -51,7 +51,7 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 | T-039 | Official now-sdk skill evaluation               | 038      | DROPPED     |
 | T-040 | Full acceptance matrix                          | 037      | DONE        |
 | T-041 | Recovery drill + install from scratch (M6)      | 040      | DONE        |
-| T-042 | Compare within one instance, and record versions | 032     | BLOCKED     |
+| T-042 | Compare within one instance, and record versions | 032     | DONE        |
 
 ---
 
@@ -1446,7 +1446,7 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 
 ### T-042 — Compare within one instance, and record versions
 
-- **Status:** BLOCKED
+- **Status:** DONE
 - **Purpose:** Let the user compare two records, or two versions of one record, on a single instance. Requested by the user on 2026-11-05. It also lets `compare_records` run live for the first time.
 - **Dependencies:** T-032
 - **Deliverables:**
@@ -1462,8 +1462,8 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 - **Decision (user, 2026-11-05):** no extra protection for `sys_update_version` payloads. They're XML copies of records, so field-level credential protection doesn't look inside them. The user accepts this. Don't add a guard, and don't describe payloads as credential-free.
 - **Verification:** `npm test`. Live scenario added to `test/e2e/scenarios.ts`; the **user will run the live test later**, in their own time, so leave it clearly pending.
 - **DoD:** bundle version bumped and rebuilt; record what remains unverified. AC-8 stays open until two real instances are compared.
-- **Blocked (2026-11-05):** waits only for the user's decision on AC2, which can't be tried live without a second instance (`docs/NEXT_STEPS.md`). The task said to confirm the format live first; it was built first, on an assumption, and the runs showed its "one record" part was wrong (ADR-013).
-- **Live evidence (2026-11-05, `dev469966`, run by the user, one approval, `docs/evidence/T-042/first-live-run.json`):** 2 of 2 passed, scope released.
+- **Built before its live check:** The task said to confirm the format live first; it was built first, on an assumption, and the runs showed its "one record" part was wrong (ADR-013).
+- **Evidence (2026-11-05, first live run, `dev469966`, run by the user, one approval, `docs/evidence/T-042/first-live-run.json`):** 2 of 2 passed, scope released.
   - **Two records:** 4 pages from one snapshot, 5 upstream requests on successful calls, an 850-line script diff that applied back exactly to both scripts as read separately, 0 lines cut. `AMBIGUOUS_MATCH` on side b, `NOT_FOUND` on side a, and the missing `match_b` and same-record refusals all held.
   - **Versions:** `mode: elements`, `assumed_fields_missing: []`, `payload_root: record_update`, CDATA present, 188 lines, 23 elements, `record_table: sys_script_include`. `payload`'s dictionary type is `compressed`, not the `xml` the mock used, and it still reads as plain XML.
   - **What that pass didn't show:** `diff_fields` 0, `diffs_applied` 0, `script_diff_lines` 0. The record's two versions differed in 7 short fields and not in the script, so no version diff was applied back. The scenario passed because it didn't require one, which was a weak check.
@@ -1481,9 +1481,9 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
   - **Two records:** same numbers as before: 850 diff lines applied back, 4 pages, 5 requests on successful calls.
 - **Acceptance criteria:**
   1. ✔ Live and mock.
-  2. ◐ Live: both sides on one host. There's no second instance to try reaching: mock (no read reaches the other fake, cursors refused), and no change under `packages/extension` or `packages/shared`.
+  2. ✔ By the user's decision, not by a live attempt. Live: both sides on one host. There's no second instance to try reaching: mock (no read reaches the other fake, cursors refused), and no change under `packages/extension` or `packages/shared`.
   3. ✔ Live by element (fourth run), and as raw XML (third run); mock (`payload.script` applies back, and so do raw diffs in 8 other payload forms).
   4. ◐ Live: no incomplete result without an entry in `omitted`, and bookkeeping listed in `ignored_fields`. A cut line is mock only.
 - **Mock evidence:** `npm run build`, `npm run lint` and `npm run pack:mcpb` exit 0; `npm test`: 261, 460 and 311 passed. Bundle 0.1.4 at `packages/server/sn-mcp.mcpb`; `tools/list` 11,938 of 12,000 bytes. Mutation checks: same-record refusal off, `match_b` requirement off, payload expansion off, payload bookkeeping shown, repeated elements allowed, and the cut line's next call pointing at `payload.script` each fail tests.
 - **Still unverified:** a cut line live; payload forms beyond the 9 pairs checked; `compare_records` between two instances (AC-8). The skills weren't updated: the tool description and `docs/TOOLS.md` carry the usage, and a change would need another upload.
-- **To finish:** mark DONE only if the user accepts AC2's limit.
+- **Done by the user's decision (2026-11-05):** the user accepted AC2 on this evidence, without a live attempt to reach another instance. That check stays with T-015 and AC-6, AC-7 and AC-8. AC-8 stays open.

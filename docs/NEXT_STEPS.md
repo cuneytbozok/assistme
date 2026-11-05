@@ -2,11 +2,9 @@
 
 The connector is installed and working in Claude Desktop, and every required step is done. All of these are optional.
 
-## 1. The live test for T-042
+## 1. Install version 0.1.4
 
-The fourth run showed what the task asked for: two versions of a script compared by element, and the diff applied back exactly. What remains is your decision on one criterion: that a single-instance scope can't reach another instance can't be tried live without a second instance. It rests on mock tests and the extension being unchanged.
-
-To use this in Claude Desktop, install the new bundle `packages/server/sn-mcp.mcpb` (version 0.1.4), then Cmd+Q and reopen. The extension doesn't need a reload.
+Comparing on one instance, and comparing record versions, passed live. To use them in Claude Desktop, install `packages/server/sn-mcp.mcpb` (version 0.1.4), then Cmd+Q and reopen. The extension doesn't need a reload.
 
 ## 2. A second instance
 

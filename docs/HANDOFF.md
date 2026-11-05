@@ -6,18 +6,14 @@ _Current state only, rewritten on 2026-11-05. History is in `docs/TASKS.md` and 
 
 The connector is built, installed and working on the user's Mac, in Claude Desktop, against one developer instance.
 
-- **Tasks:** 39 DONE, 2 BLOCKED (T-015, T-042), 1 DROPPED (T-039).
+- **Tasks:** 40 DONE, 1 BLOCKED (T-015), 1 DROPPED (T-039).
 - **Milestones:** M1, M3, M4, M5 and M6 achieved. M6 by the user's decision, with AC-6, AC-7 and AC-8 left open: not all 19 criteria are evidenced. M2 not achieved (T-015).
 - **Acceptance:** `docs/ACCEPTANCE.md`: 15 passed, 3 open, 1 out of scope, none failed.
-- **Next:** no task is eligible. T-042 passed its fourth live run, and waits only for the user's decision on AC2. Anything else that remains needs the user: see `docs/NEXT_STEPS.md`.
+- **Next:** no task is eligible. Anything else that remains needs the user: see `docs/NEXT_STEPS.md`.
 
-## T-042: what's unverified
+## T-042: what it did and didn't show
 
-Four live runs on `dev469966`, 2026-11-05, each 2 of 2 passed (`docs/evidence/T-042/`). The fourth, on version 0.1.4's parser, is the one that counts.
-
-- **Confirmed live, on one instance:** two records compare (an 850-line script diff applied back exactly, with per-side errors). Two versions of a `sys_script` compare by element: `script_diff_lines` 9, `diffs_applied` 1, `pairs_raw` 0 of 9 pairs checked, 0 lines cut. `sys_update_version` has every assumed field, and `payload` (dictionary type `compressed`) reads as `record_update` XML with CDATA, often with other records after the main one.
-- **Waiting on the user's decision:** AC2 can't be tried live without a second instance. It rests on mock tests and no change under `packages/extension` or `packages/shared`.
-- **Not live:** an over-long line being cut. Forms beyond the 9 pairs checked may still come back as raw text.
+Done by the user's decision. Live on `dev469966` (`docs/evidence/T-042/`): two records compare, and two versions of a `sys_script` compare by element, with the diff applied back exactly. Not live: reaching another instance (no second instance exists; mock and the unchanged extension only), an over-long line being cut, and `compare_records` between two instances. Payload forms beyond the 9 pairs checked may come back as raw text.
 
 ## Decisions made by the user (2026-11-05)
 
@@ -34,6 +30,7 @@ Four live runs on `dev469966`, 2026-11-05, each 2 of 2 passed (`docs/evidence/T-
 - `sys_update_version` is readable with no extra guard, though its XML payloads aren't covered by field-level credential protection.
 - `compare_records` stays untested between two real instances for now: AC-6, AC-7 and AC-8 stay open.
 - The skills weren't changed for T-042, so they needn't be uploaded again.
+- T-042's AC2 is accepted without a live attempt to reach another instance.
 
 ## The user's setup
 
