@@ -64,15 +64,14 @@ export function currentUserSid(): string {
   return parseWhoamiSid(run(systemTool('whoami.exe'), ['/user', '/fo', 'csv', '/nh']));
 }
 
-/** Only this user may use the folder and what's in it: the job of 0700 on macOS. */
+/**
+ * Only this user may use the folder and what's in it: the job of 0700 on macOS. Removing inheritance
+ * and granting alone would leave any entry set directly on the folder, so everything is reset first.
+ */
 export function restrictToCurrentUser(dir: string): void {
-  run(systemTool('icacls.exe'), [
-    dir,
-    '/inheritance:r',
-    '/grant:r',
-    `*${currentUserSid()}:(OI)(CI)F`,
-    '/q',
-  ]);
+  const icacls = systemTool('icacls.exe');
+  run(icacls, [dir, '/reset', '/t', '/q']);
+  run(icacls, [dir, '/inheritance:r', '/grant:r', `*${currentUserSid()}:(OI)(CI)F`, '/q']);
 }
 
 export interface PathAcl {

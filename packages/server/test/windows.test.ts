@@ -4,7 +4,7 @@
  */
 import { execFileSync, spawn } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
-import { existsSync, mkdirSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -131,7 +131,6 @@ describe('T-044 Windows logic', () => {
 });
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '../../..');
-const ROOT_LIKE = ['S-1-5-18', 'S-1-5-32-544']; // SYSTEM and Administrators
 const realWindows = process.platform === 'win32' && process.env.CI === 'true';
 
 describe.runIf(realWindows)('T-044 on real Windows (CI only)', () => {
@@ -163,8 +162,9 @@ describe.runIf(realWindows)('T-044 on real Windows (CI only)', () => {
     const dir = defaultRuntimeDir();
     const [folder] = readAcls([dir]);
     const sid = currentUserSid();
-    console.log('runtime folder ACL', execFileSync('icacls', [dir], { encoding: 'utf8' }));
-    expect(new Set(folder?.aces.map((a) => a.sid))).toEqual(new Set([sid, ...ROOT_LIKE]));
+    expect(folder?.aces.map((a) => a.sid)).toEqual([sid]);
+    const [keyFile] = readAcls([join(dir, 'broker.key')]);
+    expect(keyFile?.aces.map((a) => a.sid)).toEqual([sid]);
     expect(aclProblem(folder as PathAcl, sid)).toBeUndefined();
 
     // The MCP server's real handshake, over the real pipe.
@@ -203,12 +203,14 @@ describe.runIf(realWindows)('T-044 on real Windows (CI only)', () => {
     const open = join(homedir(), `sn-mcp-open-${process.pid}`);
     mkdirSync(open);
     try {
+      const child = join(open, 'broker.key');
+      writeFileSync(child, 'x');
       execFileSync('icacls', [open, '/grant', '*S-1-5-32-545:(OI)(CI)RX'], { stdio: 'pipe' });
+      execFileSync('icacls', [child, '/grant', '*S-1-5-32-545:R'], { stdio: 'pipe' });
       restrictToCurrentUser(open);
-      console.log('restricted folder ACL', execFileSync('icacls', [open], { encoding: 'utf8' }));
-      const sids = readAcls([open])[0]?.aces.map((a) => a.sid) ?? [];
-      expect(sids).toContain(currentUserSid());
-      expect(sids).not.toContain('S-1-5-32-545');
+      const sid = currentUserSid();
+      expect(readAcls([open])[0]?.aces.map((a) => a.sid)).toEqual([sid]);
+      expect(readAcls([child])[0]?.aces.map((a) => a.sid)).toEqual([sid]);
     } finally {
       rmSync(open, { recursive: true, force: true });
     }
