@@ -1372,7 +1372,7 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 - **Status:** BLOCKED
 - **Purpose:** Optional expertise loaded on demand (FR-8.1).
 - **Dependencies:** T-034
-- **Deliverables:** `skills/servicenow-troubleshooting/SKILL.md` (frontmatter name and description; methodology; scope flow and approval code; discover → describe → narrow queries; scripts via `get_field_content`; untrusted-content reminder; freedom to investigate beyond the skill) and `references/` (logs-and-transactions, business-rule-execution, discovery-ecc, cmdb-ire, flow-designer, acl-debugging); `.claude-plugin/marketplace.json`; `npm run pack:skill` producing a Desktop-uploadable zip.
+- **Deliverables:** `skills/servicenow-readonly-troubleshooting/SKILL.md` (frontmatter name and description; methodology; scope flow and approval code; discover → describe → narrow queries; scripts via `get_field_content`; untrusted-content reminder; freedom to investigate beyond the skill) and `references/` (logs-and-transactions, business-rule-execution, discovery-ecc, cmdb-ire, flow-designer, acl-debugging); `.claude-plugin/marketplace.json`; `npm run pack:skill` producing a Desktop-uploadable zip.
 - **Files:** `skills/**`, `.claude-plugin/marketplace.json`, `scripts/pack-skill.ts`
 - **Acceptance criteria:** installs in Claude Code via `/plugin marketplace add <repo>`; the zip uploads in Desktop; no reference instructs any write action; SKILL.md is ≤ 500 lines and loads references only on demand.
 - **Verification:** manual install in both clients.
@@ -1404,15 +1404,15 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 - **DoD:** —
 - **Blocker:** installing it needs the user: `/plugin marketplace add` in a signed-in Claude Code, and the zip upload in Claude Desktop.
 - **Evidence so far (2026-11-05, not acceptance):**
-  - Delivered: `skills/servicenow-troubleshooting/SKILL.md` and six `references/`, `.claude-plugin/{plugin,marketplace}.json`, `scripts/pack-skill.ts` + `npm run pack:skill`, `test/skill.test.ts`.
+  - Delivered: `skills/servicenow-readonly-troubleshooting/SKILL.md` and six `references/`, `.claude-plugin/{plugin,marketplace}.json`, `scripts/pack-skill.ts` + `npm run pack:skill`, `test/skill.test.ts`.
   - **Acceptance criteria that can be checked here:**
     - No write instructions ✔ test (a pattern list over all files, plus the stated ground rules). This is a text check, and the files were also written to be guidance only.
     - `SKILL.md` ≤ 500 lines ✔; references are separate files, linked and loaded on demand ✔.
     - Every tool named exists, and every filter example passes the real schemas ✔ test.
-    - The zip contains `servicenow-troubleshooting/SKILL.md` ✔ test.
+    - The zip contains `servicenow-readonly-troubleshooting/SKILL.md` ✔ test.
   - `claude plugin validate .` (Claude Code 2.1.317, already installed) → exit 0, "Validation passed with warnings"; the warnings are optional plugin-directory checks, which don't apply as this isn't being submitted.
   - The T-034 live run checked the 34 tables named: 2 names were wrong and are fixed; `discovery_schedule` is absent on the PDI, because Discovery isn't fully there. Field names in the references aren't checked live.
-  - **Added 2026-11-05 (user decision):** the third-party `skills/servicenow`, pinned; `npm run pack:skill` now builds both zips. Same install checks apply.
+  - **Added 2026-11-05 (user decision):** the third-party `skills/servicenow-development-guide`, pinned; `npm run pack:skill` now builds both zips. Same install checks apply.
   - **Unverified:** installing in Claude Code, uploading in Desktop.
 
 ## Phase 7 — Acceptance (Milestone M6)

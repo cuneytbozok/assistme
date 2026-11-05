@@ -8,7 +8,12 @@ Third-party, MIT licensed (see `LICENSE`). Copied, not linked, so it only change
 
 ## Local changes
 
-Only one: the section "Using this with the sn-mcp connector" in `SKILL.md`. Everything else is as published.
+Two:
+
+- The section "Using this with the sn-mcp connector" in `SKILL.md`.
+- The skill is renamed from `servicenow` to `servicenow-development-guide`, in its folder, its `name`, and the paths in its examples.
+
+Everything else is as published.
 
 ## Review
 

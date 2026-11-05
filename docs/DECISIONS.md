@@ -217,8 +217,8 @@ Format: Status · Context · Decision · Alternatives considered · Consequences
 
 - **Status:** Accepted (2026-11-04)
 - **Decision:**
-  - A custom `servicenow-troubleshooting` skill: guidance only, references loaded on demand, packaged as a Claude Code plugin and a Claude Desktop zip.
-  - *Addendum (2026-11-05, user decision):* also ship the third-party `servicenow` development skill, for building work and product knowledge. It's copied and pinned to a commit rather than linked, so its text can't change unreviewed (it's loaded into Claude's context). Its code examples can write to ServiceNow, but only if a person runs them: the connector stays read-only.
+  - A custom `servicenow-readonly-troubleshooting` skill: guidance only, references loaded on demand, packaged as a Claude Code plugin and a Claude Desktop zip.
+  - *Addendum (2026-11-05, user decision):* also ship the third-party `servicenow-development-guide` skill, for building work and product knowledge. It's copied and pinned to a commit rather than linked, so its text can't change unreviewed (it's loaded into Claude's context). Its code examples can write to ServiceNow, but only if a person runs them: the connector stays read-only.
   - The official `ServiceNow/sdk` `now-sdk` skill is optional, Claude Code only, and limited to `explain` (offline, read-only docs). No `now-sdk auth`; `query` isn't used because it needs SDK credentials.
   - Deny rules block SDK `auth|init|build|install|deploy|transform|dependencies|download`.
   - Skills never become mandatory workflows.

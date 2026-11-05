@@ -1,5 +1,5 @@
 ---
-name: servicenow-troubleshooting
+name: servicenow-readonly-troubleshooting
 description: Method for investigating ServiceNow problems with the read-only sn-mcp tools. Use when diagnosing why a record changed or didn't, why a script, business rule, flow, discovery or CMDB load misbehaved, why a user can or can't see something, or when reading logs and transactions on a ServiceNow instance.
 ---
 

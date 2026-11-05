@@ -11,7 +11,7 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const out = process.env.OUT_DIR ?? join(ROOT, 'dist-skill');
 
 mkdirSync(out, { recursive: true });
-for (const skill of ['servicenow-troubleshooting', 'servicenow']) {
+for (const skill of ['servicenow-readonly-troubleshooting', 'servicenow-development-guide']) {
   const zip = join(out, `${skill}.zip`);
   rmSync(zip, { force: true });
   execFileSync('zip', ['-q', '-r', '-X', zip, skill, '-x', '*.DS_Store', '-x', '*__pycache__*'], {

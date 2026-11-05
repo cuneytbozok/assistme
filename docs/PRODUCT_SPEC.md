@@ -109,9 +109,9 @@ Principle: optimize *how* Claude retrieves information, not *how much* it may in
 
 ### FR-8 Skills (optional)
 
-- FR-8.1 The custom `servicenow-troubleshooting` skill is guidance only, with on-demand references. It ships as a Claude Code plugin and as a Claude Desktop zip.
+- FR-8.1 The custom `servicenow-readonly-troubleshooting` skill is guidance only, with on-demand references. It ships as a Claude Code plugin and as a Claude Desktop zip.
 - FR-8.2 The official `now-sdk` skill is optional and Claude Code only, limited to `explain`. No SDK auth. Mutating SDK commands are denied.
-- FR-8.3 The third-party `servicenow` development skill is optional, pinned to a reviewed commit. It's guidance only and adds no access (user decision, 2026-11-05).
+- FR-8.3 The third-party `servicenow-development-guide` skill is optional, pinned to a reviewed commit. It's guidance only and adds no access (user decision, 2026-11-05).
 
 ### FR-9 Local installation
 

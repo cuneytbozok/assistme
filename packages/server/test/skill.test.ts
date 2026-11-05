@@ -14,7 +14,7 @@ import { loadConfig } from '../src/config.js';
 import { createMcpServer } from '../src/mcp/server.js';
 
 const REPO = join(dirname(fileURLToPath(import.meta.url)), '../../..');
-const SKILL = join(REPO, 'skills/servicenow-troubleshooting');
+const SKILL = join(REPO, 'skills/servicenow-readonly-troubleshooting');
 const skillMd = readFileSync(join(SKILL, 'SKILL.md'), 'utf8');
 const refs = readdirSync(join(SKILL, 'references'));
 const refText = (f: string) => readFileSync(join(SKILL, 'references', f), 'utf8');
@@ -23,7 +23,7 @@ const all = [skillMd, ...refs.map(refText)];
 describe('T-038 skill', () => {
   it('has the required frontmatter and stays within 500 lines', () => {
     const fm = /^---\nname: ([a-z-]+)\ndescription: (.+)\n---\n/.exec(skillMd);
-    expect(fm?.[1]).toBe('servicenow-troubleshooting');
+    expect(fm?.[1]).toBe('servicenow-readonly-troubleshooting');
     expect((fm?.[2] ?? '').length).toBeGreaterThan(50);
     expect((fm?.[2] ?? '').length).toBeLessThanOrEqual(1024);
     expect(skillMd.split('\n').length).toBeLessThanOrEqual(500);
@@ -99,25 +99,29 @@ describe('T-038 skill', () => {
         env: { ...process.env, OUT_DIR: out },
         stdio: 'pipe',
       });
-      const list = execFileSync('unzip', ['-Z1', join(out, 'servicenow-troubleshooting.zip')], {
+      const list = execFileSync(
+        'unzip',
+        ['-Z1', join(out, 'servicenow-readonly-troubleshooting.zip')],
+        {
+          encoding: 'utf8',
+        },
+      );
+      expect(list).toContain('servicenow-readonly-troubleshooting/SKILL.md');
+      expect(list).toContain('servicenow-readonly-troubleshooting/references/cmdb-ire.md');
+      const other = execFileSync('unzip', ['-Z1', join(out, 'servicenow-development-guide.zip')], {
         encoding: 'utf8',
       });
-      expect(list).toContain('servicenow-troubleshooting/SKILL.md');
-      expect(list).toContain('servicenow-troubleshooting/references/cmdb-ire.md');
-      const other = execFileSync('unzip', ['-Z1', join(out, 'servicenow.zip')], {
-        encoding: 'utf8',
-      });
-      expect(other).toContain('servicenow/SKILL.md');
-      expect(other).toContain('servicenow/references/glide-api.md');
-      expect(other).toContain('servicenow/LICENSE');
+      expect(other).toContain('servicenow-development-guide/SKILL.md');
+      expect(other).toContain('servicenow-development-guide/references/glide-api.md');
+      expect(other).toContain('servicenow-development-guide/LICENSE');
     } finally {
       rmSync(out, { recursive: true, force: true });
     }
   });
 });
 
-describe('the third-party servicenow skill', () => {
-  const DIR = join(REPO, 'skills/servicenow');
+describe('the third-party development guide skill', () => {
+  const DIR = join(REPO, 'skills/servicenow-development-guide');
   const walk = (dir: string): string[] =>
     readdirSync(dir, { withFileTypes: true }).flatMap((e) =>
       e.isDirectory() ? walk(join(dir, e.name)) : [join(dir, e.name)],
@@ -136,7 +140,7 @@ describe('the third-party servicenow skill', () => {
     expect(main).toContain('## Using this with the sn-mcp connector');
     expect(main).toMatch(/The connector only reads/);
     expect(main).toMatch(/untrusted data/);
-    expect(/^---\nname: servicenow\n/.test(main)).toBe(true);
+    expect(/^---\nname: servicenow-development-guide\n/.test(main)).toBe(true);
   });
 
   it('has no hidden characters or text aimed at steering the assistant', () => {
@@ -160,7 +164,20 @@ describe('the third-party servicenow skill', () => {
   });
 
   it('does not stand in for the troubleshooting skill', () => {
-    expect(main).toContain('`servicenow-troubleshooting`');
+    expect(main).toContain('`servicenow-readonly-troubleshooting`');
     expect(skillMd).not.toContain('references/glide-api.md');
+  });
+});
+
+describe('skill names', () => {
+  it('each folder matches its skill name, and the plugin ships exactly these two', () => {
+    const found = readdirSync(join(REPO, 'skills'))
+      .filter((d) => existsSync(join(REPO, 'skills', d, 'SKILL.md')))
+      .sort();
+    expect(found).toEqual(['servicenow-development-guide', 'servicenow-readonly-troubleshooting']);
+    for (const d of found) {
+      const text = readFileSync(join(REPO, 'skills', d, 'SKILL.md'), 'utf8');
+      expect(text.startsWith(`---\nname: ${d}\n`), d).toBe(true);
+    }
   });
 });
