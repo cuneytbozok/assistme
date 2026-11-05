@@ -531,6 +531,80 @@ export const SCENARIOS: {
     },
   },
   {
+    name: 'the filter check raises no false alarms on ordinary queries',
+    run: async (call, scope) => {
+      const closed = ok(
+        await call('query_records', {
+          scope_id: scope,
+          table: 'incident',
+          where: [{ field: 'number', op: '=', value: 'INC0000060' }],
+          fields: ['caller_id', 'assignment_group', 'category'],
+        }),
+        'seed',
+      );
+      const rec = closed.data.records[0];
+      const raw = (v: unknown) =>
+        v && typeof v === 'object' && 'v' in v ? (v as { v: string }).v : (v as string);
+      const filters: unknown[][] = [
+        [{ field: 'state', op: '=', value: 7 }],
+        [{ field: 'state', op: 'in', value: [6, 7] }],
+        [{ field: 'active', op: '=', value: true }],
+        [{ field: 'active', op: '=', value: 'false' }],
+        [{ field: 'number', op: 'starts_with', value: 'inc' }],
+        [{ field: 'number', op: 'in', value: ['inc0000060', 'INC0000055'] }],
+        [{ field: 'short_description', op: 'contains', value: 'EMAIL' }],
+        [{ field: 'caller_id', op: '=', value: raw(rec.caller_id) }],
+        [{ field: 'caller_id', op: 'contains', value: 'Joe' }],
+        [{ field: 'assignment_group', op: '=', value: raw(rec.assignment_group) }],
+        [{ field: 'category', op: '=', value: raw(rec.category) }],
+        [{ field: 'sys_created_on', op: 'older_than', value: { amount: 1, unit: 'year' } }],
+        [{ field: 'caller_id.name', op: 'contains', value: 'joe' }],
+        [
+          {
+            or: [
+              { field: 'priority', op: '=', value: 1 },
+              { field: 'short_description', op: 'contains', value: 'network' },
+            ],
+          },
+        ],
+      ];
+      let rows = 0;
+      for (const where of filters) {
+        const r = ok(
+          await call('query_records', {
+            scope_id: scope,
+            table: 'incident',
+            where,
+            limit: 200,
+            max_chars: 100_000,
+          }),
+          JSON.stringify(where),
+        );
+        rows += r.data.records.length;
+      }
+      for (const [table, where] of [
+        ['sys_user', [{ field: 'active', op: '=', value: true }]],
+        ['sys_user', [{ field: 'name', op: 'contains', value: 'a' }]],
+        ['sys_script', [{ field: 'collection', op: '=', value: 'incident' }]],
+        ['sys_script', [{ field: 'script', op: 'contains', value: 'CURRENT' }]],
+        ['sys_dictionary', [{ field: 'name', op: '=', value: 'incident' }]],
+      ] as const) {
+        const r = ok(
+          await call('query_records', {
+            scope_id: scope,
+            table,
+            where,
+            limit: 100,
+            max_chars: 100_000,
+          }),
+          `${table} ${JSON.stringify(where)}`,
+        );
+        rows += r.data.records.length;
+      }
+      return { queries: filters.length + 5, rows_checked: rows };
+    },
+  },
+  {
     name: 'unsafe and broadening queries are refused before any read (AC-14)',
     run: async (call, scope) => {
       const cases: [Record<string, unknown>, string][] = [

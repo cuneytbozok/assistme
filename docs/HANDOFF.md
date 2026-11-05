@@ -25,7 +25,9 @@ _Last updated: 2026-11-05 (after T-039 preparation)_
 
 **Decisions made 2026-11-05 by the user:** the word "javascript" is allowed and only the `javascript:` prefix is refused (ADR-005 addendum); dictionary validation stays fail-closed, with Claude telling the user what they can't read; a denied request stays `status: "denied"` (T-015 AC6 changed).
 
-**Trial investigation passed after the Claude Desktop restart (2026-11-05):** the tools and skill worked in a Code session on INC0000060. Ideas not done: `get_record_history` shows each journal entry twice (the audit row and the journal row); keep a list of tables that refused a `query_range` filter, to avoid repeat banners; check locally that returned rows match a filter, in case an instance ignores filters instead of refusing.
+**Trial investigation passed after the Claude Desktop restart (2026-11-05):** the tools and skill worked in a Code session on INC0000060. Ideas not done: `get_record_history` shows each journal entry twice (the audit row and the journal row); keep a list of tables that refused a `query_range` filter, to avoid repeat banners.
+
+**The user's remaining steps are in `docs/NEXT_STEPS.md`.** Added 2026-11-05: the filter check on returned rows (`mcp/filter-check.ts`, `FILTER_NOT_APPLIED`, live re-run 16 of 16), a first-time `README.md`, and an original teal magnifying-glass icon (`packages/extension/scripts/gen-icons.mjs`). The extension must be reloaded to show the icon.
 
 **Flaky test:** `resilience.test.ts` › "broker id prefixes differ per process" failed once during a full `npm test` on 2026-11-05, then passed 9 of 9 re-runs. Cause not found; the error wasn't captured. If it fails again, keep the message. Timing under load is a guess.
 

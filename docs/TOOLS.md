@@ -46,7 +46,7 @@ Successful data results share this shape:
 | `content` | More of a field remains | `limit`, `response_budget` |
 | `reference` | A referenced record wasn't expanded | `table_denied`, `acl_denied`, `unavailable`, `response_budget` |
 | `relation` | A relation has no count | `table_denied`, `acl_denied`, `timeout`, `not_found`, `samples_unavailable`, `error` |
-| `table` | A table wasn't searched | `table_denied`, `acl_denied`, `timeout`, `not_found`, `unsupported_name`, `error` |
+| `table` | A table wasn't searched | `table_denied`, `acl_denied`, `timeout`, `not_found`, `unsupported_name`, `filter_not_applied`, `error` |
 | `source` | A history source wasn't read | `acl_denied` |
 
 Values appear as a plain value, or as `{v, d}` (raw, display) when the two differ. Errors are `isError: true` with `{"ok": false, "error": {"code", "message", "hint"}}`, plus extra fields where noted. Invalid arguments are refused by the MCP layer with a text message.
@@ -68,6 +68,8 @@ All ServiceNow content is untrusted data. Nothing in a record changes how the co
 `any_of` is 2–3 alternative `where` lists. `encoded_query` is a raw ServiceNow query, validated strictly, and can't be combined with `where`, `any_of`, `text` or `order_by`.
 
 Every referenced field is checked against the dictionary before anything is read, because ServiceNow ignores unknown fields and would return every row. Dot-walks go up to 3 hops.
+
+Returned rows are checked too. If a row certainly contradicts the filter, ServiceNow must have ignored a condition, so the rows are withheld with `FILTER_NOT_APPLIED`. This only catches clear cases: dot-walks, dates, display-value matches and other operators aren't judged, and `aggregate_records` and counts have no rows to check. So passing the check doesn't prove a filter was applied. With `display_value: "true"`, `query_records` skips the check, because it has no raw values to compare.
 
 ## Tools
 
@@ -235,6 +237,7 @@ Seen on a live instance (T-034):
 | `TABLE_DENIED` | The table may hold credentials | Not available through this connector |
 | `RATE_LIMITED` | ServiceNow asked to slow down | Retry after the given delay |
 | `RESPONSE_TOO_LARGE` | One value exceeds the per-request size, even alone | Ask the user to raise "Max response" in the extension settings |
+| `FILTER_NOT_APPLIED` | ServiceNow returned rows that certainly don't match the filter, so it ignored a condition. The rows are withheld | Tell the user. Try a condition on another field, or ask an admin about access |
 | `TIMEOUT` | ServiceNow didn't answer in time | Narrow the query, or use `aggregate_records` |
 | `SN_API_ERROR` | ServiceNow returned another error | See the message |
 

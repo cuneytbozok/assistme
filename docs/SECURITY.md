@@ -112,7 +112,7 @@ Every code reaches Claude with a message and a hint (tested for every code):
 `INSTANCE_NOT_REGISTERED`, `INSTANCE_NOT_IN_SCOPE`, `BRIDGE_UNAVAILABLE`, `BROKER_CONFLICT`,
 `NO_INSTANCE_TAB`, `SESSION_EXPIRED`, `ACL_DENIED`, `NOT_FOUND`, `AMBIGUOUS_MATCH`,
 `INVALID_INPUT`, `INVALID_FIELD`, `UNSAFE_QUERY`, `FORBIDDEN_OPERATION`, `TABLE_DENIED`,
-`RATE_LIMITED`, `RESPONSE_TOO_LARGE`, `TIMEOUT`, `SN_API_ERROR`.
+`RATE_LIMITED`, `RESPONSE_TOO_LARGE`, `FILTER_NOT_APPLIED`, `TIMEOUT`, `SN_API_ERROR`.
 
 Security-relevant codes: `TABLE_DENIED` (credential table, also via dot-walk),
 `FORBIDDEN_OPERATION` (credential field, or an operation the read-only builder can't express),

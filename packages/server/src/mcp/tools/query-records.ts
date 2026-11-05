@@ -25,6 +25,11 @@ import {
 } from '../compact.js';
 import type { CursorState } from '../cursor.js';
 import { mapBridgeError } from '../errors.js';
+import {
+  buildFilterCheck,
+  FILTER_NOT_APPLIED_HINT,
+  FILTER_NOT_APPLIED_MESSAGE,
+} from '../filter-check.js';
 import { type PageResult, type PaginateResult, paginate, type Row } from '../paginate.js';
 import { planQuery } from '../query-guard.js';
 import { listResponse } from '../response.js';
@@ -247,13 +252,20 @@ export function registerQueryRecords(server: McpServer, ctx: ToolContext): void 
       let resultHost = host;
       let resultEnv: string | undefined;
       const countFirst = args.cursor === undefined && args.include_total === true;
+      // Rows that contradict the filter mean ServiceNow ignored a condition: never pass them on.
+      const check =
+        state.displayValue === 'true'
+          ? { fields: [] as string[], contradiction: () => undefined }
+          : buildFilterCheck(state.query, known, state.fields === '*' ? undefined : state.fields);
+      const extras = new Set(check.fields);
       const fetchPage = async (
         offset: number,
         n: number,
         fieldsOverride?: string[],
         withCount = false,
       ): Promise<PageResult> => {
-        const fields = fieldsOverride ?? (state.fields === '*' ? undefined : state.fields);
+        const fields =
+          fieldsOverride ?? (state.fields === '*' ? undefined : [...state.fields, ...check.fields]);
         const r = await call(
           'sn.op',
           {
@@ -287,9 +299,21 @@ export function registerQueryRecords(server: McpServer, ctx: ToolContext): void 
         const res = r.value.result as Extract<Ok<'sn.op'>['result'], { type: 'sn.op' }>;
         resultHost = res.host;
         resultEnv = res.env;
+        const rows = Array.isArray(res.body) ? (res.body as Row[]) : [];
+        for (const row of rows) {
+          const field = check.contradiction(row);
+          if (field !== undefined) {
+            return {
+              ok: false,
+              code: 'FILTER_NOT_APPLIED',
+              message: FILTER_NOT_APPLIED_MESSAGE(table, field),
+              hint: FILTER_NOT_APPLIED_HINT,
+            };
+          }
+        }
         return {
           ok: true,
-          rows: Array.isArray(res.body) ? (res.body as Row[]) : [],
+          rows,
           ...(res.totalCount !== undefined ? { total: res.totalCount } : {}),
         };
       };
@@ -306,7 +330,11 @@ export function registerQueryRecords(server: McpServer, ctx: ToolContext): void 
             stripped,
           } = stripSensitive([raw], known);
           for (const f of stripped) sensitiveSeen.add(f);
-          const shaped = compactRecord(clean as Row, shapeOpts);
+          // Fields read only for the check weren't asked for.
+          const shown = Object.fromEntries(
+            Object.entries(clean as Row).filter(([k]) => !extras.has(k)),
+          );
+          const shaped = compactRecord(shown, shapeOpts);
           const sysId = String(shaped.record.sys_id ?? '');
           return {
             ...shaped,

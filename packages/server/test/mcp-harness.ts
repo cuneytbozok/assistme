@@ -48,6 +48,8 @@ export async function harness(
     hidden?: (row: Record<string, unknown>) => boolean;
     /** Tables the signed-in user's ACLs refuse (HTTP 403 → ACL_DENIED). */
     denyTables?: string[];
+    /** Tables where ServiceNow ignores the query and returns rows regardless. */
+    ignoreFiltersOn?: string[];
     /** A separate fake per instance alias (compare scopes). */
     snByInstance?: Record<string, FakeServiceNow>;
   } = {},
@@ -154,7 +156,7 @@ export async function harness(
             return fail('ACL_DENIED', 'Insufficient rights to read this table.');
           const { rows, total } = sn.list({
             table: op.table,
-            ...(op.query ? { query: op.query } : {}),
+            ...(op.query && !opts.ignoreFiltersOn?.includes(op.table) ? { query: op.query } : {}),
             ...(op.fields ? { fields: op.fields } : {}),
             limit: op.limit,
             offset: op.offset,

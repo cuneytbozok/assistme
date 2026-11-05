@@ -16,6 +16,7 @@ import {
 } from '@sn-mcp/shared';
 import { z } from 'zod';
 import { compactValue, type FieldOmission, isSensitiveField } from '../compact.js';
+import { FILTER_NOT_APPLIED_MESSAGE } from '../filter-check.js';
 import { type FieldInfo, MetadataError } from '../metadata.js';
 import { dataResponse, type Omission } from '../response.js';
 import { toolError } from '../results.js';
@@ -456,6 +457,19 @@ export function registerSearchCode(server: McpServer, ctx: ToolContext): void {
                 next: nextCall,
               });
             }
+          }
+          // Searched fields all have text, and none holds the pattern: the condition was ignored.
+          const allFilled = fields.every((f) => String(compactValue(row[f]) ?? '') !== '');
+          if (hits.length === 0 && allFilled) {
+            omitted.push({
+              kind: 'table',
+              reason: 'filter_not_applied',
+              code: 'FILTER_NOT_APPLIED',
+              message: FILTER_NOT_APPLIED_MESSAGE(target.table, undefined),
+              table: target.table,
+            });
+            next();
+            continue search;
           }
           const name = nameField ? compactValue(row[nameField]) : undefined;
           const entry = {

@@ -8,6 +8,7 @@ import type { McpServer } from '@modelcontextprotocol/server';
 import { isDeniedTable, type Where } from '@sn-mcp/shared';
 import { z } from 'zod';
 import { compactRecord, compactValue, type FieldOmission, isSensitiveField } from '../compact.js';
+import { FILTER_NOT_APPLIED_HINT, FILTER_NOT_APPLIED_MESSAGE } from '../filter-check.js';
 import { type FieldInfo, MetadataError } from '../metadata.js';
 import type { Row } from '../paginate.js';
 import { planQuery } from '../query-guard.js';
@@ -45,12 +46,20 @@ const SOURCES = {
   audit: {
     table: 'sys_audit',
     key: 'documentkey',
-    fields: ['sys_id', 'sys_created_on', 'user', 'fieldname', 'oldvalue', 'newvalue'],
+    fields: [
+      'sys_id',
+      'sys_created_on',
+      'documentkey',
+      'user',
+      'fieldname',
+      'oldvalue',
+      'newvalue',
+    ],
   },
   journal: {
     table: 'sys_journal_field',
     key: 'element_id',
-    fields: ['sys_id', 'sys_created_on', 'sys_created_by', 'element', 'value'],
+    fields: ['sys_id', 'sys_created_on', 'element_id', 'sys_created_by', 'element', 'value'],
   },
 } as const;
 type SourceName = keyof typeof SOURCES;
@@ -241,6 +250,16 @@ export function registerGetRecordHistory(server: McpServer, ctx: ToolContext): v
         }
         const useAudit = h.a !== undefined && (h.j === undefined || before(h.a, h.j));
         const row = (useAudit ? h.a : h.j) as Row;
+        // Another record's history must never appear as this one's.
+        const owner = text(row, useAudit ? SOURCES.audit.key : SOURCES.journal.key);
+        if (owner !== '' && owner !== sysId) {
+          const source = useAudit ? SOURCES.audit : SOURCES.journal;
+          return toolError(
+            'FILTER_NOT_APPLIED',
+            FILTER_NOT_APPLIED_MESSAGE(source.table, source.key),
+            FILTER_NOT_APPLIED_HINT,
+          );
+        }
         const sysIdOf = text(row, 'sys_id');
         const at = text(row, 'sys_created_on');
         let entry: Record<string, unknown>;

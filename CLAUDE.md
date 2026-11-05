@@ -49,6 +49,7 @@ We are not building another AI assistant. Claude provides the reasoning, MCP pro
 | `docs/TOOLS.md`               | MCP tool contracts and error catalog (created in T-033)                                  |
 | `docs/INSTALL.md`             | Local installation (created in T-037)                                                    |
 | `docs/POC_RESULTS.md`         | Live session-access hypothesis results (created in T-005)                                |
+| `docs/NEXT_STEPS.md`          | What the user still has to do, step by step                                              |
 
 ## Commands
 

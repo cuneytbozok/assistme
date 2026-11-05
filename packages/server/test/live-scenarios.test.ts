@@ -44,6 +44,11 @@ function instance(): FakeServiceNow {
   for (const f of ['element_id', 'sys_created_by', 'element', 'value', 'sys_created_on'])
     dict('sys_journal_field', f);
   dict('task', 'active', 'boolean');
+  dict('sys_user', 'active', 'boolean');
+  sn.insert('sys_db_object', { name: 'sys_dictionary', label: 'Dictionary', super_class: '' });
+  dict('sys_dictionary', 'name');
+  dict('task', 'assignment_group', 'reference', { reference: 'sys_user' });
+  for (const f of ['collection', 'active']) dict('sys_script', f);
   dict('task', 'comments_and_work_notes', 'journal_list');
   dict('task', 'cmdb_ci', 'reference', { reference: 'cmdb_ci' });
   for (let i = 0; i < 2600; i++)
@@ -58,6 +63,9 @@ function instance(): FakeServiceNow {
   const inc = sn.insert('incident', {
     number: 'INC0000060',
     active: 'true',
+    category: 'network',
+    short_description: 'email',
+    assignment_group: 'a'.repeat(32),
     state: '1',
     priority: '2',
     caller_id: sn.ref('sys_user', user),

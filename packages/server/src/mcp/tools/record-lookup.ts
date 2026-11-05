@@ -10,6 +10,11 @@
 import type { CallToolResult } from '@modelcontextprotocol/server';
 import { z } from 'zod';
 import { compactValue, defaultProjection, stripSensitive } from '../compact.js';
+import {
+  buildFilterCheck,
+  FILTER_NOT_APPLIED_HINT,
+  FILTER_NOT_APPLIED_MESSAGE,
+} from '../filter-check.js';
 import type { FieldInfo, MetaContext } from '../metadata.js';
 import type { Row } from '../paginate.js';
 import { planQuery } from '../query-guard.js';
@@ -62,7 +67,8 @@ export async function resolveSysId(o: {
     };
   }
   const where = entries.map(([field, value]) => ({ field, op: '=' as const, value }));
-  const projection = defaultProjection(known);
+  const matchFields = entries.map(([f]) => f).filter((f) => !f.includes('.'));
+  const projection = [...new Set([...defaultProjection(known), ...matchFields])];
   const plan = await planQuery(
     ctx.meta,
     mc,
@@ -73,6 +79,7 @@ export async function resolveSysId(o: {
     },
   );
   const query = withTiebreak(plan.query);
+  const check = buildFilterCheck(query, known, undefined);
   const found: Row[] = [];
   let total: number | undefined;
   for (let offset = 0; found.length < 2; offset += CANDIDATE_WINDOW) {
@@ -87,6 +94,21 @@ export async function resolveSysId(o: {
     });
     if (!r.ok) return { ok: false, result: sn.fail(r) };
     total = r.total ?? total;
+    // A record that doesn't match must never become "the unique match".
+    for (const row of r.rows) {
+      const field = check.contradiction(row);
+      if (field !== undefined) {
+        return {
+          ok: false,
+          result: toolError(
+            'FILTER_NOT_APPLIED',
+            FILTER_NOT_APPLIED_MESSAGE(table, field),
+            FILTER_NOT_APPLIED_HINT,
+            extra,
+          ),
+        };
+      }
+    }
     found.push(...r.rows);
     // Without a count, only a full window can have more behind it.
     const more =

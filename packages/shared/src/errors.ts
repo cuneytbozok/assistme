@@ -27,6 +27,7 @@ export const ERROR_CODES = [
   'TABLE_DENIED',
   'RATE_LIMITED',
   'RESPONSE_TOO_LARGE',
+  'FILTER_NOT_APPLIED',
   'TIMEOUT',
   'SN_API_ERROR',
 ] as const;
@@ -68,6 +69,8 @@ export const DEFAULT_HINTS: Readonly<Record<ErrorCode, string>> = {
   RATE_LIMITED: 'ServiceNow asked the connector to slow down. Retry after the indicated delay.',
   RESPONSE_TOO_LARGE:
     'A single record exceeded the per-request size limit even after automatic page-size reduction. Request fewer fields, or read large fields with get_field_content.',
+  FILTER_NOT_APPLIED:
+    "ServiceNow returned rows that don't match the filter, so it seems to have ignored a condition. Tell the user; don't present those rows as results.",
   TIMEOUT:
     'ServiceNow did not respond in time. Narrow the time range or add a selective condition, order by an indexed field, or use aggregate_records.',
   SN_API_ERROR: 'ServiceNow returned an error. See the message for details.',

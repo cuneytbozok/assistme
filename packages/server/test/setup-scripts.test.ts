@@ -177,10 +177,28 @@ describe('docs/INSTALL.md', () => {
     }
   });
 
-  it('names only scripts that exist', () => {
+  it('names only scripts that exist, here and in the README and next steps', () => {
     const scripts = JSON.parse(readFileSync(join(REPO, 'package.json'), 'utf8')).scripts;
-    for (const [, name] of doc.matchAll(/npm run ([a-z:0-9-]+)/g)) {
-      expect(scripts, name).toHaveProperty(name as string);
+    for (const file of ['docs/INSTALL.md', 'README.md', 'docs/NEXT_STEPS.md']) {
+      const text = readFileSync(join(REPO, file), 'utf8');
+      for (const [, name] of text.matchAll(/npm run ([a-z:0-9-]+)/g)) {
+        expect(scripts, `${file}: ${name}`).toHaveProperty(name as string);
+      }
+    }
+  });
+
+  it('the README covers a first-time user, and says this is not a ServiceNow product', () => {
+    const readme = readFileSync(join(REPO, 'README.md'), 'utf8');
+    for (const text of [
+      'npm run setup',
+      'Load unpacked',
+      'clipfeocpiljpcngmjpdbegciimchbol',
+      'approval code',
+      'Read-only',
+      'not affiliated',
+      'docs/INSTALL.md',
+    ]) {
+      expect(readme, text).toContain(text);
     }
   });
 });
