@@ -25,6 +25,8 @@ _Last updated: 2026-11-05 (after T-039 preparation)_
 
 **Decisions made 2026-11-05 by the user:** the word "javascript" is allowed and only the `javascript:` prefix is refused (ADR-005 addendum); dictionary validation stays fail-closed, with Claude telling the user what they can't read; a denied request stays `status: "denied"` (T-015 AC6 changed).
 
+**Claude Desktop still runs the pre-T-012 server.** Until it restarts, a Code session inside the app mixes it with the new one, and the new tools refuse its scopes with `SCOPE_UNKNOWN` (T-035). Restart first, then retry the trial investigation of INC0000060.
+
 **Flaky test:** `resilience.test.ts` › "broker id prefixes differ per process" failed once during a full `npm test` on 2026-11-05, then passed 9 of 9 re-runs. Cause not found; the error wasn't captured. If it fails again, keep the message. Timing under load is a guess.
 
 **Known deviations:**

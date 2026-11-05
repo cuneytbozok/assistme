@@ -137,6 +137,7 @@ Logs are in `~/Library/Application Support/sn-mcp/broker.log`. They hold metadat
 | `ACL_DENIED` | Your ServiceNow user can't read this | Ask a ServiceNow admin, or sign in with an account that can. If it mentions table definitions, the connector needs read access to `sys_db_object` and `sys_dictionary` |
 | `TIMEOUT` | ServiceNow took too long | Ask Claude to narrow the query, or raise the timeout in the extension settings |
 | `RESPONSE_TOO_LARGE` | One value is larger than the per-request limit | Raise "Max response" in the extension settings |
+| `SCOPE_UNKNOWN` right after you approved, in a Code session inside Claude Desktop | That session is using two connector builds: an old one still running in Claude Desktop, and a newer one | Fully quit and reopen Claude Desktop (Cmd+Q), then start a new session |
 | Tools are missing or out of date in Claude | Claude is running an old build | Fully quit and reopen Claude Desktop (Cmd+Q), or start a new Claude Code session |
 | The extension shows a different ID | It was loaded from another folder or build | Remove it, and load `packages/extension/dist` again |
 | Chrome shows a sign-in dialog for ServiceNow | Not expected | Please report it with the instance type (`docs/DECISIONS.md`, ADR-002 addendum, has the fallback) |
