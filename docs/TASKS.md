@@ -1439,5 +1439,5 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 - **Evidence (2026-11-05):** `docs/evidence/T-041/README.md`.
   - **(a) Recovery drill** ✔, with a caveat: a read-only subagent with no chat context identified the state correctly, but had to overrule `docs/HANDOFF.md`. HANDOFF is rewritten, and the gaps it found are fixed. The rewrite hasn't had its own cold read.
   - **(b) Install from scratch** ◐: uninstall, clean clone, `npm install`, `npm run setup` and packaging all worked from the docs, Chrome started the clone's host, and the normal setup was restored and checked. **Skipped by the user's decision:** re-adding the extension from the clone, re-registering, and a scoped query through that clean install. They'd done the real install the same day, and it answered real questions (T-036).
-  - **DoD not fully met: M6 isn't marked achieved.** Its exit criterion is all 19 acceptance criteria evidenced, and AC-6, AC-7 and AC-8 are open. That is the user's decision (HANDOFF).
+  - **M6 achieved by the user's decision (2026-11-05),** with AC-6, AC-7 and AC-8 left open. Its original exit criterion, all 19 acceptance criteria evidenced, isn't met.
 

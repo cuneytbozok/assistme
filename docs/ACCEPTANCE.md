@@ -2,7 +2,7 @@
 
 Final build: version 0.1.2. Dates are 2026. "Live" means a real run against `dev469966`, a personal developer instance, with the user signed in as admin. Mocks don't count as connectivity proof (CLAUDE.md, rule 11), so results that rest on them are not called live.
 
-**Result: 15 passed, 3 open, 1 out of scope.** None failed. So M6's exit criterion, all 19 evidenced, isn't met.
+**Result: 15 passed, 3 open, 1 out of scope.** None failed. M6's original exit criterion, all 19 evidenced, isn't met: the user accepted M6 with the 3 left open (5 Nov).
 
 The final live run was on 5 Nov, 10:57–11:07 UTC: 16 of 16 scenarios passed, approved by the user in the popup ([results](evidence/T-040/final-live-run.json)). It holds counts, sizes, and table and field names, with no record content.
 

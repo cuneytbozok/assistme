@@ -6,8 +6,8 @@ The connector is installed and working in Claude Desktop, and every required ste
 
 The project exists only on this Mac.
 
-1. Create an empty **private** repository, on GitHub or similar.
-2. Give me its address, and I'll connect it and push.
+1. `cuneytbozok/assistme` exists but is public. Make it **private**, or tell me you want it public.
+2. I'll then connect it and push.
 
 ## 2. A second instance
 
