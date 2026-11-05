@@ -12,6 +12,8 @@ Do these in order. Everything else is done. Parts C and D are about 10 minutes e
 
 ## B. Claude Desktop: install the connector and skills
 
+**Status:** B1, B2 and B3 done on 2026-11-05. Do B4 next.
+
 **B1. Install the connector**
 
 1. Open **Settings → Extensions → Advanced → Install Extension**.

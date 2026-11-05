@@ -17,8 +17,7 @@ _Last updated: 2026-11-05 (after T-039 preparation)_
 1. Done 2026-11-05: extension reloaded, T-034 live runs passed.
 2. Fully quit and reopen Claude Desktop: its `sn-mcp` server is still the old build.
 3. Claude Code: registered and skills installed for the user on 2026-11-05. In a fresh signed-in session: check `/mcp`, try a query, and ask something that should load a skill (T-035, T-038).
-4. Claude Desktop (`packages/server/sn-mcp.mcpb` is rebuilt and current): install it, then remove the old `sn-mcp` entry from `claude_desktop_config.json`, quit and reopen. Try a query, a revoke, a logout, and Cowork (T-036).
-5. Upload both zips from `dist-skill/` in Claude Desktop (T-038).
+4. Claude Desktop: the user installed the bundle (confirmed current: it has the filter check) and uploaded both zips. The old `sn-mcp` entry is removed from `claude_desktop_config.json` (backup: `claude_desktop_config.json.before-sn-mcp-bundle`). Next: quit and reopen, then try a query, a revoke, a logout, and Cowork (T-036, T-038).
 6. Done 2026-11-05: the setup round trip on the real machine (T-037). It waits only on T-036.
 7. Dropped: the official SDK skill (T-039). The user's Claude Code has `fluent@servicenow`, and the user chose to keep it (2026-11-05). Don't ask again.
 8. A second instance for T-015, if one is available. That also allows a live `compare_records` run, which T-034 can't cover.

@@ -1323,7 +1323,7 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 - **Blocker:** needs the user: installing the bundle in Claude Desktop, a scoped query in Desktop chat, and the Cowork result.
 - **Evidence so far (2026-11-05, not acceptance):**
   - Delivered: `packages/server/mcpb/manifest.json` (manifest 0.4), `packages/server/build.mjs` (one bundled file), `npm run pack:mcpb`, `test/mcpb.test.ts` (mock). Install steps in `docs/INSTALL.md`.
-  - Rebuilt on 2026-11-05 with the current rules. The old `sn-mcp` entry stays in `claude_desktop_config.json` until the bundle is installed, so Desktop isn't left without a connector.
+  - Rebuilt on 2026-11-05 with the current rules. The user installed it (found in `Claude Extensions/local.mcpb.cneyt-bozok.sn-mcp`, with the filter check), and the old `sn-mcp` entry was then removed from `claude_desktop_config.json`, with a backup. Not yet used: the app hasn't been restarted.
   - `npm run pack:mcpb` → `Manifest schema validation passes!`, `packages/server/sn-mcp.mcpb` at 288 kB, 2 files. Rebuilt after T-034.
   - The real bundle runs alone from an empty folder over stdio and lists the same 14 tools as the manifest. With no broker, `list_instances` gives `BRIDGE_UNAVAILABLE`.
   - **Deviation:** the task said `user_config` for log level only, but the server has no log level, and ADR-011/ARCHITECTURE §8.3 say result-shaping settings come through `user_config`. So it has four numeric shaping settings. No secrets; a test keeps it that way.
