@@ -1,6 +1,6 @@
 # Handoff
 
-_Last updated: 2026-11-05 (after T-032)_
+_Last updated: 2026-11-05 (after T-033)_
 
 ## Current project state
 
@@ -62,7 +62,8 @@ _Last updated: 2026-11-05 (after T-032)_
 - **T-031 DONE:** `search_code` (script fields from the dictionary, batches of 25 tables per call, ±3-line snippets).
 - **T-031 DONE:** `search_code` (script fields from the dictionary, batches of 25 tables per call, ±3-line snippets).
 - **T-032 DONE:** `compare_records` (`line-diff.ts`, snapshot pages, per-side ambiguity).
-- **Next task:** T-033 (tool contract review + `docs/TOOLS.md`).
+- **T-033 DONE:** `docs/TOOLS.md`, `lean()` compact schemas (`tools/list` under 12,000 bytes), server instructions hold the shared contract. Fixed: `paginate.ts` repeats with hidden rows; 49-field limit on `query_records`. Output schemas are the `{ok}` envelope only (full contract in TOOLS.md).
+- **Next task:** T-034 (live tool acceptance): needs the user.
 - **Verify live in T-034:** `sysparm_offset` counts pre-ACL rows (ADR-011 addendum).
 - **Waiting on the user:** T-015 live run (second instance); `REQUEST_DENIED` vs `status: denied` (T-015 AC6); fail-closed dictionary validation (ADR-005 addendum).
 - **Role-agnostic (ADR-012, 2026-11-04):** no ServiceNow role handling of any kind. Don't add role checks, dedicated accounts or impersonation features.

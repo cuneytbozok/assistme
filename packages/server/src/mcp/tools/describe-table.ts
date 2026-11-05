@@ -4,16 +4,19 @@
  * instance, and paged by cursor when it doesn't fit one result.
  */
 import type { McpServer } from '@modelcontextprotocol/server';
-import {
-  AliasSchema,
-  isDeniedTable,
-  PASSWORD_INTERNAL_TYPES,
-  TableNameSchema,
-} from '@sn-mcp/shared';
+import { isDeniedTable, PASSWORD_INTERNAL_TYPES } from '@sn-mcp/shared';
 import { z } from 'zod';
 import { dataResponse } from '../response.js';
 import { toolError } from '../results.js';
-import { READ_ONLY, ResultEnvelope, ScopeIdInput, UNTRUSTED_NOTE } from './common.js';
+import {
+  CursorInput,
+  InstanceInput,
+  READ_ONLY,
+  ResultEnvelope,
+  ScopeIdInput,
+  TableInput,
+  UNTRUSTED_NOTE,
+} from './common.js';
 import type { ToolContext } from './context.js';
 import {
   beginTool,
@@ -38,21 +41,15 @@ export function registerDescribeTable(server: McpServer, ctx: ToolContext): void
   server.registerTool(
     'describe_table',
     {
-      title: 'Describe a table',
       description:
-        'Lists a table’s fields from the dictionary: name, type, label, reference target, `inherited_from` for fields defined on a parent table. Also the parent chain and display field. `include_inherited` defaults to true; `include_choices` adds each choice field’s values. Unknown tables give NOT_FOUND with suggestions. Continue with {scope_id, cursor} if `page.next_cursor` is set.',
+        "Lists a table's fields from the dictionary: type, label, reference target, `inherited_from`; plus its parent chain. `include_choices` adds choice values. An unknown table gives NOT_FOUND with suggestions. Continue with `cursor`.",
       inputSchema: z.strictObject({
         scope_id: ScopeIdInput,
-        instance: AliasSchema.optional().describe(
-          'Instance alias; defaults to the scope’s instance (required for compare scopes)',
-        ),
-        table: TableNameSchema.optional().describe('Table name (not with cursor)'),
-        include_inherited: z
-          .boolean()
-          .optional()
-          .describe('Include parent-table fields (default true)'),
-        include_choices: z.boolean().optional().describe('Include choice values (default false)'),
-        cursor: z.string().max(8000).optional().describe('page.next_cursor from a previous call'),
+        instance: InstanceInput,
+        table: TableInput.optional(),
+        include_inherited: z.boolean().optional(),
+        include_choices: z.boolean().optional(),
+        cursor: CursorInput,
         max_chars: maxCharsInput(config),
       }),
       outputSchema: ResultEnvelope,

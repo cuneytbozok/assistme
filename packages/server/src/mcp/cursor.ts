@@ -21,6 +21,8 @@ export const CursorStateSchema = z.strictObject({
   fields: z.union([z.literal('*'), z.array(z.string().max(200)).max(200)]),
   displayValue: z.enum(['false', 'true', 'all']),
   offset: z.int().min(0).max(Number.MAX_SAFE_INTEGER),
+  /** Readable rows of the window at `offset` already returned (see paginate). */
+  skip: z.int().min(0).max(Number.MAX_SAFE_INTEGER).optional(),
   /** Rows wanted per call (the original `limit`). */
   limit: z.int().min(1).max(Number.MAX_SAFE_INTEGER),
   /** Rows already returned across earlier calls (for `page.returned_total`). */

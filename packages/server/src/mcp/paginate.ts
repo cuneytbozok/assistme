@@ -28,6 +28,8 @@ export interface PaginateInput {
    */
   fetch: (offset: number, limit: number, withCount?: boolean) => Promise<PageResult>;
   offset: number;
+  /** Readable rows of the window at `offset` already returned (a stop inside a short window). */
+  skip?: number;
   limit: number;
   pageSize: number;
   /** Characters available for records (and their omission entries and links). */
@@ -51,6 +53,8 @@ export interface PaginateResult {
   omitted: FieldOmission[];
   links: string[];
   nextOffset: number;
+  /** With `nextOffset`: readable rows of that window to skip when continuing. */
+  nextSkip: number;
   hasMore: boolean;
   stop: StopReason;
   /** Upstream requests made for this response. */
@@ -69,6 +73,8 @@ export async function paginate(
   const omitted: FieldOmission[] = [];
   const links: string[] = [];
   let offset = p.offset;
+  let skip = p.skip ?? 0;
+  let nextSkip = 0;
   let pageSize = Math.max(1, Math.min(p.pageSize, MAX_PAGE_SIZE));
   let budget = p.budgetChars;
   let requests = 0;
@@ -84,6 +90,7 @@ export async function paginate(
     omitted,
     links,
     nextOffset: offset,
+    nextSkip,
     hasMore,
     stop,
     requests,
@@ -158,9 +165,12 @@ export async function paginate(
       return done('error', true, err);
     }
     if (total === undefined && r.total !== undefined && offset === p.offset) total = r.total;
-    const rows = r.rows;
+    // A cursor can resume inside a window: its first readable rows were already returned.
+    const usedBefore = skip;
+    const rows = r.rows.slice(skip);
+    skip = Math.max(0, skip - r.rows.length);
     noLookahead = false;
-    if (rows.length === 0) {
+    if (r.rows.length === 0) {
       // Empty: the end, unless the count says matching rows exist further on (all hidden here).
       let count = r.total;
       if (count === undefined) {
@@ -175,12 +185,25 @@ export async function paginate(
       }
       return done('end', false);
     }
+    const short = r.rows.length < n;
+    // A full window has no hidden rows, so its positions are exact (data changed since the stop).
+    if (!short) offset += Math.min(usedBefore, r.rows.length);
     const pageStart = offset;
-    const short = rows.length < n;
     let taken = 0;
+    /**
+     * Hidden rows make a short window's positions unknowable, so a stop inside one resumes at the
+     * window start and skips the readable rows already returned. No row is lost or repeated.
+     */
+    const stopInside = (stop: StopReason): PaginateResult => {
+      if (short) {
+        offset = pageStart;
+        nextSkip = usedBefore + taken;
+      }
+      return done(stop, true);
+    };
     for (const raw of rows) {
       if (records.length >= p.limit) break;
-      if (!accept(raw)) return done('response_budget', true);
+      if (!accept(raw)) return stopInside('response_budget');
       taken++;
     }
     // A short page may just have hidden rows (ServiceNow drops them after windowing), so the
@@ -188,7 +211,7 @@ export async function paginate(
     if (short && taken === rows.length) offset = pageStart + n;
     needCount = short;
     if (records.length >= p.limit) {
-      if (rows.length > taken) return done('limit', true); // rows of this page remain
+      if (rows.length > taken) return stopInside('limit'); // rows of this page remain
       // Anything after this window? The count answers it (it includes hidden rows).
       requests++;
       const c = await p.fetch(offset, 1, true);

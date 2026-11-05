@@ -5,21 +5,23 @@
  * call handles a batch so a single tool call stays short. No relation is dropped silently.
  */
 import type { McpServer } from '@modelcontextprotocol/server';
-import {
-  AliasSchema,
-  compileFilter,
-  type ErrorCode,
-  isDeniedTable,
-  isSensitiveFieldName,
-  SysIdSchema,
-  TableNameSchema,
-} from '@sn-mcp/shared';
+import { compileFilter, type ErrorCode, isDeniedTable, isSensitiveFieldName } from '@sn-mcp/shared';
 import { z } from 'zod';
 import { compactValue } from '../compact.js';
 import type { ReferencingField } from '../metadata.js';
 import { dataResponse, type Omission } from '../response.js';
 import { toolError } from '../results.js';
-import { READ_ONLY, ResultEnvelope, ScopeIdInput, UNTRUSTED_NOTE } from './common.js';
+import {
+  CursorInput,
+  InstanceInput,
+  lean,
+  READ_ONLY,
+  ResultEnvelope,
+  ScopeIdInput,
+  SysIdInput,
+  TableInput,
+  UNTRUSTED_NOTE,
+} from './common.js';
 import type { ToolContext } from './context.js';
 import {
   beginTool,
@@ -78,18 +80,15 @@ export function registerGetRelatedRecords(server: McpServer, ctx: ToolContext): 
   server.registerTool(
     'get_related_records',
     {
-      title: 'Find related records',
       description:
-        'Finds what references one record: every dictionary field pointing at its table or a parent table, with a count and `samples` sys_ids for each (default 3, 0 for none). Each relation with records has `list_all`, the query_records call that lists them. Relations are covered in batches: continue with {scope_id, cursor} while `page.next_cursor` is set. Tables you can’t read, or that are blocked, appear in `omitted`.',
+        'Finds what references a record, from the dictionary: every relation with a count, `samples` sys_ids (default 3) and a `list_all` call. Continue with `cursor`.',
       inputSchema: z.strictObject({
         scope_id: ScopeIdInput,
-        instance: AliasSchema.optional().describe(
-          'Instance alias; defaults to the scope’s instance (required for compare scopes)',
-        ),
-        table: TableNameSchema.optional().describe('The record’s table (not with cursor)'),
-        sys_id: SysIdSchema.optional().describe('The record’s sys_id (not with cursor)'),
-        samples: z.int().min(0).max(MAX_SAMPLES).optional().describe('sys_ids per relation'),
-        cursor: z.string().max(8000).optional().describe('page.next_cursor from a previous call'),
+        instance: InstanceInput,
+        table: TableInput.optional(),
+        sys_id: SysIdInput.optional(),
+        samples: lean(z.int().min(0).max(MAX_SAMPLES), z.number()).optional(),
+        cursor: CursorInput,
         max_chars: maxCharsInput(config),
       }),
       outputSchema: ResultEnvelope,

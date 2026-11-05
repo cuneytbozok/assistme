@@ -4,29 +4,22 @@
  */
 import type { CallToolResult } from '@modelcontextprotocol/server';
 import type { ErrorCode, Operation } from '@sn-mcp/shared';
-import { z } from 'zod';
+import type { z } from 'zod';
 import type { ServerConfig } from '../../config.js';
 import type { ToolCursorBase } from '../cursor.js';
 import { mapBridgeError } from '../errors.js';
 import type { MetaContext } from '../metadata.js';
 import type { Row } from '../paginate.js';
 import { type Provenance, provenance, toolError } from '../results.js';
-import type { Ok } from './common.js';
+import { CountInput, type Ok } from './common.js';
 import type { ToolContext } from './context.js';
 
 /** Room for provenance, page info, omission entries and hints in each result. */
 export const RESPONSE_OVERHEAD_CHARS = 2_500;
 export const MIN_RESPONSE_CHARS = 4_000;
 
-export function maxCharsInput(config: ServerConfig) {
-  return z
-    .int()
-    .min(1)
-    .max(Number.MAX_SAFE_INTEGER)
-    .optional()
-    .describe(
-      `Size of this result in characters (default ${config.responseChars}, up to ${config.maxResponseChars})`,
-    );
+export function maxCharsInput(_config: ServerConfig) {
+  return CountInput.optional();
 }
 
 /** The result size for this call; a clamped request is reported in `hints`, never silently. */

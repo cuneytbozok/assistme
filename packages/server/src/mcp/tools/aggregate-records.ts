@@ -6,20 +6,27 @@
  */
 import type { McpServer } from '@modelcontextprotocol/server';
 import {
-  AliasSchema,
-  AnyOfSchema,
   FieldPathSchema,
   MAX_AGGREGATES,
   MAX_ENCODED_QUERY_LENGTH,
   MAX_GROUP_BY_FIELDS,
-  TableNameSchema,
-  WhereSchema,
 } from '@sn-mcp/shared';
 import { z } from 'zod';
 import { planQuery } from '../query-guard.js';
 import { dataResponse } from '../response.js';
 import { toolError } from '../results.js';
-import { READ_ONLY, ResultEnvelope, ScopeIdInput, UNTRUSTED_NOTE } from './common.js';
+import {
+  AnyOfInput,
+  CursorInput,
+  InstanceInput,
+  lean,
+  READ_ONLY,
+  ResultEnvelope,
+  ScopeIdInput,
+  TableInput,
+  UNTRUSTED_NOTE,
+  WhereInput,
+} from './common.js';
 import type { ToolContext } from './context.js';
 import {
   beginTool,
@@ -91,36 +98,24 @@ export function registerAggregateRecords(server: McpServer, ctx: ToolContext): v
   server.registerTool(
     'aggregate_records',
     {
-      title: 'Count and summarize',
       description:
-        'Counts records, or groups them, without reading rows: use it instead of query_records for "how many", distributions and min/max/avg/sum. Filter with `where`, `any_of` or `encoded_query` as in query_records. `group_by` takes 1–2 fields; `aggregates` up to 4 {fn: avg|min|max|sum, field}. Every group is returned, largest first; continue with {scope_id, cursor} if `page.next_cursor` is set. Fields are checked against the dictionary.',
+        'Counts and summarizes without reading rows: prefer it to query_records for "how many" and distributions. Filters as in query_records. `group_by`: 1–2 fields, all groups largest first. `aggregates`: up to 4 {fn: avg|min|max|sum, field}. Continue with `cursor`.',
       inputSchema: z.strictObject({
         scope_id: ScopeIdInput,
-        instance: AliasSchema.optional().describe(
-          'Instance alias; defaults to the scope’s instance (required for compare scopes)',
-        ),
-        table: TableNameSchema.optional().describe('Table name (not with cursor)'),
-        where: WhereSchema.optional().describe('Conditions, as in query_records'),
-        any_of: AnyOfSchema.optional().describe('Alternative where-groups, as in query_records'),
-        encoded_query: z
-          .string()
-          .min(1)
-          .max(MAX_ENCODED_QUERY_LENGTH)
-          .optional()
-          .describe('Raw encoded query (validated strictly). Not with where/any_of.'),
-        group_by: z
-          .array(FieldPathSchema)
-          .min(1)
-          .max(MAX_GROUP_BY_FIELDS)
-          .optional()
-          .describe('Fields to group by'),
-        aggregates: z
-          .array(AggregateInput)
-          .min(1)
-          .max(MAX_AGGREGATES)
-          .optional()
-          .describe('Numeric summaries to compute'),
-        cursor: z.string().max(8000).optional().describe('page.next_cursor from a previous call'),
+        instance: InstanceInput,
+        table: TableInput.optional(),
+        where: WhereInput.optional(),
+        any_of: AnyOfInput.optional(),
+        encoded_query: lean(z.string().min(1).max(MAX_ENCODED_QUERY_LENGTH)).optional(),
+        group_by: lean(
+          z.array(FieldPathSchema).min(1).max(MAX_GROUP_BY_FIELDS),
+          z.array(z.string()),
+        ).optional(),
+        aggregates: lean(
+          z.array(AggregateInput).min(1).max(MAX_AGGREGATES),
+          z.array(z.looseObject({})),
+        ).optional(),
+        cursor: CursorInput,
         max_chars: maxCharsInput(config),
       }),
       outputSchema: ResultEnvelope,

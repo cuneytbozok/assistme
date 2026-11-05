@@ -4,13 +4,22 @@
  * are marked, so nothing disappears silently.
  */
 import type { McpServer } from '@modelcontextprotocol/server';
-import { AliasSchema, compileFilter, isDeniedTable, MAX_PAGE_SIZE } from '@sn-mcp/shared';
+import { compileFilter, isDeniedTable, MAX_PAGE_SIZE } from '@sn-mcp/shared';
 import { z } from 'zod';
 import { compactValue } from '../compact.js';
 import { type PaginateResult, paginate } from '../paginate.js';
 import { listResponse } from '../response.js';
 import { toolError } from '../results.js';
-import { READ_ONLY, ResultEnvelope, ScopeIdInput, UNTRUSTED_NOTE } from './common.js';
+import {
+  CountInput,
+  CursorInput,
+  InstanceInput,
+  lean,
+  READ_ONLY,
+  ResultEnvelope,
+  ScopeIdInput,
+  UNTRUSTED_NOTE,
+} from './common.js';
 import type { ToolContext } from './context.js';
 import { beginTool, isToolError, maxCharsInput, RESPONSE_OVERHEAD_CHARS } from './support.js';
 
@@ -23,6 +32,7 @@ const StateSchema = z.strictObject({
   instance: z.string().max(32),
   query: z.string().max(4000),
   offset: z.int().min(0),
+  skip: z.int().min(0),
   limit: z.int().min(1),
   seen: z.int().min(0),
 });
@@ -32,17 +42,14 @@ export function registerDiscoverTables(server: McpServer, ctx: ToolContext): voi
   server.registerTool(
     'discover_tables',
     {
-      title: 'Find tables',
       description:
-        'Finds tables by words in their name or label (custom u_ and x_ tables too). Omit `search` to walk all tables. Returns name, label and parent (`extends`), up to `limit` (default 50) with `page.next_cursor` when more exist; continue with {scope_id, cursor}. Use describe_table next to see a table’s fields.',
+        'Finds tables by words in their name or label, custom u_ and x_ tables included (no `search`: all tables). Then use describe_table. Continue with `cursor`.',
       inputSchema: z.strictObject({
         scope_id: ScopeIdInput,
-        instance: AliasSchema.optional().describe(
-          'Instance alias; defaults to the scope’s instance (required for compare scopes)',
-        ),
-        search: z.string().min(1).max(100).optional().describe('Part of a table name or label'),
-        limit: z.int().min(1).max(Number.MAX_SAFE_INTEGER).optional().describe('Tables wanted'),
-        cursor: z.string().max(8000).optional().describe('page.next_cursor from a previous call'),
+        instance: InstanceInput,
+        search: lean(z.string().min(1).max(100)).optional(),
+        limit: CountInput.optional(),
+        cursor: CursorInput,
         max_chars: maxCharsInput(config),
       }),
       outputSchema: ResultEnvelope,
@@ -92,6 +99,7 @@ export function registerDiscoverTables(server: McpServer, ctx: ToolContext): voi
             count: withCount === true,
           }),
         offset: state?.offset ?? 0,
+        skip: state?.skip ?? 0,
         limit,
         pageSize: config.pageSize,
         budgetChars: maxChars - RESPONSE_OVERHEAD_CHARS,
@@ -122,6 +130,7 @@ export function registerDiscoverTables(server: McpServer, ctx: ToolContext): voi
             instance,
             query: q,
             offset: page.nextOffset,
+            skip: page.nextSkip,
             limit,
             seen,
           })

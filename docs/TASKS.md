@@ -42,7 +42,7 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 | T-030 | `get_record_history`                            | 025      | DONE        |
 | T-031 | `search_code`                                   | 026      | DONE        |
 | T-032 | `compare_records`                               | 025, 011 | DONE        |
-| T-033 | Tool contract review + TOOLS.md                 | 024–032  | TODO        |
+| T-033 | Tool contract review + TOOLS.md                 | 024–032  | DONE        |
 | T-034 | Live tool acceptance (M4)                       | 033      | TODO        |
 | T-035 | Claude Code registration                        | 034      | TODO        |
 | T-036 | `.mcpb` Desktop Extension                       | 034      | TODO        |
@@ -1230,7 +1230,7 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 
 ### T-033 — Tool contract review + TOOLS.md
 
-- **Status:** TODO
+- **Status:** DONE
 - **Purpose:** Consistent, well-described, efficient tools.
 - **Dependencies:** T-024 – T-032
 - **Deliverables:** review names, descriptions (concise, with when-to-use guidance), input and output schemas, annotations, and error mapping; `docs/TOOLS.md` with every contract, an example, and the error catalog; tool-surface snapshot updated.
@@ -1265,7 +1265,21 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 - **Verification:** live run.
 - **DoD:** M4 marked achieved.
 - **Blocker:** requires a DEV instance.
-- **Evidence:** —
+- **Evidence (2026-11-05):**
+  - Delivered: `docs/TOOLS.md` (all 14 tools, each input, an example per tool, result contract, filter syntax, error catalog, limits), `test/tool-contract.test.ts` (40 tests; mock), and the updated tool-surface snapshot in `tool-surface.test.ts`.
+  - **Size:** `tools/list` went from **41,803 bytes to under 12,000** (a test enforces it). How:
+    - `lean()` in `tools/common.ts` publishes a compact schema while still validating with the full one. Validation is as strict as before: 29 hostile or malformed inputs across all tools are refused, with no request sent.
+    - Shorter descriptions; the shared contract moved to the server instructions (`complete`, `omitted`, cursors, efficient reads).
+    - Removed `title`, `idempotentHint` and `openWorldHint` (clients fall back to the tool name and MCP defaults).
+  - **Acceptance criteria:**
+    - `outputSchema` on every tool ✔ test. Published as the `{ok}` envelope: a per-tool schema would exceed the size limit, so the full contract is in `docs/TOOLS.md`. **Deviation from what "output schema" might suggest; noted in HANDOFF.**
+    - Examples ✔ in `docs/TOOLS.md`; a test runs each one through the real tool.
+    - Continuation ✔ every data tool's description says how to continue; `complete`/`omitted` are in the instructions and `docs/TOOLS.md`. `query_records` and `aggregate_records` steer toward filters, projection and aggregates.
+    - Size ✔ under 12,000 bytes. Snapshot ✔ `tool-surface.test.ts` pins the names, inputs and read-only annotations.
+  - **Fixes from the review:**
+    1. `paginate.ts` could repeat rows after a budget stop inside a window containing ACL-hidden rows. A stop now resumes at the window start and skips the readable rows already returned (`skip` in the cursor). Test: 300 rows with every 7th hidden, at `max_chars` 4,000: every visible row exactly once.
+    2. `query_records` accepted 200 named fields but one request carries 50. It now accepts 49 (plus `sys_id`). Reading an oversized record on a table with more than 50 fields stays within the limit and lists the rest in `omitted`.
+  - **Mutation checks** (each reverted): no skip on stop, skip ignored on resume, `lean()` not validating, no field cap on the oversized read; all fail tests.
 
 ## Phase 5 — Packaging (Milestone M5)
 
