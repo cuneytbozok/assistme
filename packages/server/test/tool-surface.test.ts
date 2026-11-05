@@ -16,6 +16,7 @@ import { createMcpServer } from '../src/mcp/server.js';
 import { answerMetadata } from './fake-sn.js';
 
 const APPROVED = [
+  'aggregate_records',
   'claim_scope',
   'describe_table',
   'discover_tables',
@@ -116,6 +117,23 @@ describe('AC1: tool surface snapshot', () => {
       }))
       .sort((a, b) => a.name.localeCompare(b.name));
     expect(snapshot).toEqual([
+      {
+        name: 'aggregate_records',
+        inputs: [
+          'aggregates',
+          'any_of',
+          'cursor',
+          'encoded_query',
+          'group_by',
+          'instance',
+          'max_chars',
+          'scope_id',
+          'table',
+          'where',
+        ],
+        readOnly: true,
+        destructive: false,
+      },
       { name: 'claim_scope', inputs: ['request_id'], readOnly: true, destructive: false },
       {
         name: 'describe_table',

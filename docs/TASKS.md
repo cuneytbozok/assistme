@@ -37,7 +37,7 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 | T-025 | `get_record`                                    | 024      | DONE        |
 | T-026 | `discover_tables` + `describe_table`            | 017, 023 | DONE        |
 | T-027 | `get_field_content`                             | 025      | DONE        |
-| T-028 | `aggregate_records`                             | 024      | TODO        |
+| T-028 | `aggregate_records`                             | 024      | DONE        |
 | T-029 | `get_related_records`                           | 026, 028 | TODO        |
 | T-030 | `get_record_history`                            | 025      | TODO        |
 | T-031 | `search_code`                                   | 026      | TODO        |
@@ -1089,7 +1089,7 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 
 ### T-028 — `aggregate_records`
 
-- **Status:** TODO
+- **Status:** DONE
 - **Purpose:** Counts, distributions and min/max/avg/sum via the Stats API: the efficient alternative to pulling rows.
 - **Dependencies:** T-024
 - **Deliverables:** a `stats.aggregate` operation (count, group_by ≤2 fields, aggregates). All groups are returned, sorted by count and paginated by cursor when they exceed the response budget.
@@ -1097,7 +1097,16 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 - **Acceptance criteria:** group-by results are compact and sorted; 2,000 groups are fully retrievable through cursors; `complete` and `omitted` are correct.
 - **Verification:** `npm test`.
 - **DoD:** —
-- **Evidence:** —
+- **Evidence (2026-11-05):**
+  - Implemented: `tools/aggregate-records.ts`; `aggregate` option in `planQuery` (no default `ORDERBY`, no row-reading hints). `stats.aggregate` was already in the extension's builder (T-016).
+  - Tests: `test/aggregate-records.test.ts` (8; mock, with every operation also passing the real builder). Root build, tests and lint exit 0.
+  - **Acceptance criteria:**
+    - Compact and sorted ✔ `{group, count}` largest first, with a stable tiebreak; numeric strings become numbers; display values become `{v,d}`.
+    - 2,000 groups ✔ retrieved through cursors, in order, each exactly once; each result under 24,000 characters.
+    - `complete`/`omitted` ✔ `complete: false` with a `groups` entry and an exact `next` until the last page.
+  - **Design note:** the Stats API has no paging, so each continuation asks again and takes up where it left off. If the data changes between pages, groups can shift; each page is a fresh count. Recorded here rather than holding results in memory.
+  - **Mutation checks** (each reverted): no sort, cursor dropped on budget stop, default `ORDERBY` on high-volume tables, group/aggregate fields not validated; all fail tests.
+  - **To verify live (T-034):** the real shape of `groupby_fields` with `sysparm_display_value=all`.
 
 ### T-029 — `get_related_records`
 

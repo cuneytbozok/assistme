@@ -99,6 +99,8 @@ export async function planQuery(
     highVolumeTables: readonly string[];
     allowTextSearch?: boolean;
     extraDeniedTables?: readonly string[];
+    /** Aggregates read no rows: no default order, no row-reading hints. */
+    aggregate?: boolean;
   },
 ): Promise<QueryPlan> {
   const denied = opts.extraDeniedTables ?? [];
@@ -227,7 +229,7 @@ export async function planQuery(
   const highVolume = isHighVolume(req.table, opts.highVolumeTables);
   const hints: string[] = [];
   let defaultedOrder = false;
-  if (highVolume) {
+  if (highVolume && !opts.aggregate) {
     if (parsed.orderBy.length === 0) {
       const fields = await meta.fields(ctx, req.table);
       if (fields.has(DEFAULT_ORDER_FIELD)) {

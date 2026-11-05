@@ -26,6 +26,7 @@ import { FieldCache } from './field-cache.js';
 import { type MetaContext, MetadataError, MetadataService } from './metadata.js';
 import { ok, provenance, scopeSuffix, toolError } from './results.js';
 import { ScopeStore } from './scope-store.js';
+import { registerAggregateRecords } from './tools/aggregate-records.js';
 import {
   type Ok,
   READ_ONLY,
@@ -403,6 +404,7 @@ export function createMcpServer(
   registerDiscoverTables(server, tools);
   registerDescribeTable(server, tools);
   registerGetFieldContent(server, tools);
+  registerAggregateRecords(server, tools);
 
   return server;
 }

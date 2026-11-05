@@ -1,6 +1,6 @@
 # Handoff
 
-_Last updated: 2026-11-05 (after T-027)_
+_Last updated: 2026-11-05 (after T-028)_
 
 ## Current project state
 
@@ -56,7 +56,8 @@ _Last updated: 2026-11-05 (after T-027)_
 - **T-025 DONE:** `get_record` with `tools/support.ts` (`SnClient`, budget), `tools/record-lookup.ts`, `dataResponse`, signed composite cursor state.
 - **T-026 DONE:** `discover_tables`, `describe_table`; `beginTool` is the shared opening for data tools.
 - **T-027 DONE:** `get_field_content`, `field-cache.ts`, and the new `scope.check` message. **The extension must be reloaded** for it (old extensions fail closed).
-- **Next task:** T-028 (`aggregate_records`).
+- **T-028 DONE:** `aggregate_records` (Stats API, all groups through cursors).
+- **Next task:** T-029 (`get_related_records`).
 - **Verify live in T-034:** `sysparm_offset` counts pre-ACL rows (ADR-011 addendum).
 - **Waiting on the user:** T-015 live run (second instance); `REQUEST_DENIED` vs `status: denied` (T-015 AC6); fail-closed dictionary validation (ADR-005 addendum).
 - **Role-agnostic (ADR-012, 2026-11-04):** no ServiceNow role handling of any kind. Don't add role checks, dedicated accounts or impersonation features.
