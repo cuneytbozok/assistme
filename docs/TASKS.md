@@ -1359,7 +1359,7 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 - **Blocker:** needs the user: installing the bundle in Claude Desktop, a scoped query in Desktop chat, and the Cowork result.
 - **Evidence so far (2026-11-05, not acceptance):**
   - Delivered: `packages/server/mcpb/manifest.json` (manifest 0.4), `packages/server/build.mjs` (one bundled file), `npm run pack:mcpb`, `test/mcpb.test.ts` (mock). Install steps in `docs/INSTALL.md`.
-  - `npm run pack:mcpb` → `Manifest schema validation passes!`, `packages/server/sn-mcp.mcpb` at 288 kB, 2 files.
+  - `npm run pack:mcpb` → `Manifest schema validation passes!`, `packages/server/sn-mcp.mcpb` at 288 kB, 2 files. Rebuilt after T-034.
   - The real bundle runs alone from an empty folder over stdio and lists the same 14 tools as the manifest. With no broker, `list_instances` gives `BRIDGE_UNAVAILABLE`.
   - **Deviation:** the task said `user_config` for log level only, but the server has no log level, and ADR-011/ARCHITECTURE §8.3 say result-shaping settings come through `user_config`. So it has four numeric shaping settings. No secrets; a test keeps it that way.
   - **Unverified:** the install itself, tools appearing under Connectors, a scoped query in Desktop chat, Cowork behaviour, and whether Claude Desktop substitutes unset optional settings (a test shows an unfilled placeholder falls back safely).
@@ -1377,7 +1377,7 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 - **Acceptance criteria:** installs in Claude Code via `/plugin marketplace add <repo>`; the zip uploads in Desktop; no reference instructs any write action; SKILL.md is ≤ 500 lines and loads references only on demand.
 - **Verification:** manual install in both clients.
 - **DoD:** —
-- **Blocker:** the last step needs the user: setup → uninstall → setup on the real install. It stops the running broker and interrupts Chrome's connection, so it wasn't run here unasked. It also depends on T-036.
+- **Blocker:** only its dependency, T-036 (installing the `.mcpb` in Claude Desktop). Every acceptance criterion below passed.
 - **Evidence so far (2026-11-05, not acceptance):**
   - Delivered: `scripts/setup.ts`, `scripts/uninstall.ts`, `npm run setup`, `npm run uninstall`, `uninstallAll` in `installer.ts`, complete `docs/INSTALL.md`, `test/setup-scripts.test.ts`.
   - Tests run setup → setup → uninstall → uninstall → setup under a throwaway `HOME`, using the real scripts: 
@@ -1387,7 +1387,8 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
     - A folder not named `sn-mcp` is refused; a symlink is removed without touching its target.
   - The docs test checks every required step and troubleshooting entry, and that each `npm run` in `INSTALL.md` exists.
   - Confirmed afterward: the real manifest, runtime folder and broker were unchanged.
-  - **Unverified:** a run on the real install; a person following `INSTALL.md` from scratch (T-041).
+  - **Real machine (2026-11-05, at the user's request):** setup → uninstall → setup. The first setup and the last wrote an identical manifest (same hash). Uninstall stopped the running broker and, by listing, left no manifest, no sn-mcp folder and no host process. The extension reconnected on its own, with no reload, and a dry run through the real bridge then listed `dev469966 (connected)`.
+  - **Unverified:** a person following `INSTALL.md` from scratch (T-041).
   - **Mutation checks** (each reverted): signalling without checking the process, a loose process name match, removing any folder; all fail tests.
   - M5 is not achieved until this and T-036 are verified.
 
