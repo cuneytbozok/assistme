@@ -34,6 +34,7 @@ import {
   ScopeIdInput,
   UNTRUSTED_NOTE,
 } from './tools/common.js';
+import { registerCompareRecords } from './tools/compare-records.js';
 import type { CallOutcome, ToolContext } from './tools/context.js';
 import { registerDescribeTable } from './tools/describe-table.js';
 import { registerDiscoverTables } from './tools/discover-tables.js';
@@ -411,6 +412,7 @@ export function createMcpServer(
   registerGetRelatedRecords(server, tools);
   registerGetRecordHistory(server, tools);
   registerSearchCode(server, tools);
+  registerCompareRecords(server, tools);
 
   return server;
 }

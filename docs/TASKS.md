@@ -41,7 +41,7 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 | T-029 | `get_related_records`                           | 026, 028 | DONE        |
 | T-030 | `get_record_history`                            | 025      | DONE        |
 | T-031 | `search_code`                                   | 026      | DONE        |
-| T-032 | `compare_records`                               | 025, 011 | TODO        |
+| T-032 | `compare_records`                               | 025, 011 | DONE        |
 | T-033 | Tool contract review + TOOLS.md                 | 024–032  | TODO        |
 | T-034 | Live tool acceptance (M4)                       | 033      | TODO        |
 | T-035 | Claude Code registration                        | 034      | TODO        |
@@ -1200,7 +1200,7 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 
 ### T-032 — `compare_records`
 
-- **Status:** TODO
+- **Status:** DONE
 - **Purpose:** Explicitly authorized cross-instance comparison (AC-8).
 - **Dependencies:** T-025, T-011
 - **Deliverables:**
@@ -1238,7 +1238,21 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 - **Acceptance criteria:** every tool has an `outputSchema` and examples; every data tool documents its continuation (`cursor`/`next`) and `complete`/`omitted` semantics; the tool descriptions tell Claude to prefer filters, projection and aggregates, and to continue cursors when needed; total `tools/list` payload ≤ 12 KB; snapshot test passes.
 - **Verification:** `npm test`; size measurement recorded.
 - **DoD:** —
-- **Evidence:** —
+- **Evidence (2026-11-05):**
+  - Implemented: `tools/compare-records.ts`, `mcp/line-diff.ts` (Myers with a bounded edit distance, unified output). The harness has one fake per instance and compare scopes.
+  - Tests: `test/compare-records.test.ts` (13; mock). Root build, tests and lint exit 0.
+  - **Acceptance criteria:**
+    - Single-instance scope ✔ rejected before any read, with a hint to request two instances.
+    - Ambiguity on either side ✔ `AMBIGUOUS_MATCH`/`NOT_FOUND` carry `side`; the `list_all` call names the right instance and works.
+    - 5,000-line script diff ✔ retrieved through cursors at `max_chars` 8,000; applying all hunks to side A gives exactly side B. Only the first call reads records (2 `table.get`); later pages come from the snapshot.
+    - Provenance for both sides ✔ `data.a`/`data.b` have instance, env, host, sys_id and link; `provenance.instance` is `dev,prod`.
+  - **Diff quality:** 400 fuzzed cases apply back exactly; 300 are checked minimal against a brute-force longest common subsequence. Two 6,000-line scripts with nothing in common fall back to one replacement (`minimal: false`), complete and correct, in under 5 s.
+  - **Beyond the task:**
+    - Each snapshot page asks the extension first (`scope.check` for both instances), so a revoke stops it.
+    - Credential fields are stripped from both sides and reported. Bookkeeping fields (`sys_updated_on`, …) are left out by default and listed in `ignored_fields`; naming them in `fields` compares them.
+    - Fields on one side only go in `only_on_a`/`only_on_b`. References that differ only by sys_id are marked `same_display`, since sys_ids often differ across instances.
+    - If a snapshot is gone and a new read differs, a hint says so.
+  - **Mutation checks** (each reverted): single scopes accepted, `scope.check` ignored, system fields compared, credentials not stripped, no page split, wrong hunk line numbers, hunks never split, Myers backtrack broken; each is caught by a test or a hang.
 
 ### T-034 — Live tool acceptance (Milestone M4)
 

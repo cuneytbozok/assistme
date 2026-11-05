@@ -48,9 +48,11 @@ export async function harness(
     hidden?: (row: Record<string, unknown>) => boolean;
     /** Tables the signed-in user's ACLs refuse (HTTP 403 → ACL_DENIED). */
     denyTables?: string[];
+    /** A separate fake per instance alias (compare scopes). */
+    snByInstance?: Record<string, FakeServiceNow>;
   } = {},
 ): Promise<Harness> {
-  const sn = opts.sn ?? dictionaryFixture();
+  const defaultSn = opts.sn ?? dictionaryFixture();
   const dataRequests: Harness['dataRequests'] = [];
   let n = 0;
   let claims = 0;
@@ -62,7 +64,7 @@ export async function harness(
     ok: false,
     error: { code, message },
   });
-  const pendingInstance = new Map<string, string>();
+  const pendingInstance = new Map<string, string[]>();
   const revoked = new Set<string>();
   const bridge = {
     cachedRegistry: {
@@ -81,7 +83,7 @@ export async function harness(
       switch (req.kind) {
         case 'scope.request': {
           const id = `req_${String(++claims).padStart(22, '0')}`;
-          pendingInstance.set(id, req.instances[0]);
+          pendingInstance.set(id, req.instances);
           return reply({
             type: 'scope.request',
             requestId: id,
@@ -90,13 +92,13 @@ export async function harness(
           });
         }
         case 'scope.claim': {
-          const inst = pendingInstance.get(req.requestId) as string;
+          const insts = pendingInstance.get(req.requestId) as string[];
           return reply({
             type: 'scope.claim',
             status: 'approved',
-            scopeId: scopeFor(inst, Number(req.requestId.slice(4))),
-            instances: [inst],
-            mode: 'single',
+            scopeId: scopeFor(insts[0] as string, Number(req.requestId.slice(4))),
+            instances: insts,
+            mode: insts.length === 2 ? 'compare' : 'single',
             expiresAt: '2099-01-01T00:00:00.000Z',
           });
         }
@@ -106,6 +108,7 @@ export async function harness(
         case 'sn.op': {
           if (revoked.has(req.scopeId)) return fail('SCOPE_UNKNOWN', 'Unknown scope.');
           const op = req.op;
+          const sn = opts.snByInstance?.[req.instance] ?? defaultSn;
           buildRequest(HOSTS[req.instance] as string, op, 'tok'); // the extension would accept it
           const isMeta = ['sys_db_object', 'sys_dictionary', 'sys_choice'].includes(op.table);
           if (!isMeta) {
@@ -187,7 +190,7 @@ export async function harness(
   };
   return {
     call,
-    sn,
+    sn: defaultSn,
     dataRequests,
     revoke: (scope) => revoked.add(scope),
     close: () => client.close(),
@@ -196,6 +199,12 @@ export async function harness(
 
 export async function claim(h: Harness, instance: string): Promise<string> {
   const req = await h.call('request_scope', { instance, purpose: 'test' });
+  return (await h.call('claim_scope', { request_id: req.data.request_id })).data.scope_id;
+}
+
+/** A compare scope over dev and prod (the user approved it; the harness approves everything). */
+export async function claimCompare(h: Harness): Promise<string> {
+  const req = await h.call('request_scope', { instances: ['dev', 'prod'], purpose: 'test' });
   return (await h.call('claim_scope', { request_id: req.data.request_id })).data.scope_id;
 }
 

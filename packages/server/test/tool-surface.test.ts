@@ -18,6 +18,7 @@ import { answerMetadata } from './fake-sn.js';
 const APPROVED = [
   'aggregate_records',
   'claim_scope',
+  'compare_records',
   'describe_table',
   'discover_tables',
   'get_field_content',
@@ -138,6 +139,12 @@ describe('AC1: tool surface snapshot', () => {
         destructive: false,
       },
       { name: 'claim_scope', inputs: ['request_id'], readOnly: true, destructive: false },
+      {
+        name: 'compare_records',
+        inputs: ['cursor', 'fields', 'match_a', 'match_b', 'max_chars', 'scope_id', 'table'],
+        readOnly: true,
+        destructive: false,
+      },
       {
         name: 'describe_table',
         inputs: [

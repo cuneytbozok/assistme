@@ -1,6 +1,6 @@
 # Handoff
 
-_Last updated: 2026-11-05 (after T-031)_
+_Last updated: 2026-11-05 (after T-032)_
 
 ## Current project state
 
@@ -61,7 +61,8 @@ _Last updated: 2026-11-05 (after T-031)_
 - **T-030 DONE:** `get_record_history`, `tools/window-reader.ts`. Known issue for T-033: `paginate.ts` can repeat rows after a budget stop inside a window with ACL-hidden rows (no loss).
 - **T-031 DONE:** `search_code` (script fields from the dictionary, batches of 25 tables per call, ±3-line snippets).
 - **T-031 DONE:** `search_code` (script fields from the dictionary, batches of 25 tables per call, ±3-line snippets).
-- **Next task:** T-032 (`compare_records`).
+- **T-032 DONE:** `compare_records` (`line-diff.ts`, snapshot pages, per-side ambiguity).
+- **Next task:** T-033 (tool contract review + `docs/TOOLS.md`).
 - **Verify live in T-034:** `sysparm_offset` counts pre-ACL rows (ADR-011 addendum).
 - **Waiting on the user:** T-015 live run (second instance); `REQUEST_DENIED` vs `status: denied` (T-015 AC6); fail-closed dictionary validation (ADR-005 addendum).
 - **Role-agnostic (ADR-012, 2026-11-04):** no ServiceNow role handling of any kind. Don't add role checks, dedicated accounts or impersonation features.
