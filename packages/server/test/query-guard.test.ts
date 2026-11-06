@@ -238,6 +238,12 @@ describe('AC2–AC5: cost-aware defaults, never rejection', () => {
       'sys_created_onBETWEEN2024-11-01 00:00:00@2024-11-30 23:59:59^ORDERBYDESCsys_created_on',
     );
     expect(p.hints.join(' ')).not.toMatch(/No selective condition/);
+    const on = await s.plan({
+      table: 'syslog',
+      encoded_query:
+        'sys_created_onONToday@javascript:gs.beginningOfToday()@javascript:gs.endOfToday()',
+    });
+    expect(on.hints.join(' ')).not.toMatch(/No selective condition/);
     const older = await s.plan({
       table: 'syslog',
       where: [{ field: 'sys_created_on', op: 'older_than', value: { amount: 2, unit: 'year' } }],

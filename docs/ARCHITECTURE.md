@@ -204,8 +204,8 @@ Values containing `^`, control characters, or newlines are rejected, as are `,` 
 
 - Tokenize on `^NQ`, `^OR`, `^`, then `ORDERBY`/`ORDERBYDESC`. Each term must parse as `<field><allowlisted op><value>`, with ops matched longest-first. Anything else is rejected.
 - Accepted as ServiceNow's own tools write them, then sent in canonical form (T-047): the trailing `^EQ` end marker (dropped; only `ORDERBY` may follow it), `NOTLIKE` → `NOT LIKE`, `CONTAINS` → `LIKE`, `DOES NOT CONTAIN` → `NOT LIKE`, and empty `field=` / `field!=` (native empty tests). `123TEXTQUERY321=` is accepted where the tool offers text search (`query_records`), once, before any `^NQ`. Each rewrite is reported in the result's `hints`, with the query as sent.
-- Allowed since ADR-018: `javascript:` values, `DYNAMIC`, `ON`/`NOTON`/`DATEPART`, `MORETHAN`/`LESSTHAN`/`RELATIVEEE`. A term with script or `DYNAMIC` gets a warning hint.
-- Rejected: `VALCHANGES`/`CHANGESFROM`/`CHANGESTO`, `RLQUERY`, `SUBQUERY`, `JOIN`, `IR_*`, `GOTO`, `GROUPBY`, conditions after `^EQ`, unknown operators, and the SQL spellings `==` / `<>`.
+- Allowed since ADR-018: `javascript:` values, `DYNAMIC`, `ON`/`NOTON`/`DATEPART`, `MORETHAN`/`LESSTHAN` (the other field is validated). A term with script or `DYNAMIC` gets a warning hint.
+- Rejected: `RELATIVEEE` (matched no rows live, T-049), `VALCHANGES`/`CHANGESFROM`/`CHANGESTO`, `RLQUERY`, `SUBQUERY`, `JOIN`, `IR_*`, `GOTO`, `GROUPBY`, conditions after `^EQ`, unknown operators, and the SQL spellings `==` / `<>`.
 - Relative dates are sent as ServiceNow writes them: minute, hour, dayofweek, month, quarter, year. Input `day` and `@day@` become `@dayofweek@`, `week` and `@week@` become 7 days, structured `quarter` becomes 3 months (T-049): ServiceNow silently matches nothing for `@day@` and `@week@`.
 - Limits: ≤100 terms, ≤10 `^NQ` groups, ≤8,000 characters (7,900 for a raw `encoded_query`, leaving room for the server's `ORDERBY`s), ≤1,000 `IN` items of ≤500 characters each, ≤3 `ORDERBY`.
 - **Diagnostics (T-047, `shared/src/query/diagnostics.ts`):** a refusal names the condition (position and text), the reason, and where one exists the native rewrite.

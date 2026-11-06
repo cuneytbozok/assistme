@@ -61,7 +61,7 @@ export interface QueryPlan {
 
 export class QueryGuardError extends MetadataError {}
 
-const SELECTIVE_OPS = new Set(['=', 'IN', 'STARTSWITH', 'BETWEEN', '>', '>=', '<', '<=']);
+const SELECTIVE_OPS = new Set(['=', 'IN', 'STARTSWITH', 'BETWEEN', 'ON', '>', '>=', '<', '<=']);
 const TIME_FIELDS = new Set(['sys_created_on', 'sys_updated_on']);
 
 function isRelative(op: string): boolean {

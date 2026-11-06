@@ -97,6 +97,13 @@ describe('T-047: refusals say which condition, why, and the native rewrite', () 
     expect(err.hint).toMatch(hint);
   });
 
+  it('a wrong field in MORETHAN / LESSTHAN gets INVALID_FIELD, not an empty result', async () => {
+    const err = await setup()
+      .plan({ table: 'incident', encoded_query: 'sys_updated_onMORETHANzz_no_field@hour@after@1' })
+      .catch((e) => e);
+    expect(err.code).toBe('INVALID_FIELD');
+  });
+
   it('a script value is sent, and the result warns that it runs as script (ADR-018)', async () => {
     const p = await setup().plan({
       table: 'incident',

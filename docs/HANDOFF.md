@@ -9,13 +9,13 @@ The connector is built, installed and working on the user's Mac, in Claude Deskt
 - **Tasks:** 46 DONE, 2 BLOCKED (T-015, T-044), 1 DROPPED (T-039).
 - **Milestones:** M1, M3, M4, M5 and M6 achieved. M6 by the user's decision, with AC-6, AC-7 and AC-8 left open: not all 19 criteria are evidenced. M2 not achieved (T-015).
 - **Acceptance:** `docs/ACCEPTANCE.md`: 15 passed, 3 open, 1 out of scope, none failed.
-- **Next:** no task is eligible. T-044 waits for someone with a Windows PC. Anything else that remains needs the user: see `docs/NEXT_STEPS.md`.
+- **Next:** the user installs 0.1.12, checks it live, then merge `claude/date-operator-fixes`. No task is eligible. T-044 waits for someone with a Windows PC. Anything else that remains needs the user: see `docs/NEXT_STEPS.md`.
 
 ## T-047, T-048 and T-049 (done)
 
-Merged into `main`, server 0.1.11. The user has reloaded the extension on this build.
+Merged into `main`, server 0.1.11; the follow-up on branch `claude/date-operator-fixes` is server 0.1.12. The user has reloaded the extension on this build.
 
-- **T-049 (DONE):** relative dates now use ServiceNow's units, and **a query can run script (ADR-018, the user's decision):** `javascript:` values and `DYNAMIC` are sent, with a warning hint. Don't describe the connector as unable to run scripts. Full live run: 19 of 19. `DYNAMIC`, `DATEPART`, `NOTON`, `RELATIVEEE`, `MORETHAN` and `LESSTHAN` pass validation but weren't run live.
+- **T-049 (DONE):** relative dates now use ServiceNow's units, and **a query can run script (ADR-018, the user's decision):** `javascript:` values and `DYNAMIC` are sent, with a warning hint. Don't describe the connector as unable to run scripts. Full live run: 19 of 19. `NOTON`, `DATEPART`, `MORETHAN`, `LESSTHAN` and `DYNAMIC` (Me) were checked live against row dates; `RELATIVEEE` is refused, because it matched no rows live.
 
 - **T-047 (DONE):** native encoded forms verified live. On `dev469966`, `IN` lists work up to 226 sys_ids (7,465 characters), and longer ones get HTTP 414 with an explanation. `table.list` now always sends `sysparm_suppress_pagination_header=true`, found live. The full live run with it passes, 19 of 19, with multi-page reads.
 - **T-048 (DONE):** no `tools/list` budget any more (ADR-017). Works live with bundle 0.1.11 in a Code session in Desktop; a normal Desktop chat wasn't tried. In that session `where` reached the model without its types, so the units are also in the tool descriptions and the error.
@@ -57,7 +57,7 @@ Done by the user's decision. Live on `dev469966` (`docs/evidence/T-042/`): two r
 - **Instance:** `dev469966.service-now.com`, alias `dev469966`, environment dev. A personal developer instance, signed in as admin.
 - **Chrome:** unpacked extension from `packages/extension/dist`, ID `clipfeocpiljpcngmjpdbegciimchbol`.
 - **Native host:** installed by `npm run setup` from this folder. Runtime files are in `~/Library/Application Support/sn-mcp/`, which is 0700: `broker.sock`, `broker.key`, `broker.pid`, `broker.log` (metadata only). Exit codes: 64 bad origin, 78 unsafe path, 75 conflict.
-- **Claude Desktop:** the `.mcpb` bundle, named "ServiceNow (read-only)", plus both skills uploaded. The installed bundle is 0.1.11. `mcpServers` in `claude_desktop_config.json` is empty; the old entry's backup is `claude_desktop_config.json.before-sn-mcp-bundle`.
+- **Claude Desktop:** the `.mcpb` bundle, named "ServiceNow (read-only)", plus both skills uploaded. The installed bundle is 0.1.11; 0.1.12 waits for the user to install it. `mcpServers` in `claude_desktop_config.json` is empty; the old entry's backup is `claude_desktop_config.json.before-sn-mcp-bundle`.
 - **Claude Code:** Code sessions inside the Desktop app use the Desktop connector and skills. Nothing is registered separately: the `sn-mcp` registration and plugin were removed, because two connectors in one session don't share scopes.
 - **ChatGPT Desktop:** installed, version 26.1029.61003, engine codex-cli 0.166.0-alpha.6. sn-mcp is registered in `~/.codex/config.toml` by the user, through the app's settings, without the longer timeouts.
 - **Mistral Vibe:** 3.1.0, a uv tool at `~/.local/bin/vibe`, which isn't on the non-login shell's PATH. sn-mcp is registered in `~/.vibe/config.toml`, with the printed block; the earlier file is `config.toml.before-sn-mcp`. Reads work there with Mistral Medium 3.5. Its `prompt` was updated to the 0.1.7 text. Skills are already visible to it, through `~/.agents/skills`.
@@ -90,7 +90,6 @@ Done by the user's decision. Live on `dev469966` (`docs/evidence/T-042/`): two r
 
 ## Ideas not done
 
-- A date condition with `ON` still gets the "no selective condition" hint on busy tables: `query-guard` doesn't count it as a time window.
 - `get_record_history` shows each journal entry twice: the audit row and the journal row.
 - Remember tables that refused a `query_range` filter, to avoid repeat banners.
 - Traffic capture wasn't repeated on the final build (AC-4).

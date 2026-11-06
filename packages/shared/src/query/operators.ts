@@ -5,7 +5,7 @@
  * with UNSAFE_QUERY. REJECTED_OPERATORS / REJECTED_KEYWORDS exist only to give precise error
  * messages — the allowlist is what enforces safety.
  *
- * `javascript:` values, DYNAMIC, ON / NOTON / DATEPART and MORETHAN / LESSTHAN / RELATIVEEE are
+ * `javascript:` values, DYNAMIC, ON / NOTON / DATEPART and MORETHAN / LESSTHAN are
  * allowed: the user removed that restriction on 2026-11-06, knowing ServiceNow runs such values as
  * script in their session (ADR-018). A term with script gets a warning hint (diagnostics.ts).
  *
@@ -25,7 +25,8 @@ export type ValueKind =
   | 'field' // value is another field path on the same table
   | 'table' // value is a table name
   | 'range' // `a@b`
-  | 'relative'; // `@unit@ago|ahead@n`
+  | 'relative' // `@unit@ago|ahead@n`
+  | 'field_offset'; // `other_field@unit@before|after@n`
 
 export interface OperatorSpec {
   readonly op: string;
@@ -61,13 +62,12 @@ const SPECS: readonly OperatorSpec[] = [
   { op: 'RELATIVEGE', value: 'relative' },
   { op: 'RELATIVELT', value: 'relative' },
   { op: 'RELATIVELE', value: 'relative' },
-  { op: 'RELATIVEEE', value: 'relative' },
   { op: 'ON', value: 'any' },
   { op: 'NOTON', value: 'any' },
   { op: 'DATEPART', value: 'any' },
   { op: 'DYNAMIC', value: 'any' },
-  { op: 'MORETHAN', value: 'any' },
-  { op: 'LESSTHAN', value: 'any' },
+  { op: 'MORETHAN', value: 'field_offset' },
+  { op: 'LESSTHAN', value: 'field_offset' },
 ];
 
 export const ALLOWED_OPERATORS: ReadonlyMap<string, OperatorSpec> = new Map(
@@ -86,7 +86,12 @@ export const OPERATOR_ALIASES: ReadonlyMap<string, string> = new Map([
 ]);
 
 /** Operators recognised only to produce a clear rejection message. */
-export const REJECTED_OPERATORS: readonly string[] = ['VALCHANGES', 'CHANGESFROM', 'CHANGESTO'];
+export const REJECTED_OPERATORS: readonly string[] = [
+  'RELATIVEEE',
+  'VALCHANGES',
+  'CHANGESFROM',
+  'CHANGESTO',
+];
 
 /** Term-level keywords (a term starting with one of these is rejected). */
 export const REJECTED_KEYWORDS: readonly string[] = [
@@ -130,6 +135,14 @@ export type RelativeDirection = 'ago' | 'ahead';
  * What ServiceNow understands, as its condition builder writes it. Days are `dayofweek`, and there
  * is no week. `@day@` and `@week@` raise no error: they silently match no rows (seen live, T-049).
  */
+/**
+ * MORETHAN / LESSTHAN compare two date fields, as the condition builder writes it:
+ * `sys_updated_onMORETHANsys_created_on@hour@after@1`. Unlike RELATIVE*, these say `day` and `week`.
+ * The other field is checked against the dictionary: a wrong one silently matches no rows (T-049).
+ */
+export const FIELD_OFFSET_VALUE_RE =
+  /^([a-z0-9_.]+)@(minute|hour|day|week|month|quarter|year)@(before|after)@(0|[1-9][0-9]{0,3})$/;
+
 export const RELATIVE_VALUE_RE =
   /^@(minute|hour|dayofweek|month|quarter|year)@(ago|ahead)@([1-9][0-9]{0,3})$/;
 

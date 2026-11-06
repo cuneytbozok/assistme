@@ -525,7 +525,16 @@ describe('script values and the date operators ServiceNow writes (ADR-018)', () 
     "sys_created_onDATEPARTMonday@javascript:gs.datePart('dayofweek','monday','EE')",
     'assigned_to=javascript:gs.getUserID()',
     'assignment_groupINjavascript:getMyGroups()',
-    'sys_created_onRELATIVEEE@dayofweek@ago@3',
+    'sys_updated_onMORETHANsys_created_on@hour@before@1',
+    'sys_updated_onMORETHANsys_created_on@year@after@1',
+    'sys_updated_onLESSTHANassigned@hour@before@0',
+    'sys_updated_onLESSTHANassigned@week@before@1',
+    'sys_updated_onLESSTHANassigned@day@before@1',
+    "sys_updated_onDATEPARTWeek1@javascript:gs.datePart('week','1','EE')",
+    "sys_updated_onDATEPARTMay@javascript:gs.datePart('month','may','EE')",
+    'sys_updated_onONLast quarter@javascript:gs.beginningOfLastQuarter()@javascript:gs.endOfLastQuarter()',
+    'assigned_to.nameNOT LIKEbozok',
+    'assigned_to.nameINbozok, cuneyt, admin, beth',
   ])('%s is sent as written', (q) => {
     const r = parseEncodedQuery(q);
     if (!r.ok) throw new Error(r.error.message);
@@ -558,5 +567,31 @@ describe('script values and the date operators ServiceNow writes (ADR-018)', () 
     ]) {
       expect(parseEncodedQuery(q).ok, q).toBe(false);
     }
+  });
+});
+
+describe('MORETHAN / LESSTHAN and RELATIVEEE (T-049, found live)', () => {
+  it('the other field is returned for dictionary validation', () => {
+    const r = parseEncodedQuery('sys_updated_onMORETHANsys_created_on@hour@after@1');
+    if (!r.ok) throw new Error(r.error.message);
+    expect(r.value.referencedFields).toContain('sys_created_on');
+  });
+
+  it.each([
+    'aMORETHANb',
+    'aMORETHANb@hour@after',
+    'aMORETHANb@fortnight@after@1',
+    'aMORETHANb@hour@ago@1',
+    'aLESSTHANB@hour@after@1',
+    'aMORETHANjavascript:gs.x()@hour@after@1',
+  ])('%s is refused', (q) => {
+    expect(parseEncodedQuery(q).ok).toBe(false);
+  });
+
+  it('RELATIVEEE is refused with a rewrite, since it matched no rows live', () => {
+    const r = parseEncodedQuery('sys_created_onRELATIVEEE@dayofweek@ago@47');
+    if (r.ok) throw new Error('accepted');
+    expect(r.error.reason).toBe('UNRELIABLE_OPERATOR');
+    expect(r.error.suggestion).toContain('RELATIVEGE@dayofweek@ago@');
   });
 });

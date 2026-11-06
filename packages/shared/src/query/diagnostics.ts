@@ -11,6 +11,7 @@ import { ALLOWED_OPERATORS, OPERATOR_ALIASES, OPERATORS_LONGEST_FIRST } from './
 
 /** Why a condition was refused, as a stable code (tests and programmatic callers). */
 export type QueryRejectReason =
+  | 'UNRELIABLE_OPERATOR'
   | 'CONDITION_ONLY_OPERATOR'
   | 'SUBQUERY'
   | 'TEXT_SEARCH'
@@ -30,6 +31,13 @@ export interface Advice {
 /** Advice for a refused operator. */
 export function adviseRejectedOperator(field: string, operator: string): Advice {
   switch (operator) {
+    case 'RELATIVEEE':
+      return {
+        reason: 'UNRELIABLE_OPERATOR',
+        message:
+          'RELATIVEEE matched no rows in any live test, even where the dates say it should, so an empty result would mislead.',
+        suggestion: `For one day n days ago, use ${field}RELATIVEGE@dayofweek@ago@n^${field}RELATIVELT@dayofweek@ago@m with m = n - 1, or BETWEEN with literal date-times.`,
+      };
     case 'VALCHANGES':
     case 'CHANGESFROM':
     case 'CHANGESTO':
