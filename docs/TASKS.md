@@ -57,7 +57,7 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 | T-045 | Skills in Codex                                 | 043      | DONE        |
 | T-046 | Mistral Vibe as a local STDIO client            | 037      | DONE        |
 | T-047 | Native encoded-query compatibility + diagnostics | 018, 034 | DONE        |
-| T-048 | Tool definitions within real client limits      | 033, 043, 046 | BLOCKED |
+| T-048 | Tool definitions within real client limits      | 033, 043, 046 | DONE    |
 | T-049 | Relative dates and script values as ServiceNow writes them | 047 | DONE |
 
 ---
@@ -1641,7 +1641,7 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 
 ### T-048 — Tool definitions within real client limits
 
-- **Status:** BLOCKED
+- **Status:** DONE
 - **Purpose:** Drop the 12 KB `tools/list` budget, which was our own (T-033), so new tools and clear descriptions don't need cuts elsewhere; publish informative descriptions and typed input schemas instead of stubs; check compatibility with the supported clients. Requested by the user on 2026-11-06. No architectural change; read-only security and query rules unchanged.
 - **Dependencies:** T-033, T-043, T-046
 - **Deliverables:** `server/src/mcp/tools/*.ts` (descriptions, input descriptions, `lean()` removed, `publishedAs` for the filters, `MatchInput`, result envelope), `shared/src/query/filter-compiler.ts` (`PublishedWhereSchema`, `PublishedAnyOfSchema`, the `between` pair as a 2-item array), `server/test/tool-contract.test.ts`, `shared/test/query.test.ts`; new checks in `test/e2e/chatgpt-client.ts` and `test/e2e/vibe-client.ts`; ADR-017, `docs/TOOLS.md`; server 0.1.9; evidence in `docs/evidence/T-048/`.
@@ -1665,7 +1665,9 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
   - Broker connectivity fails in both runs, as expected: this container has no Chrome or extension.
   - AC4, AC5 on the Mac (2026-11-06, server 0.1.9): `npm run e2e:chatgpt -- --discovery-only` and `npm run e2e:vibe -- --discovery-only` passed in the user's ChatGPT Desktop engine and Vibe, with the extension reachable (`docs/evidence/T-048/*-mac-discovery.json`).
   - Claude Code session in the Desktop app, bundles 0.1.9 and 0.1.10: the tools were accepted and called. **What the model received in that session shows `where` items as empty objects, with no operators or units**, so the first filtered read failed on `"unit": "days"` with a bare `Invalid input`. Where they get lost wasn't established. Hence 0.1.10: the units are in the tool descriptions and a bad condition says what was expected (seen live in the error text; the session kept its earlier tool descriptions).
-- **What remains (the blocker):** AC6 on the final bundle: install 0.1.11 in Claude Desktop and run one filtered read. Not tested anywhere: a real OpenAI or Mistral model receiving these schemas.
+  - AC6, live with bundle 0.1.11 (2026-11-06, a Code session in Claude Desktop, which uses the Desktop connector): active incidents in the last 30 days: 0, and in the last 60 days: 8, newest INC0000055 from 46 days ago, so the empty 30-day answer is right. `ON Today` with `javascript:` on `syslog`: 8,150 rows, the first at 00:00:00 in the session's time zone, with the script warning hint. `"unit": "days"` got the new explanatory error.
+  - **Not verified:** a filtered read in a normal Claude Desktop chat, or in terminal Claude Code (not used, 2026-11-05 decision). The session kept the tool descriptions it loaded earlier, so the new text about units and script was seen in the bundle but not as delivered to a model. Not tested anywhere: a real OpenAI or Mistral model receiving these schemas.
+  - AC2 holds for the published schema, not for what this Claude session received: see the `where` finding above.
 
 ### T-049 — Relative dates and script values as ServiceNow writes them
 
