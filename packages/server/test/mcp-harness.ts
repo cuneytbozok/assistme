@@ -169,7 +169,8 @@ export async function harness(
             env: 'dev',
             status: 200,
             body: visible,
-            ...(op.noCount ? {} : { totalCount: total }),
+            // As live (T-049): without a count, ServiceNow's header gives the size of the page.
+            totalCount: op.noCount ? visible.length : total,
             bytes: 10,
           });
         }

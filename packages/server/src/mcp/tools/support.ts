@@ -94,7 +94,10 @@ export class SnClient {
     return {
       ok: true,
       body: res.body,
-      ...(res.totalCount !== undefined ? { total: res.totalCount } : {}),
+      // Without a count, the header is the size of the page, not a total (T-049).
+      ...(res.totalCount !== undefined && !(op.kind === 'table.list' && op.noCount)
+        ? { total: res.totalCount }
+        : {}),
     };
   }
 

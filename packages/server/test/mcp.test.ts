@@ -301,7 +301,12 @@ describe('AC4: request → approve → claim → query (mock extension)', () => 
     });
     expect((await call('claim_scope', { request_id: REQ })).body.data.status).toBe('claimed');
 
-    const q = await call('query_records', { scope_id: SCOPE, table: 'incident', limit: 1 });
+    const q = await call('query_records', {
+      scope_id: SCOPE,
+      table: 'incident',
+      limit: 1,
+      include_total: true,
+    });
     expect(q.isError).toBe(false);
     expect(q.body).toMatchObject({
       ok: true,

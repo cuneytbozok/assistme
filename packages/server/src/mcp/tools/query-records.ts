@@ -291,6 +291,7 @@ export function registerQueryRecords(server: McpServer, ctx: ToolContext): void 
       ): Promise<PageResult> => {
         const fields =
           fieldsOverride ?? (state.fields === '*' ? undefined : [...state.fields, ...check.fields]);
+        const noCount = !(withCount || (countFirst && offset === state.offset));
         const r = await call(
           'sn.op',
           {
@@ -305,7 +306,7 @@ export function registerQueryRecords(server: McpServer, ctx: ToolContext): void 
               limit: n,
               offset,
               displayValue: state.displayValue,
-              noCount: !(withCount || (countFirst && offset === state.offset)),
+              noCount,
             },
           },
           id,
@@ -339,7 +340,9 @@ export function registerQueryRecords(server: McpServer, ctx: ToolContext): void 
         return {
           ok: true,
           rows,
-          ...(res.totalCount !== undefined ? { total: res.totalCount } : {}),
+          // With sysparm_no_count, ServiceNow still sends X-Total-Count: the size of this page,
+          // not of the result (seen live: 2 for 9,649 rows), so it isn't a total.
+          ...(!noCount && res.totalCount !== undefined ? { total: res.totalCount } : {}),
         };
       };
       const result = await paginate({
