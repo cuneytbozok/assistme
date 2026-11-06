@@ -373,7 +373,7 @@ Errors: `isError: true`, `{"ok":false,"error":{"code","message","hint","candidat
 2. **Shared validator:** identifiers (`^[a-z0-9_]{1,80}$` tables, `^[a-z0-9_]+(\.[a-z0-9_]+){0,3}$` fields, `^[0-9a-f]{32}$` sys_ids) and query rules.
 3. **Extension request builder:**
    - Templates: `/api/now/table/{table}[/{sys_id}]` and `/api/now/stats/{table}` on the granted host. GET only.
-   - Param allowlist: `sysparm_query, sysparm_fields, sysparm_limit, sysparm_offset, sysparm_display_value, sysparm_exclude_reference_link, sysparm_no_count, sysparm_count, sysparm_group_by, sysparm_order_by`.
+   - Param allowlist: `sysparm_query, sysparm_fields, sysparm_limit, sysparm_offset, sysparm_display_value, sysparm_exclude_reference_link, sysparm_no_count, sysparm_suppress_pagination_header, sysparm_count, sysparm_group_by, sysparm_order_by`. The builder always sets `sysparm_suppress_pagination_header=true` on `table.list`: paging is by offset and the `Link` header is never read, and without it ServiceNow refuses a long query (T-047, found live).
    - Fixed headers, `redirect:'manual'`.
 4. **Excluded endpoints:** `*.do`, export processors, scripted REST, UI APIs, attachment download.
 5. **Sensitive data:** table denylist and password-type field stripping (T-020). The defaults live in `shared/src/sensitive.ts`. Extras are additive only: `SN_MCP_DENIED_TABLES` on the server and Settings in the extension. The extension refuses denied tables and credential-named fields and strips such keys from every response. The server also refuses denied tables reached by a dot-walk and dictionary password types, and reports stripped field names in `omitted`.

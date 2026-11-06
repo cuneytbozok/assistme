@@ -811,17 +811,40 @@ export const SCENARIOS: {
         byLabel.data.records.length === 0 &&
         (byLabel.hints ?? []).some((h: string) => /label of state choice/.test(h));
 
-      // A long IN list near the length bound reaches ServiceNow and comes back.
-      const ids = Array.from({ length: 230 }, (_, i) => i.toString(16).padStart(32, 'f'));
-      const longIn = ok(
-        await call('query_records', {
+      // How long an IN list ServiceNow really accepts. The URL limit is ServiceNow's, not ours:
+      // measure it instead of assuming one, and check that going over it is explained.
+      const inQuery = (items: number) =>
+        `sys_idIN${Array.from({ length: items }, (_, i) => i.toString(16).padStart(32, 'f')).join(',')}`;
+      const inAccepted = async (items: number): Promise<boolean> => {
+        const r = await call('query_records', {
           scope_id: scope,
           table: 'incident',
-          encoded_query: `sys_idIN${ids.join(',')}`,
+          encoded_query: inQuery(items),
+          fields: ['sys_id'],
           limit: 1,
-        }),
-        `IN list of ${ids.length} sys_ids`,
-      );
+        });
+        if (!r?.error) return true;
+        expectThat(
+          r.error.code === 'SN_API_ERROR' && /HTTP 414.*Split long IN lists/.test(r.error.message),
+          `IN list of ${items} sys_ids: ${r.error.code}: ${r.error.message}`,
+        );
+        return false;
+      };
+      // 239 sys_ids is the most the raw query bound lets through.
+      let accepted = 100;
+      let refused414: number | null = 240;
+      expectThat(await inAccepted(accepted), `IN list of ${accepted} sys_ids was refused`);
+      if (await inAccepted(239)) {
+        accepted = 239;
+        refused414 = null;
+      } else {
+        refused414 = 239;
+        while (refused414 - accepted > 1) {
+          const middle = Math.floor((accepted + refused414) / 2);
+          if (await inAccepted(middle)) accepted = middle;
+          else refused414 = middle;
+        }
+      }
 
       // ref_ downcast: every row must really have the downcast field set.
       const os = 'cmdb_ci.ref_cmdb_ci_computer.os';
@@ -846,8 +869,12 @@ export const SCENARIOS: {
         totals,
         all_incidents: all,
         label_hint: labelHint,
-        long_in_query_chars: 8 + ids.join(',').length,
-        long_in_rows: longIn.data.records.length,
+        long_in_accepted_items: accepted,
+        long_in_accepted_query_chars: inQuery(accepted).length,
+        long_in_accepted_encoded_chars: new URLSearchParams({
+          sysparm_query: inQuery(accepted),
+        }).toString().length,
+        long_in_refused_items: refused414,
         downcast_available: downcastAvailable,
         downcast_rows: rows.length,
       };

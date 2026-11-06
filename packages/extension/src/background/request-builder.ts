@@ -40,6 +40,7 @@ export const ALLOWED_PARAMS: Record<Template, readonly string[]> = {
     'sysparm_display_value',
     'sysparm_exclude_reference_link',
     'sysparm_no_count',
+    'sysparm_suppress_pagination_header',
   ],
   'table.get': ['sysparm_fields', 'sysparm_display_value', 'sysparm_exclude_reference_link'],
   stats: [
@@ -147,6 +148,9 @@ function pathAndParams(op: Operation): {
       params.set('sysparm_display_value', op.displayValue);
       params.set('sysparm_exclude_reference_link', 'true');
       params.set('sysparm_no_count', String(op.noCount));
+      // We page by offset and never read the Link header. Without this, ServiceNow refuses a long
+      // query because it can't fit the query into that header's URLs.
+      params.set('sysparm_suppress_pagination_header', 'true');
       return { template: 'table.list', path: `/api/now/table/${op.table}`, params };
     case 'table.get':
       if (op.fields) params.set('sysparm_fields', op.fields.join(','));

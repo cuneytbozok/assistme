@@ -1,0 +1,58 @@
+{
+  "note": "Live run against a real instance. Shapes, counts and sizes only; no record content.",
+  "started": "2026-11-06T08:52:27.448Z",
+  "finished": "2026-11-06T08:52:38.801Z",
+  "instance": "dev469966",
+  "env": "dev",
+  "tools": 14,
+  "tools_list_bytes": 33841,
+  "released": true,
+  "counts": {
+    "pass": 1,
+    "fail": 0,
+    "skip": 0
+  },
+  "results": [
+    {
+      "name": "native encoded queries: UI and SDK forms, diagnostics (T-047)",
+      "status": "pass",
+      "metrics": {
+        "totals": {
+          "^EQ": [
+            40,
+            40
+          ],
+          "NOTLIKE": [
+            59,
+            59
+          ],
+          "CONTAINS": [
+            8,
+            8
+          ],
+          "empty =": [
+            28,
+            28
+          ],
+          "empty !=": [
+            39,
+            39
+          ]
+        },
+        "all_incidents": 67,
+        "label_hint": true,
+        "long_in_accepted_items": 226,
+        "long_in_accepted_query_chars": 7465,
+        "long_in_accepted_encoded_chars": 7929,
+        "long_in_refused_items": 227,
+        "downcast_available": true,
+        "downcast_rows": 11
+      },
+      "measure": {
+        "calls": 25,
+        "max_result_chars": 2712,
+        "requests_used": 28
+      }
+    }
+  ]
+}

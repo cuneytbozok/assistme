@@ -56,7 +56,7 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 | T-044 | Windows support                                 | 037      | BLOCKED     |
 | T-045 | Skills in Codex                                 | 043      | DONE        |
 | T-046 | Mistral Vibe as a local STDIO client            | 037      | DONE        |
-| T-047 | Native encoded-query compatibility + diagnostics | 018, 034 | BLOCKED     |
+| T-047 | Native encoded-query compatibility + diagnostics | 018, 034 | DONE        |
 | T-048 | Tool definitions within real client limits      | 033, 043, 046 | BLOCKED |
 
 ---
@@ -1598,7 +1598,7 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 
 ### T-047 — Native encoded-query compatibility + diagnostics
 
-- **Status:** BLOCKED
+- **Status:** DONE
 - **Purpose:** Valid read-only encoded queries shouldn't fail because of our own parser. Review the query implementation against the official SDK's `now-sdk query`, remove restrictions that protect nothing, accept ServiceNow's native forms without weakening read-only security, and explain refusals and empty results. Requested by the user on 2026-11-06. Chrome session authentication and the MCP architecture stay; no SDK dependency.
 - **Dependencies:** T-018, T-034
 - **Deliverables:** `packages/shared/src/query/{operators,encoded-query,diagnostics,normalize}.ts`, `shared/src/limits.ts`; `server/src/mcp/{query-guard,query-diagnostics,metadata}.ts`, `tools/query-records.ts`; `extension/src/background/executor.ts`; tests in `shared/test/query.test.ts` and both corpora, `server/test/query-compat.test.ts`, `extension/test/bridge.test.ts`; a live scenario in `test/e2e/scenarios.ts`; `docs/TOOLS.md`, `ARCHITECTURE.md` §6.2–6.5, `SECURITY.md`, `PRODUCT_SPEC.md` FR-5.2, ADR-005 addendum; server 0.1.8.
@@ -1621,8 +1621,8 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
   3. The server sends the canonical form, and the result says what was rewritten and what was sent.
   4. Every refusal of a raw query names the condition; the rewrites it suggests pass the validator.
   5. An empty result explains a choice label used instead of its value, and a name compared with a reference.
-  6. `tools/list` stays under 12,000 bytes; existing tests pass.
-  7. **Live:** on a real instance, each native form selects the same rows as its canonical form (`^EQ`, `NOTLIKE`, `CONTAINS`, empty `=`, empty `!=`); a script date is refused and its suggested rewrite runs; a ~7,600-character `IN` query is accepted by ServiceNow; a `ref_` downcast returns only rows that have the field; `state=Closed` gets the label hint.
+  6. `tools/list` stays under 12,000 bytes; existing tests pass. *(The byte budget was replaced by T-048, ADR-017; `tools/list` is now 33,841 bytes.)*
+  7. **Live:** on a real instance, each native form selects the same rows as its canonical form (`^EQ`, `NOTLIKE`, `CONTAINS`, empty `=`, empty `!=`); a script date is refused and its suggested rewrite runs; the longest `IN` query ServiceNow accepts is measured, and a longer one gets the HTTP 414 explanation; a `ref_` downcast returns only rows that have the field; `state=Closed` gets the label hint. *(Changed on 2026-11-06, with the user's go-ahead: this asked for a ~7,600-character `IN` query to be accepted, which ServiceNow refused live. The limit is ServiceNow's, so it's measured.)*
 - **Verification:** `npm run build`, `npm test`, `npm run lint`; then, after the user reloads the extension and installs server 0.1.8 (or using the built server, as the live runner does), `npm run e2e:live -- --instance dev469966 --only "native encoded"`, which needs one approval.
 - **Evidence (2026-11-06, mocked only, in a cloud container):**
   - `npm run build`: passes. `npm test`: shared 306 passed (was 261), extension 318 passed (was 312), server 495 passed, 3 skipped (was 475), plus 9 failures in `installer`, `setup-scripts` and `capture` that also fail on the unchanged code here: this container's `/tmp` is mode 777, which the installer correctly refuses. They pass on the user's Mac (T-037).
@@ -1630,7 +1630,11 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
   - AC1, AC2: attack corpus 103 cases (adds aliases, `^EQ` and text-search placements), refused in the shared parser and in the extension's `revalidate` / `buildRequest`; valid corpus 63 cases, each a fixed point of `serializeQuery`. AC3–AC5: `server/test/query-compat.test.ts`, 20 tests (including `aggregate_records` reporting the rewrite). AC6: `tools/list` 11,939 bytes (was 11,938).
   - The new live scenario passes against the in-memory fake (`live-scenarios.test.ts`), which checks its logic only.
 - **Note (2026-11-06):** the user accepted both decisions (no `strict` profile, larger query bounds). The tool definitions changed afterwards in T-048 (server 0.1.9); validation and the query rules didn't, so this task's evidence still applies, and the live run below uses 0.1.9.
-- **What remains (the blocker):** AC7 needs a live run against the user's instance, with one approval from the user, after reloading the extension (it enforces the shared rules) and with server 0.1.8. Mocks are not evidence (rule 11). Until then, unverified: how ServiceNow treats `field=` and `ref_` downcasts, the URL length it accepts near 8,000 characters, and the text of its `error.detail`.
+- **Evidence (2026-11-06, live on `dev469966`, the user's Mac, server 0.1.9, reloaded extension, `docs/evidence/T-047/live-native-encoded.json`):**
+  - AC7: `npm run e2e:live -- --instance dev469966 --only "native encoded"`: 1 passed, after two failures below. Rows, native vs canonical: `^EQ` 40/40, `NOTLIKE` 59/59, `CONTAINS` 8/8, empty `=` 28/28, empty `!=` 39/39, of 67 incidents (28+39 and 59+8 both make 67). `javascript:` date refused and its rewrite ran. `state=Closed` label hint: yes. `ref_` downcast: 11 rows, all with the field. Longest `IN` accepted: 226 sys_ids, 7,465 characters (7,929 URL-encoded); 227 got HTTP 414 with our explanation.
+  - First live run: 230 sys_ids (7,597 characters) got HTTP 414. Second, measuring: 169 sys_ids were refused with "Pagination not supported", because ServiceNow couldn't fit the query into the `Link` header's URLs, well below the URL limit. **Fix:** the extension always sends `sysparm_suppress_pagination_header=true` on `table.list`. Paging is by offset and the `Link` header is never read, so nothing is lost. The parameter is fixed and allowlisted; requests stay GET-only.
+  - `npm test` on the Mac: shared 308, extension 318, server 506 passed, 3 skipped. `npm run lint`: 27 errors, all in `brag-output/work/`; none in the code. The earlier lint note's `biome.json` and `vibe-client.ts` errors don't appear here.
+  - **Not verified:** the 226 limit on any other instance, or with a longer table name or field list (they share the URL). The text of a ServiceNow `error.detail` was seen in that one refusal only. The new parameter on multi-page reads wasn't run live in this scenario, which uses `limit: 1`.
 
 ### T-048 — Tool definitions within real client limits
 

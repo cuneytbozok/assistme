@@ -6,24 +6,19 @@ _Current state only, rewritten on 2026-11-05, updated 2026-11-06 for T-047. Hist
 
 The connector is built, installed and working on the user's Mac, in Claude Desktop, against one developer instance.
 
-- **Tasks:** 43 DONE, 4 BLOCKED (T-015, T-044, T-047, T-048), 1 DROPPED (T-039).
+- **Tasks:** 44 DONE, 3 BLOCKED (T-015, T-044, T-048), 1 DROPPED (T-039).
 - **Milestones:** M1, M3, M4, M5 and M6 achieved. M6 by the user's decision, with AC-6, AC-7 and AC-8 left open: not all 19 criteria are evidenced. M2 not achieved (T-015).
 - **Acceptance:** `docs/ACCEPTANCE.md`: 15 passed, 3 open, 1 out of scope, none failed.
-- **Next:** one live session on the user's Mac unblocks T-047 and T-048 (below). Don't merge `claude/query-compat` or mark either DONE before it. No other task is eligible. T-044 waits for someone with a Windows PC. Anything else that remains needs the user: see `docs/NEXT_STEPS.md`.
+- **Next:** T-048's last check, in Claude Desktop (below). Don't merge `claude/query-compat` or mark T-048 DONE before it. No other task is eligible. T-044 waits for someone with a Windows PC. Anything else that remains needs the user: see `docs/NEXT_STEPS.md`.
 
-## T-047 and T-048 (code done, live checks pending)
+## T-047 and T-048 (T-048's live check pending)
 
-Both are on branch `claude/query-compat`, not merged, server 0.1.9. The user accepted T-047's two decisions (no `strict` profile, larger query bounds) on 2026-11-06.
+Both are on branch `claude/query-compat`, not merged, server 0.1.9. The user has reloaded the extension on this build.
 
-- **T-047:** raw encoded queries in ServiceNow's native forms (`^EQ`, `NOTLIKE`/`CONTAINS`, empty `field=`, code text, long `IN` lists, `ref_` downcasts, `123TEXTQUERY321`) now pass, with refusals naming the condition and suggesting a rewrite. `javascript:` and the other refused operators stay refused.
-- **T-048:** no `tools/list` budget any more (ADR-017). Tests check the limits clients really apply: Claude Code's 4,096-character descriptions and Codex's ~5,000-byte input schemas (measured), plus portable JSON Schema. Inputs are typed and described; `where` uses a compact faithful form, because Codex strips a larger schema. Validated with real Codex 0.166.0-alpha.6 and Vibe 3.1.0 builds for Linux, not yet in the user's apps or Claude.
+- **T-047 (DONE):** native encoded forms verified live. On `dev469966`, `IN` lists work up to 226 sys_ids (7,465 characters), and longer ones get HTTP 414 with an explanation. `table.list` now always sends `sysparm_suppress_pagination_header=true`, found live. That parameter hasn't been run on a multi-page live read yet: a full `npm run e2e:live` covers it.
+- **T-048:** no `tools/list` budget any more (ADR-017). Discovery passes on the Mac in ChatGPT Desktop's engine and Vibe (AC4, AC5, `docs/evidence/T-048/*-mac-discovery.json`). AC6 remains.
 
-**The live session (needs the user; one approval for step 3):**
-1. `git checkout claude/query-compat && npm run build`, then reload the extension.
-2. `npm run e2e:chatgpt -- --discovery-only` and `npm run e2e:vibe -- --discovery-only`: the new checks are "the engine sends the model every tool, with the typed filters" and "the model sees typed filters and result fields".
-3. `npm run e2e:live -- --instance dev469966 --only "native encoded"` (T-047 AC7).
-4. `npm run pack:mcpb`, install `packages/server/sn-mcp.mcpb` (0.1.9) in Claude Desktop, Cmd+Q and reopen. Ask for one filtered read, e.g. active incidents created in the last 30 days, and check the tool call succeeds (T-048 AC6). Code sessions in the Desktop app use the same connector.
-5. Record the results in T-047 and T-048, and mark them DONE only if they pass.
+**To finish T-048:** install `packages/server/sn-mcp.mcpb` (0.1.9, from `npm run pack:mcpb`) in Claude Desktop, Cmd+Q and reopen. Ask for one filtered read, e.g. active incidents created in the last 30 days, and check the tool call succeeds. Code sessions in the Desktop app use the same connector. Record the result and mark it DONE only if it passes.
 
 ## T-043, T-044 and T-046
 

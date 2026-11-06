@@ -66,7 +66,7 @@ describe('executor (path A)', () => {
         query: 'active=true^ORDERBYnumber',
       } as never),
     ).toBe(
-      '/api/now/table/incident?sysparm_query=active%3Dtrue%5EORDERBYnumber&sysparm_fields=number%2Ccaller_id.name&sysparm_limit=1&sysparm_offset=0&sysparm_display_value=false&sysparm_exclude_reference_link=true&sysparm_no_count=true',
+      '/api/now/table/incident?sysparm_query=active%3Dtrue%5EORDERBYnumber&sysparm_fields=number%2Ccaller_id.name&sysparm_limit=1&sysparm_offset=0&sysparm_display_value=false&sysparm_exclude_reference_link=true&sysparm_no_count=true&sysparm_suppress_pagination_header=true',
     );
     expect(
       buildPath({
