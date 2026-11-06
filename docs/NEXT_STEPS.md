@@ -2,22 +2,14 @@
 
 The connector is installed and working in Claude Desktop, and every required step is done. All of these are optional.
 
-## Try documentation research in Claude Desktop
+## Documentation research in Claude Desktop
 
-Version 0.1.15 adds optional documentation research (T-050), and 0.1.16 a setting for its time limit. It's off until you turn it on, and hasn't been tried with Claude yet.
+Version 0.1.16 is installed and on, and it worked in your chat. Nothing is required. As you use it:
 
-1. Build the files, if they aren't already there: `npm run pack:mcpb` and `npm run pack:skill`.
-2. Install `packages/server/sn-mcp.mcpb` in Claude Desktop, replacing the current version.
-3. In Claude Desktop's settings for the **ServiceNow (read-only)** extension, turn on **Documentation research**. This isn't in the Chrome extension's popup.
-4. Upload `dist-skill/servicenow-readonly-troubleshooting.zip` again: the skill changed.
-5. Press Cmd+Q and reopen Claude Desktop.
-6. Ask about a real ServiceNow problem, as you normally would, and check:
-   - the answer can combine instance data, documentation and other sources, in any order;
-   - documentation citations name a release and open correctly;
-   - a slow or failed search doesn't stop the investigation.
-   - if a search is ever cut off with a client error, not `DOCS_UNAVAILABLE`, tell me how long it ran: Claude Desktop's own limit is the one not determined.
+- Claude may choose web search on its own. That's allowed. To ask for documentation, name `docs_search`, and say it may go to the web if that finds nothing.
+- If a search is cut off with a client error, not `DOCS_UNAVAILABLE`, tell me how long it ran: Claude Desktop's own limit is still unknown.
 
-If the tools don't appear, tell me: how Claude Desktop passes this setting to the server is the one part not tested. The Chrome extension doesn't need a reload.
+**After changing this setting, quit with Cmd+Q and reopen.** Saving it isn't enough: chats keep seeing the old tools.
 
 ## 1. Check the query and tool changes live (before merging `claude/query-compat`)
 
