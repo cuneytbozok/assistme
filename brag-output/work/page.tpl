@@ -1,2 +1,0 @@
-<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="style.css"></head>
-<body><div id="stage"></div><script type="module" src="__JS__"></script></body></html>
