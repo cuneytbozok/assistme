@@ -14,13 +14,7 @@
  */
 import { createHash } from 'node:crypto';
 import type { CallToolResult, McpServer } from '@modelcontextprotocol/server';
-import {
-  FieldPathSchema,
-  isDeniedTable,
-  isSensitiveFieldName,
-  PASSWORD_INTERNAL_TYPES,
-  SYS_ID_RE,
-} from '@sn-mcp/shared';
+import { isDeniedTable, isSensitiveFieldName, SYS_ID_RE } from '@sn-mcp/shared';
 import { z } from 'zod';
 import { compactValue, isSensitiveField, recordLink } from '../compact.js';
 import { indexLines } from '../field-cache.js';
@@ -31,7 +25,6 @@ import { provenance, toolError } from '../results.js';
 import { parseUpdatePayload } from '../update-payload.js';
 import {
   CursorInput,
-  lean,
   READ_ONLY,
   ResultEnvelope,
   ScopeIdInput,
@@ -39,7 +32,7 @@ import {
   UNTRUSTED_NOTE,
 } from './common.js';
 import type { ToolContext } from './context.js';
-import { MatchValue, resolveSysId } from './record-lookup.js';
+import { MatchInput, resolveSysId } from './record-lookup.js';
 import {
   countedMeta,
   maxCharsInput,
@@ -50,7 +43,7 @@ import {
 } from './support.js';
 
 const FieldName = z.string().regex(/^[a-z0-9_]{1,80}$/, 'invalid field name');
-const SideInput = lean(z.record(FieldPathSchema, MatchValue), z.looseObject({}));
+const SideInput = MatchInput.describe('{"sys_id": "…"}, or field values that identify one record');
 
 /** Bookkeeping that differs on every instance: left out of a default comparison, and listed. */
 const SYSTEM_FIELDS = new Set([
@@ -387,7 +380,12 @@ export function registerCompareRecords(server: McpServer, ctx: ToolContext): voi
         table: TableInput.optional(),
         match_a: SideInput.optional(),
         match_b: SideInput.optional(),
-        fields: lean(z.array(FieldName).min(1).max(49), z.array(z.string())).optional(),
+        fields: z
+          .array(FieldName)
+          .min(1)
+          .max(49)
+          .optional()
+          .describe('Only these fields (default: all, without bookkeeping fields)'),
         cursor: CursorInput,
         max_chars: maxCharsInput(config),
       }),

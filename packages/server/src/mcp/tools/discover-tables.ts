@@ -14,7 +14,6 @@ import {
   CountInput,
   CursorInput,
   InstanceInput,
-  lean,
   READ_ONLY,
   ResultEnvelope,
   ScopeIdInput,
@@ -43,12 +42,17 @@ export function registerDiscoverTables(server: McpServer, ctx: ToolContext): voi
     'discover_tables',
     {
       description:
-        'Finds tables by words in their name or label, custom u_ and x_ tables included (no `search`: all tables). Then use describe_table. Continue with `cursor`.',
+        "Finds tables by words in their name or label, custom u_ and x_ tables included; without `search`, lists all tables. Returns `data.records` with `name`, `label`, `extends`; credential tables are listed but marked `blocked`. Then use describe_table for a table's fields. Continue with `cursor`.",
       inputSchema: z.strictObject({
         scope_id: ScopeIdInput,
         instance: InstanceInput,
-        search: lean(z.string().min(1).max(100)).optional(),
-        limit: CountInput.optional(),
+        search: z
+          .string()
+          .min(1)
+          .max(100)
+          .optional()
+          .describe('Words contained in the table name or label, e.g. "change" or "x_acme"'),
+        limit: CountInput.optional().describe('Tables wanted (default 50)'),
         cursor: CursorInput,
         max_chars: maxCharsInput(config),
       }),

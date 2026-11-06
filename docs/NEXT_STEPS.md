@@ -2,9 +2,9 @@
 
 The connector is installed and working in Claude Desktop, and every required step is done. All of these are optional.
 
-## 1. Install version 0.1.7
+## 1. Check the query and tool changes live (before merging `claude/query-compat`)
 
-Comparing on one instance, and comparing record versions, passed live. To use them in Claude Desktop, install `packages/server/sn-mcp.mcpb` (version 0.1.7), then Cmd+Q and reopen.
+Version 0.1.9 accepts ServiceNow's native encoded-query forms and gives better errors (T-047), and publishes typed, described tools (T-048). Both are tested on mocks and with Linux builds of Codex and Vibe, not yet against your instance or in your apps. The steps are in [HANDOFF.md](HANDOFF.md#t-047-and-t-048-code-done-live-checks-pending): about 15 minutes and one approval. Installing the 0.1.9 bundle also brings in 0.1.7's compare features.
 
 ## ChatGPT Desktop
 

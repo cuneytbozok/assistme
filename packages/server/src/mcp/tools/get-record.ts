@@ -20,7 +20,6 @@ import { toolError } from '../results.js';
 import {
   FieldListInput,
   InstanceInput,
-  lean,
   READ_ONLY,
   ResultEnvelope,
   ScopeIdInput,
@@ -29,7 +28,7 @@ import {
   UNTRUSTED_NOTE,
 } from './common.js';
 import type { ToolContext } from './context.js';
-import { MatchValue, resolveSysId } from './record-lookup.js';
+import { MatchInput, resolveSysId } from './record-lookup.js';
 import {
   mapConcurrent,
   maxCharsInput,
@@ -57,19 +56,24 @@ export function registerGetRecord(server: McpServer, ctx: ToolContext): void {
     'get_record',
     {
       description:
-        'Fetches exactly one record by `sys_id` or unique `match` {field: value}. Several matches give AMBIGUOUS_MATCH with candidates and `list_all`; it never guesses. `expand_references` (true or a list) adds compact referenced records. Long fields are previews; `omitted` has the get_field_content call.',
+        'Fetches exactly one record (`data.record`) by `sys_id`, or by `match` {field: value, …} where all must hold (e.g. {"number": "INC0010001"}). Several matches give AMBIGUOUS_MATCH with `total`, up to 5 candidates and `list_all` (the query_records call that lists them): it never guesses. `fields` defaults to all. `expand_references` (true, or a list of reference fields) adds compact referenced records in `data.references`. Long fields come as previews; `omitted` has the get_field_content call for the full text.',
       inputSchema: z.strictObject({
         scope_id: ScopeIdInput,
         instance: InstanceInput,
         table: TableInput,
         sys_id: SysIdInput.optional(),
-        match: lean(z.record(FieldPathSchema, MatchValue), z.looseObject({})).optional(),
+        match: MatchInput.optional().describe(
+          'Field values that identify one record, e.g. {"number": "INC0010001"}',
+        ),
         fields: FieldListInput.optional(),
-        display_value: z.enum(['all', 'true', 'false']).optional(),
-        expand_references: lean(
-          z.union([z.boolean(), z.array(FieldPathSchema).min(1).max(50)]),
-          z.union([z.boolean(), z.array(z.string())]),
-        ).optional(),
+        display_value: z
+          .enum(['all', 'true', 'false'])
+          .optional()
+          .describe('false (default): stored values; true: display values; all: both'),
+        expand_references: z
+          .union([z.boolean(), z.array(FieldPathSchema).min(1).max(50)])
+          .optional()
+          .describe('true for every reference field, or a list of reference fields'),
         max_chars: maxCharsInput(config),
       }),
       outputSchema: ResultEnvelope,

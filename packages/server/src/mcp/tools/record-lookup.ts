@@ -8,6 +8,7 @@
  * more rows follow: reading continues until two readable rows are seen or the matches end.
  */
 import type { CallToolResult } from '@modelcontextprotocol/server';
+import { FieldPathSchema } from '@sn-mcp/shared';
 import { z } from 'zod';
 import { compactValue, defaultProjection, stripSensitive } from '../compact.js';
 import {
@@ -24,6 +25,21 @@ import type { ToolContext } from './context.js';
 import { type SnClient, withTiebreak } from './support.js';
 
 export const MatchValue = z.union([z.string().min(1).max(1000), z.number(), z.boolean()]);
+
+/**
+ * {field: value} that identifies one record. Keys are checked here rather than published as
+ * `propertyNames`, which not every model API accepts (T-048); the validation is the same.
+ */
+export const MatchInput = z
+  .looseObject({})
+  .catchall(MatchValue)
+  .superRefine((m, ctx) => {
+    for (const k of Object.keys(m)) {
+      if (!FieldPathSchema.safeParse(k).success) {
+        ctx.addIssue({ code: 'custom', message: `invalid field name "${k}"`, path: [k] });
+      }
+    }
+  });
 export type Match = Record<string, string | number | boolean>;
 export interface Lookup {
   sys_id?: string;

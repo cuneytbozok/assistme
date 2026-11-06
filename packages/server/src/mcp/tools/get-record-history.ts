@@ -18,7 +18,6 @@ import {
   CountInput,
   CursorInput,
   InstanceInput,
-  lean,
   READ_ONLY,
   ResultEnvelope,
   ScopeIdInput,
@@ -88,15 +87,15 @@ export function registerGetRecordHistory(server: McpServer, ctx: ToolContext): v
     'get_record_history',
     {
       description:
-        "A record's full timeline of any age: field changes and journal entries merged by time, newest first. Optional `since`/`until` (YYYY-MM-DD[ HH:MM:SS], UTC). A source you can't read is in `omitted`. Continue with `cursor`.",
+        "A record's full timeline of any age, from sys_audit and sys_journal_field merged by time, newest first: `data.timeline` with {at, user, field, old, new} for changes and {at, user, field, journal} for comments and work notes. Use it to see who changed what and when. Optional `since`/`until` (YYYY-MM-DD[ HH:MM:SS], UTC); there is no default window. A source you can't read is in `omitted`. Continue with `cursor`.",
       inputSchema: z.strictObject({
         scope_id: ScopeIdInput,
         instance: InstanceInput,
         table: TableInput.optional(),
         sys_id: SysIdInput.optional(),
-        since: lean(DateInput).optional(),
-        until: lean(DateInput).optional(),
-        order: z.enum(['asc', 'desc']).optional(),
+        since: DateInput.optional(),
+        until: DateInput.optional(),
+        order: z.enum(['asc', 'desc']).optional().describe('desc (default): newest first'),
         limit: CountInput.optional().describe('Default 50'),
         cursor: CursorInput,
         max_chars: maxCharsInput(config),

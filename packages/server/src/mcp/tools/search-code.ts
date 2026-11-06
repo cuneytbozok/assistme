@@ -24,7 +24,6 @@ import {
   CountInput,
   CursorInput,
   InstanceInput,
-  lean,
   READ_ONLY,
   ResultEnvelope,
   ScopeIdInput,
@@ -172,12 +171,22 @@ export function registerSearchCode(server: McpServer, ctx: ToolContext): void {
     'search_code',
     {
       description:
-        'Finds scripts and conditions containing `pattern`: any script-type field in the dictionary. `tables` narrows it. Returns ±3-line snippets; get_field_content reads a whole script. Continue with `cursor`; `complete` only after the last table.',
+        'Finds scripts and conditions containing `pattern` (plain text, case-insensitive): every script-type field in the dictionary, such as business rules, script includes, client scripts, UI actions and conditions. `tables` narrows it (e.g. ["sys_script", "sys_script_include"]); a whole-instance search takes many calls. Returns `data.matches` with ±3-line snippets; get_field_content reads a whole script. Continue with `cursor`; `complete` only after the last table. A pattern containing javascript: is refused: search for javascript without the colon.',
       inputSchema: z.strictObject({
         scope_id: ScopeIdInput,
         instance: InstanceInput,
-        pattern: lean(z.string().min(1).max(200)).optional().describe('Not with cursor'),
-        tables: lean(z.array(TableNameSchema).min(1).max(100), z.array(z.string())).optional(),
+        pattern: z
+          .string()
+          .min(1)
+          .max(200)
+          .optional()
+          .describe('Text to find, e.g. a field or function name (not with cursor)'),
+        tables: z
+          .array(TableNameSchema)
+          .min(1)
+          .max(100)
+          .optional()
+          .describe('Only these tables (default: every table with script fields)'),
         limit: CountInput.optional().describe('Records wanted'),
         cursor: CursorInput,
         max_chars: maxCharsInput(config),

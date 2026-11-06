@@ -277,6 +277,24 @@ try {
     missing,
   });
 
+  // T-048: the declaration Vibe writes for the model shows the filter types and result fields.
+  const declared = await turn(a, 'search_tool_functions', {
+    mode: 'details',
+    functions: [`${GROUP}.query_records`],
+  });
+  if (process.env.SN_MCP_DUMP_DECLARATIONS) {
+    writeFileSync(process.env.SN_MCP_DUMP_DECLARATIONS, declared);
+  }
+  check(
+    'the model sees typed filters and result fields in the query_records declaration',
+    declared.includes('"between"') &&
+      declared.includes('"within_last"') &&
+      declared.includes('"minute"') &&
+      declared.includes('hints?: Array<string>') &&
+      !declared.includes('where?: Array<Record<string, unknown>>'),
+    { declaration_chars: declared.length },
+  );
+
   const search = await turn(a, 'search_tool_functions', {
     mode: 'best_match',
     query: 'servicenow instances',

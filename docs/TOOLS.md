@@ -273,7 +273,7 @@ Seen on a live instance (T-034):
 | `AMBIGUOUS_MATCH` | More than one record matched | Choose a candidate by `sys_id` |
 | `INVALID_INPUT` | Input failed validation, or a cursor is bad | Fix it; start again without the cursor |
 | `INVALID_FIELD` | A field isn't in the dictionary | Use `describe_table`; see suggestions |
-| `UNSAFE_QUERY` | A disallowed operator or script value | Use structured filters |
+| `UNSAFE_QUERY` | A disallowed operator or script value | Follow the hint: it names the condition and, where one exists, a native rewrite (`Try: …`) |
 | `FORBIDDEN_OPERATION` | A credential field, or anything not read-only | Not available through this connector |
 | `TABLE_DENIED` | The table may hold credentials | Not available through this connector |
 | `RATE_LIMITED` | ServiceNow asked to slow down | Retry after the given delay |
@@ -297,4 +297,4 @@ These shape one request or result. None caps how much can be read in total.
 | One query | 100 terms, 10 `any_of` / `^NQ` groups, 8,000 characters (7,900 raw), 1,000 `IN` items | Query validator |
 | Relations, tables per call | 60, 25 (then a cursor) | Fixed, to stay within client tool timeouts |
 
-The full `tools/list` payload is kept under 12,000 bytes (a test enforces it). To stay within that, published input schemas are compact: the server still validates against the full schemas, and the syntax is in the descriptions and this file. The output schema published for every tool is the `{ok}` envelope; this file has the full result contract.
+`tools/list` has no size budget (ADR-017). It is kept within the limits supported clients really apply, which a test checks: each description and the server instructions within 4,096 characters (Claude Code's cut-off), and each tool's input schema within 4,500 bytes, because the Codex engine in ChatGPT Desktop strips the descriptions and nested types of a larger one. Inputs are published as the schemas that validate them, with descriptions. `where` is published in a compact form (one condition shape with every operator and value type), and `any_of` as lists shaped like `where`; the server validates both against the strict per-operator rules above. The output schema published for every tool is the shared envelope (`ok`, `data`, `complete`, `omitted`, `page`, `hints`, `error`); this file has each tool's full result contract.

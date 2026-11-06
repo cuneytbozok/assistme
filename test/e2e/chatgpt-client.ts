@@ -9,11 +9,16 @@
  * changes the app's own settings or sign-in. No model is involved: tools are called through the
  * engine's own `mcpServer/tool/call`. It doesn't drive the app's window.
  *
+ * T-048: one `exec` turn against a local stand-in model shows what the engine sends a real model
+ * for these tools (no API key, no OpenAI request).
+ *
  * Another client, labelled "Claude Code" and started from the same build, tries to use the access.
  * Only the user approves, in the popup. Reads one count; saves no record content.
  */
-import { type ChildProcess, spawn } from 'node:child_process';
+import { type ChildProcess, execFile, spawn } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { createServer } from 'node:http';
+import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -120,6 +125,62 @@ const parseResult = (text = '{}') => {
   }
 };
 
+/** Runs one `exec` turn against a local stand-in model and returns the tools it was sent. */
+async function toolsSentToModel(): Promise<{ name?: string }[]> {
+  let first: { tools?: { name?: string }[] } | undefined;
+  const model = createServer((req, res) => {
+    let body = '';
+    req.on('data', (c) => {
+      body += c;
+    });
+    req.on('end', () => {
+      first ??= JSON.parse(body);
+      const ev = (type: string, data: object) =>
+        `event: ${type}\ndata: ${JSON.stringify({ type, ...data })}\n\n`;
+      const item = {
+        type: 'message',
+        role: 'assistant',
+        id: 'm1',
+        content: [{ type: 'output_text', text: 'ok', annotations: [] }],
+      };
+      res.writeHead(200, { 'content-type': 'text/event-stream' });
+      res.write(ev('response.created', { response: { id: 'r1' } }));
+      res.write(ev('response.output_item.done', { item, output_index: 0 }));
+      res.end(
+        ev('response.completed', {
+          response: { id: 'r1', usage: { input_tokens: 1, output_tokens: 1, total_tokens: 2 } },
+        }),
+      );
+    });
+  });
+  await new Promise<void>((ok) => model.listen(0, '127.0.0.1', ok));
+  const port = (model.address() as AddressInfo).port;
+  const execHome = mkdtempSync(join(tmpdir(), 'sn-mcp-chatgpt-exec-'));
+  writeFileSync(
+    join(execHome, 'config.toml'),
+    `model = "stand-in"\nmodel_provider = "standin"\n${renderConfigToml(config)}\n` +
+      `[model_providers.standin]\nname = "stand-in"\nbase_url = "http://127.0.0.1:${port}/v1"\nwire_api = "responses"\n`,
+  );
+  try {
+    await new Promise<void>((ok) => {
+      const run = execFile(
+        engine,
+        ['exec', '--skip-git-repo-check', '--cd', execHome, 'say ok'],
+        { env: { ...process.env, CODEX_HOME: execHome }, timeout: 120_000 },
+        (err, _out, errText) => {
+          if (process.env.SN_MCP_DEBUG_EXEC) console.error(err?.message, errText.slice(-2000));
+          ok();
+        },
+      );
+      run.stdin?.end(); // exec otherwise waits for more input on stdin
+    });
+  } finally {
+    model.close();
+    rmSync(execHome, { recursive: true, force: true });
+  }
+  return first?.tools ?? [];
+}
+
 const { child, rpc, notify } = startEngine();
 const other = new Client({ name: 'sn-mcp-isolation-check', version: '0' });
 let exitCode = 1;
@@ -156,6 +217,21 @@ try {
   check(
     'every tool is marked read-only',
     tools.every((t) => t.annotations?.readOnlyHint === true),
+  );
+
+  // What the engine sends the model: one `exec` turn against a local stand-in that records it.
+  const sent = await toolsSentToModel();
+  // The engine names the namespace after the server, with "-" made "_".
+  const nsName = `mcp__${config.name.replace(/-/g, '_')}`;
+  const ns = sent.find((t) => t.name?.replace(/-/g, '_') === nsName) as
+    | { tools?: { name: string; parameters?: unknown }[] }
+    | undefined;
+  const qr = JSON.stringify(ns?.tools?.find((t) => t.name === 'query_records')?.parameters ?? {});
+  check(
+    'the engine sends the model every tool, with the typed filters',
+    expected.every((n) => ns?.tools?.some((t) => t.name === n)) &&
+      ['"within_last"', '"between"', '"minute"', '"encoded_query"'].every((k) => qr.includes(k)),
+    { tools_sent: ns?.tools?.length ?? 0, query_records_schema_chars: qr.length },
   );
 
   const callIn = async (threadId: string, tool: string, args: Record<string, unknown> = {}) => {

@@ -57,6 +57,7 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 | T-045 | Skills in Codex                                 | 043      | DONE        |
 | T-046 | Mistral Vibe as a local STDIO client            | 037      | DONE        |
 | T-047 | Native encoded-query compatibility + diagnostics | 018, 034 | BLOCKED     |
+| T-048 | Tool definitions within real client limits      | 033, 043, 046 | BLOCKED |
 
 ---
 
@@ -1247,7 +1248,7 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 - **Dependencies:** T-024 – T-032
 - **Deliverables:** review names, descriptions (concise, with when-to-use guidance), input and output schemas, annotations, and error mapping; `docs/TOOLS.md` with every contract, an example, and the error catalog; tool-surface snapshot updated.
 - **Files:** `packages/server/src/mcp/tools/*`, `docs/TOOLS.md`
-- **Acceptance criteria:** every tool has an `outputSchema` and examples; every data tool documents its continuation (`cursor`/`next`) and `complete`/`omitted` semantics; the tool descriptions tell Claude to prefer filters, projection and aggregates, and to continue cursors when needed; total `tools/list` payload ≤ 12 KB; snapshot test passes.
+- **Acceptance criteria:** every tool has an `outputSchema` and examples; every data tool documents its continuation (`cursor`/`next`) and `complete`/`omitted` semantics; the tool descriptions tell Claude to prefer filters, projection and aggregates, and to continue cursors when needed; total `tools/list` payload ≤ 12 KB; snapshot test passes. *(The 12 KB criterion was our own budget; T-048 replaced it with the limits clients really apply, ADR-017.)*
 - **Verification:** `npm test`; size measurement recorded.
 - **DoD:** —
 - **Evidence (2026-11-05):**
@@ -1628,5 +1629,32 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
   - `npm run lint`: 17 errors, 24 warnings, the same as before this change, all in files it doesn't touch (`brag-output/`, `biome.json`, `test/e2e/vibe-client.ts`). `biome check` on the changed files: no errors.
   - AC1, AC2: attack corpus 103 cases (adds aliases, `^EQ` and text-search placements), refused in the shared parser and in the extension's `revalidate` / `buildRequest`; valid corpus 63 cases, each a fixed point of `serializeQuery`. AC3–AC5: `server/test/query-compat.test.ts`, 20 tests (including `aggregate_records` reporting the rewrite). AC6: `tools/list` 11,939 bytes (was 11,938).
   - The new live scenario passes against the in-memory fake (`live-scenarios.test.ts`), which checks its logic only.
+- **Note (2026-11-06):** the user accepted both decisions (no `strict` profile, larger query bounds). The tool definitions changed afterwards in T-048 (server 0.1.9); validation and the query rules didn't, so this task's evidence still applies, and the live run below uses 0.1.9.
 - **What remains (the blocker):** AC7 needs a live run against the user's instance, with one approval from the user, after reloading the extension (it enforces the shared rules) and with server 0.1.8. Mocks are not evidence (rule 11). Until then, unverified: how ServiceNow treats `field=` and `ref_` downcasts, the URL length it accepts near 8,000 characters, and the text of its `error.detail`.
+
+### T-048 — Tool definitions within real client limits
+
+- **Status:** BLOCKED
+- **Purpose:** Drop the 12 KB `tools/list` budget, which was our own (T-033), so new tools and clear descriptions don't need cuts elsewhere; publish informative descriptions and typed input schemas instead of stubs; check compatibility with the supported clients. Requested by the user on 2026-11-06. No architectural change; read-only security and query rules unchanged.
+- **Dependencies:** T-033, T-043, T-046
+- **Deliverables:** `server/src/mcp/tools/*.ts` (descriptions, input descriptions, `lean()` removed, `publishedAs` for the filters, `MatchInput`, result envelope), `shared/src/query/filter-compiler.ts` (`PublishedWhereSchema`, `PublishedAnyOfSchema`, the `between` pair as a 2-item array), `server/test/tool-contract.test.ts`, `shared/test/query.test.ts`; new checks in `test/e2e/chatgpt-client.ts` and `test/e2e/vibe-client.ts`; ADR-017, `docs/TOOLS.md`; server 0.1.9; evidence in `docs/evidence/T-048/`.
+- **Findings (2026-11-06, real binaries in a Linux container):**
+  - The Codex engine (codex-cli 0.166.0-alpha.6, the user's version) strips every description and nested type from a tool input schema over about 5,000 bytes (stub server: 4,984 bytes kept, ~5,100 simplified). The first attempt, the fully expanded filter union (11.8 KB for `query_records`), reached its model as `where: anyOf [{}, {}]` with 0 descriptions, fewer than the old build's 5. Hence the compact published filter.
+  - Claude Code 2.1.318 passes descriptions and server instructions to the model up to 4,096 characters (16,384 via tool search), from its own source.
+  - Before: Vibe declared `where?: Array<Record<string, unknown>>` and a result of `{ ok: boolean }`.
+  - zod emits tuples as `prefixItems` + `items: false`, and records with `propertyNames`; both are avoided.
+- **Acceptance criteria:**
+  1. No size budget: tests check real client limits instead (descriptions and instructions ≤ 4,096 characters, input schemas ≤ 4,500 bytes, names ≤ 64 with prefix, portable keywords, typed arrays); only a 256 KB runaway alarm remains.
+  2. Every tool and its main inputs are described; the filter operators, value types and units are typed in the published schema.
+  3. Validation is unchanged: the published filter accepts everything the strict schema does, unchanged, and the existing hostile-input tests still refuse.
+  4. Codex: the engine sends its model all 14 tools with the typed filter and descriptions intact.
+  5. Vibe: its model's declaration shows the typed filter and the result fields.
+  6. Claude Desktop and Claude Code accept the tools and call them, live.
+- **Verification:** `npm test`; `npm run e2e:chatgpt -- --discovery-only`; `npm run e2e:vibe -- --discovery-only`; Claude Desktop with bundle 0.1.9, live.
+- **Evidence (2026-11-06):**
+  - AC1–AC3: `npm test`: shared 308 passed, extension 318 passed, server 497 passed, 3 skipped, plus the 9 environmental installer failures recorded in T-047. `tools/list` 33,841 bytes (was 11,939); largest input schema `query_records` 4,300 bytes; largest description 1,155 characters; instructions 2,032. Mutation checks: a tuple put back fails the portability test; `z.object` (which strips keys) in `any_of` fails the superset test; both were real mistakes during the work, found by the tests.
+  - AC4: `chatgpt-client.ts --discovery-only` with codex-cli 0.166.0-alpha.6 for Linux (`docs/evidence/T-048/codex-0.166.0-alpha.6-linux-discovery.json`): 14 tools, read-only; one `exec` turn against a local stand-in model (no API key, no OpenAI request) received all 14 with `query_records` carrying 20 descriptions and the typed `where`.
+  - AC5: `vibe-client.ts --discovery-only` with Vibe 3.1.0 for Linux and its scripted model (`docs/evidence/T-048/vibe-3.1.0-linux-discovery.json`): 14 tools; the declaration types `op` as the 17 operators, `value` with the units, and the result with `hints`, `omitted`, `page`.
+  - Broker connectivity fails in both runs, as expected: this container has no Chrome or extension.
+- **What remains (the blocker):** AC6, and AC4–AC5 in the user's own apps rather than Linux builds of the same versions. On the Mac: `npm run e2e:chatgpt -- --discovery-only`, `npm run e2e:vibe -- --discovery-only`, and Claude Desktop with the 0.1.9 bundle asked for one filtered read. Not tested anywhere: a real OpenAI or Mistral model receiving these schemas.
 

@@ -7,6 +7,8 @@ import {
   AnyOfSchema,
   FieldPathSchema,
   OrderBySchema,
+  PublishedAnyOfSchema,
+  PublishedWhereSchema,
   type ResponseEnvelope,
   SysIdSchema,
   TableNameSchema,
@@ -23,13 +25,23 @@ export const UNTRUSTED_NOTE =
 
 export const READ_ONLY = { readOnlyHint: true, destructiveHint: false } as const;
 /**
- * Every result is `{ok: true, provenance, …}` or `{ok: false, error}`. The full contract is in
- * docs/TOOLS.md: spelling it out per tool here would cost more than the 12 KB allowed for
- * tools/list (T-033).
+ * The result envelope every tool shares (`ok`, then either the data fields or `error`). Each
+ * tool's own `data` is described in its description and in docs/TOOLS.md. Only `ok` is required
+ * and other properties are allowed, so every result validates against it; clients that render
+ * types for the model (e.g. Vibe's TypeScript declarations) see the fields to use.
  */
 export const ResultEnvelope = fromJsonSchema<{ ok: boolean }>({
   type: 'object',
-  properties: { ok: { type: 'boolean' } },
+  properties: {
+    ok: { type: 'boolean' },
+    data: { type: 'object', description: 'The answer (see the tool description)' },
+    complete: { type: 'boolean', description: 'false: see omitted' },
+    omitted: { type: 'array', items: { type: 'object' }, description: 'Each with `next` call' },
+    page: { type: 'object', description: 'has_more, next_cursor (pass as cursor), total' },
+    hints: { type: 'array', items: { type: 'string' } },
+    provenance: { type: 'object' },
+    error: { type: 'object', description: '{code, message, hint} when ok is false' },
+  },
   required: ['ok'],
 });
 
@@ -37,14 +49,19 @@ export const ResultEnvelope = fromJsonSchema<{ ok: boolean }>({
  * `scope_id` is optional in the schema only so a missing one gets a helpful SCOPE_REQUIRED
  * error instead of a generic validation failure. It is never defaulted.
  */
-export const ScopeIdInput = lean(z.string().max(64)).optional();
+export const ScopeIdInput = z
+  .string()
+  .max(64)
+  .optional()
+  .describe('From claim_scope; required for every data tool');
 
 /**
- * Validates with `real` but publishes only `shown` in tools/list. Validation is exactly as strict;
- * the expanded JSON Schema of the filter types alone would be several times the 12 KB allowed for
- * all tools (T-033). The syntax is in the tool descriptions and docs/TOOLS.md.
+ * Validates with `real`, and shows clients `shown`: a compact schema that accepts everything
+ * `real` does (tested in the shared package). Used only where the full schema would pass the
+ * Codex engine's ~5,000-byte limit per tool input schema, past which it strips every description
+ * and nested type (measured, T-048). Validation is exactly as strict as `real`.
  */
-export function lean<T>(real: z.ZodType<T>, shown: z.ZodType = z.string()): z.ZodType<T> {
+function publishedAs<T>(real: z.ZodType<T>, shown: z.ZodType): z.ZodType<T> {
   return shown.superRefine((value, ctx) => {
     const r = real.safeParse(value);
     if (r.success) return;
@@ -54,18 +71,32 @@ export function lean<T>(real: z.ZodType<T>, shown: z.ZodType = z.string()): z.Zo
   }) as unknown as z.ZodType<T>;
 }
 
-const objects = z.array(z.looseObject({}));
-export const WhereInput = lean(WhereSchema, objects);
-export const AnyOfInput = lean(AnyOfSchema, z.array(objects));
-export const OrderByInput = lean(OrderBySchema, objects);
-export const TableInput = lean(TableNameSchema);
-export const SysIdInput = lean(SysIdSchema);
-export const FieldInput = lean(FieldPathSchema);
+/*
+ * Inputs are published as the JSON Schema of what is validated (T-048). T-033 published untyped
+ * stubs to fit a 12 KB tools/list budget of our own; that budget was dropped (ADR-017). The
+ * filters use a compact faithful form, see publishedAs.
+ */
+export const WhereInput = publishedAs(WhereSchema, PublishedWhereSchema);
+export const AnyOfInput = publishedAs(AnyOfSchema, PublishedAnyOfSchema);
+export const OrderByInput = OrderBySchema;
+export const TableInput = TableNameSchema.describe('Table name, e.g. incident, sys_user');
+export const SysIdInput = SysIdSchema.describe('32-character sys_id');
+export const FieldInput = FieldPathSchema.describe('Column name (not the label), lowercase');
 /** Wire limit: 50 fields per request, one of which is the sys_id every tool adds. */
-export const FieldListInput = lean(z.array(FieldPathSchema).min(1).max(49), z.array(z.string()));
-export const CountInput = lean(z.int().min(1).max(Number.MAX_SAFE_INTEGER), z.number());
-export const InstanceInput = lean(AliasSchema).optional();
-export const CursorInput = lean(z.string().max(8000)).optional();
+export const FieldListInput = z
+  .array(FieldPathSchema)
+  .min(1)
+  .max(49)
+  .describe('Column names to return (sys_id is always added)');
+export const CountInput = z.int().min(1).max(Number.MAX_SAFE_INTEGER);
+export const InstanceInput = AliasSchema.optional().describe(
+  'Instance alias; needed only with a compare scope',
+);
+export const CursorInput = z
+  .string()
+  .max(8000)
+  .optional()
+  .describe('page.next_cursor from the previous result; pass it with scope_id alone');
 
 export type Ok<T extends string> = Extract<ResponseEnvelope, { ok: true }> & {
   result: { type: T };

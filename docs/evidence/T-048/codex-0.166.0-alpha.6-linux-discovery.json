@@ -1,0 +1,36 @@
+{
+  "at": "2026-11-06T08:30:09.884Z",
+  "engine_is_the_one_inside_the_app": false,
+  "mock": false,
+  "engine": "sn-mcp-e2e/0.166.0-alpha.6 (Ubuntu 24.4.0; x86_64) linux (sn-mcp-e2e; 0)",
+  "checks": [
+    {
+      "name": "tool discovery: every tool, in the engine inside ChatGPT Desktop",
+      "pass": true,
+      "detail": {
+        "tools": 14,
+        "server_version": "0.1.9"
+      }
+    },
+    {
+      "name": "every tool is marked read-only",
+      "pass": true
+    },
+    {
+      "name": "the engine sends the model every tool, with the typed filters",
+      "pass": true,
+      "detail": {
+        "tools_sent": 14,
+        "query_records_schema_chars": 3834
+      }
+    },
+    {
+      "name": "broker connectivity: list_instances answers through the real extension",
+      "pass": false,
+      "detail": {
+        "code": "BRIDGE_UNAVAILABLE"
+      }
+    }
+  ],
+  "passed": false
+}

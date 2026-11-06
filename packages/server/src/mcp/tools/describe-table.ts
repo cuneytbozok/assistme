@@ -42,13 +42,16 @@ export function registerDescribeTable(server: McpServer, ctx: ToolContext): void
     'describe_table',
     {
       description:
-        "Lists a table's fields from the dictionary: type, label, reference target, `inherited_from`; plus its parent chain. `include_choices` adds choice values. An unknown table gives NOT_FOUND with suggestions. Continue with `cursor`.",
+        "Lists a table's fields from the dictionary (`data.fields`): `name` (use it in filters), `type`, `label`, `reference` target, `mandatory`, `inherited_from`, `sensitive`; plus the parent `chain` (e.g. incident extends task). `include_choices` adds each choice field's values and labels: filters compare values. An unknown table gives NOT_FOUND with suggestions. Continue with `cursor`.",
       inputSchema: z.strictObject({
         scope_id: ScopeIdInput,
         instance: InstanceInput,
         table: TableInput.optional(),
-        include_inherited: z.boolean().optional(),
-        include_choices: z.boolean().optional(),
+        include_inherited: z
+          .boolean()
+          .optional()
+          .describe('Include fields from parent tables (default true)'),
+        include_choices: z.boolean().optional().describe('Add choice values and labels'),
         cursor: CursorInput,
         max_chars: maxCharsInput(config),
       }),

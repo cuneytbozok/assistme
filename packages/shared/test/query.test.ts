@@ -1,15 +1,20 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
+import { z } from 'zod';
 import {
+  AnyOfSchema,
   compileFilter,
   conditionCount,
   containsScriptMarker,
   formatQueryError,
   normalizeForInspection,
+  PublishedAnyOfSchema,
+  PublishedWhereSchema,
   parseEncodedQuery,
   type QueryError,
   serializeQuery,
   validateValue,
+  WhereSchema,
 } from '../src/index.js';
 
 interface AttackCase {
@@ -436,5 +441,51 @@ describe('diagnostics (T-047)', () => {
     expect(w('short_descriptionLIKE"disk full"')[0]).toMatch(/quotes/);
     expect(w('short_descriptionLIKE disk')[0]).toMatch(/spaces/);
     expect(w('active=true^short_descriptionLIKEdisk full')).toEqual([]);
+  });
+});
+
+describe('published filter schema (T-048)', () => {
+  const conditions: unknown[] = [
+    { field: 'active', op: '=', value: true },
+    { field: 'priority', op: '<=', value: 2 },
+    { field: 'short_description', op: 'contains', value: 'email' },
+    { field: 'name', op: 'ends_with', value: '.js' },
+    { field: 'state', op: 'in', value: [1, 2, '3'] },
+    { field: 'state', op: 'not_in', value: [6] },
+    { field: 'assigned_to', op: 'is_empty' },
+    { field: 'caller_id.name', op: 'is_not_empty' },
+    { field: 'reassignment_count', op: 'between', value: [1, 5] },
+    { field: 'sys_created_on', op: 'within_last', value: { amount: 24, unit: 'hour' } },
+    { field: 'sys_updated_on', op: 'older_than', value: { amount: 30, unit: 'day' } },
+  ];
+
+  it('accepts everything the validation schema accepts', () => {
+    const where = [...conditions, { or: conditions.slice(0, 3) }];
+    expect(WhereSchema.safeParse(where).success).toBe(true);
+    expect(PublishedWhereSchema.safeParse(where).success).toBe(true);
+    for (const c of conditions) {
+      expect(PublishedWhereSchema.safeParse([c]).success, JSON.stringify(c)).toBe(true);
+    }
+    const anyOf = [where, [conditions[0]]];
+    expect(AnyOfSchema.safeParse(anyOf).success).toBe(true);
+    expect(PublishedAnyOfSchema.safeParse(anyOf).success).toBe(true);
+    // ...and passes it on unchanged: nothing stripped before the strict validation runs.
+    expect(PublishedWhereSchema.parse(where)).toEqual(where);
+    expect(PublishedAnyOfSchema.parse(anyOf)).toEqual(anyOf);
+  });
+
+  it('has the same operators as the validation schema', () => {
+    const json = JSON.stringify(z.toJSONSchema(PublishedWhereSchema));
+    const real = JSON.stringify(z.toJSONSchema(WhereSchema));
+    const ops = (s: string) =>
+      new Set([...s.matchAll(/"enum":\[([^\]]*)\]/g)].flatMap((m) => JSON.parse(`[${m[1]}]`)));
+    const lit = (s: string) => [...s.matchAll(/"const":"([^"]+)"/g)].map((m) => m[1]);
+    const realOps = new Set([...ops(real), ...lit(real)]);
+    for (const u of ['minute', 'hour', 'day', 'week', 'month', 'year']) realOps.delete(u);
+    for (const d of ['asc', 'desc']) realOps.delete(d);
+    expect(
+      [...realOps].every((o) => ops(json).has(o)),
+      [...realOps].join(' '),
+    ).toBe(true);
   });
 });

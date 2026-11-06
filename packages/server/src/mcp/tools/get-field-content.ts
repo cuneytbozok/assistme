@@ -19,7 +19,6 @@ import {
   CountInput,
   FieldInput,
   InstanceInput,
-  lean,
   READ_ONLY,
   ResultEnvelope,
   ScopeIdInput,
@@ -175,17 +174,22 @@ export function registerGetFieldContent(server: McpServer, ctx: ToolContext): vo
     'get_field_content',
     {
       description:
-        'Reads one field in full, however long: scripts, logs, payloads. Returns numbered lines. While `complete` is false, call again with the args in `next`; an entry with `more` continues at start_char. `refresh` re-reads instead of using the short-lived local copy.',
+        "Reads one field of one record in full, however long: scripts, log messages, payloads, journal fields. Returns `data.lines` as numbered lines ({n, text}), with `total_lines` and `total_chars`. While `complete` is false, call again with the args in `next` (a very long line continues at `start_char`; an entry with `more` continues on the next one). Use it when another tool's `omitted` points here. `refresh` re-reads instead of using the short-lived local copy.",
       inputSchema: z.strictObject({
         scope_id: ScopeIdInput,
         instance: InstanceInput,
         table: TableInput,
         sys_id: SysIdInput,
         field: FieldInput,
-        start_line: CountInput.optional(),
-        start_char: lean(z.int().min(0).max(Number.MAX_SAFE_INTEGER), z.number()).optional(),
+        start_line: CountInput.optional().describe('First line to return, 1-based'),
+        start_char: z
+          .int()
+          .min(0)
+          .max(Number.MAX_SAFE_INTEGER)
+          .optional()
+          .describe('Offset inside a long line, from `next`'),
         max_lines: CountInput.optional().describe(`Default ${config.fieldChunkLines}`),
-        refresh: z.boolean().optional(),
+        refresh: z.boolean().optional().describe('Read the field again from ServiceNow'),
         max_chars: maxCharsInput(config),
       }),
       outputSchema: ResultEnvelope,

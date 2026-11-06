@@ -29,48 +29,58 @@ import {
  * extension would reject.
  */
 
+/*
+ * These are the validation schemas. MCP clients are shown the compact PublishedWhereSchema below
+ * instead (T-048). Only portable keywords are used either way: a pair is a 2-item array, not a
+ * tuple (tuples become `prefixItems` / `items: false`, which some model APIs reject).
+ */
 const StringValue = z.string().min(1).max(MAX_VALUE_LENGTH);
 const ScalarValue = z.union([StringValue, z.number().finite(), z.boolean()]);
 const ListItem = z.union([StringValue, z.number().finite()]);
 
+const Field = FieldPathSchema;
+
+const SCALAR_OPS = [
+  '=',
+  '!=',
+  '>',
+  '>=',
+  '<',
+  '<=',
+  'contains',
+  'not_contains',
+  'starts_with',
+  'ends_with',
+] as const;
+const RELATIVE_OPS = ['within_last', 'older_than'] as const;
+
 const ScalarCondition = z.strictObject({
-  field: FieldPathSchema,
-  op: z.enum([
-    '=',
-    '!=',
-    '>',
-    '>=',
-    '<',
-    '<=',
-    'contains',
-    'not_contains',
-    'starts_with',
-    'ends_with',
-  ]),
+  field: Field,
+  op: z.enum(SCALAR_OPS),
   value: ScalarValue,
 });
 
 const ListCondition = z.strictObject({
-  field: FieldPathSchema,
+  field: Field,
   op: z.enum(['in', 'not_in']),
   value: z.array(ListItem).min(1).max(MAX_LIST_ITEMS),
 });
 
 const UnaryCondition = z.strictObject({
-  field: FieldPathSchema,
+  field: Field,
   op: z.enum(['is_empty', 'is_not_empty']),
 });
 
 const BetweenCondition = z.strictObject({
-  field: FieldPathSchema,
+  field: Field,
   op: z.literal('between'),
-  value: z.tuple([ListItem, ListItem]),
+  value: z.array(ListItem).length(2),
 });
 
 const RelativeCondition = z.strictObject({
-  field: FieldPathSchema,
+  field: Field,
   /** within_last: field ≥ now − n units · older_than: field < now − n units */
-  op: z.enum(['within_last', 'older_than']),
+  op: z.enum(RELATIVE_OPS),
   value: z.strictObject({
     amount: z.int().min(1).max(9999),
     unit: z.enum(RELATIVE_UNITS),
@@ -92,15 +102,69 @@ export const FilterTermSchema = z.union([
 ]);
 export type FilterTerm = z.infer<typeof FilterTermSchema>;
 
-export const WhereSchema = z.array(FilterTermSchema).min(1).max(MAX_QUERY_TERMS);
+export const WhereSchema = z
+  .array(FilterTermSchema)
+  .min(1)
+  .max(MAX_QUERY_TERMS)
+  .describe('Conditions that must all hold');
 export type Where = z.infer<typeof WhereSchema>;
 
-export const AnyOfSchema = z.array(WhereSchema).min(2).max(MAX_NQ_GROUPS);
+export const AnyOfSchema = z
+  .array(WhereSchema)
+  .min(2)
+  .max(MAX_NQ_GROUPS)
+  .describe('Alternative where lists');
+
+/**
+ * What MCP clients are shown for `where` (T-048): one condition shape with every operator and
+ * every value type, instead of the per-operator union above, which expands to about 4 KB per copy.
+ * The Codex engine in ChatGPT Desktop (0.166) strips the descriptions and nested structure of any
+ * tool input schema over about 5,000 bytes, so the full union would reach its model as `{}`.
+ * It accepts everything WhereSchema accepts (tested); WhereSchema still validates every input.
+ */
+const PublishedCondition = z.strictObject({
+  field: z.string().describe('Column name, lowercase; dot-walk with "." (caller_id.name)'),
+  op: z.enum([
+    ...SCALAR_OPS,
+    'in',
+    'not_in',
+    'is_empty',
+    'is_not_empty',
+    'between',
+    ...RELATIVE_OPS,
+  ]),
+  value: z
+    .union([
+      z.string(),
+      z.number(),
+      z.boolean(),
+      z.array(z.union([z.string(), z.number()])),
+      z.strictObject({ amount: z.int().min(1).max(9999), unit: z.enum(RELATIVE_UNITS) }),
+    ])
+    .optional()
+    .describe('Depends on op (see the tool description); none for is_empty / is_not_empty'),
+});
+const PublishedTerm = z.union([
+  PublishedCondition,
+  z.strictObject({ or: z.array(PublishedCondition).min(2).max(10) }),
+]);
+export const PublishedWhereSchema = z
+  .array(PublishedTerm)
+  .min(1)
+  .max(MAX_QUERY_TERMS)
+  .describe('Conditions that must all hold: {field, op, value}, or {or: [conditions]} for any');
+/** `any_of` as shown to clients: its items have the shape of `where` (validated in full). */
+export const PublishedAnyOfSchema = z
+  .array(z.array(z.looseObject({})).min(1).max(MAX_QUERY_TERMS))
+  .min(2)
+  .max(MAX_NQ_GROUPS)
+  .describe('2-10 alternative lists, each shaped like where; a record matches if any list holds');
 
 export const OrderBySchema = z
-  .array(z.strictObject({ field: FieldPathSchema, direction: z.enum(['asc', 'desc']) }))
+  .array(z.strictObject({ field: Field, direction: z.enum(['asc', 'desc']) }))
   .min(1)
-  .max(MAX_ORDER_BY);
+  .max(MAX_ORDER_BY)
+  .describe('Sort keys, first one first');
 export type OrderByInput = z.infer<typeof OrderBySchema>;
 
 export const FilterInputSchema = z
@@ -167,7 +231,7 @@ function compileCondition(c: FilterCondition): QueryResult<string> {
       break;
     }
     case 'between': {
-      const [a, b] = c.value.map(str) as [string, string];
+      const [a = '', b = ''] = c.value.map(str);
       if (a.includes('@') || b.includes('@')) {
         return err('INVALID_INPUT', '"between" values must not contain "@"', c.field);
       }

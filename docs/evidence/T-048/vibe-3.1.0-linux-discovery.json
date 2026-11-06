@@ -1,0 +1,47 @@
+{
+  "at": "2026-11-06T08:30:11.484Z",
+  "mock": false,
+  "model": "local script",
+  "vibe": {
+    "name": "@mistralai/mistral-vibe",
+    "title": "Mistral Vibe",
+    "version": "3.1.0"
+  },
+  "instructions_in_system_prompt": false,
+  "skills_seen": [],
+  "vibe_tool_prompts_answered_by_this_test": 1,
+  "api_key_sent_to_the_local_model": false,
+  "checks": [
+    {
+      "name": "tool discovery: every tool, in real Vibe",
+      "pass": true,
+      "detail": {
+        "tools": 14,
+        "missing": []
+      }
+    },
+    {
+      "name": "the model sees typed filters and result fields in the query_records declaration",
+      "pass": true,
+      "detail": {
+        "declaration_chars": 5712
+      }
+    },
+    {
+      "name": "a model searching for ServiceNow finds list_instances",
+      "pass": true
+    },
+    {
+      "name": "that search also gives it the access flow and the untrusted-content rule",
+      "pass": true
+    },
+    {
+      "name": "broker connectivity: list_instances answers through the real extension",
+      "pass": false,
+      "detail": {
+        "code": "BRIDGE_UNAVAILABLE"
+      }
+    }
+  ],
+  "passed": false
+}

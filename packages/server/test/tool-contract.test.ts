@@ -1,6 +1,6 @@
 /**
- * T-033: the tool contract as a whole: size, descriptions, the strictness of the compact
- * published schemas, docs/TOOLS.md, and consistent results (mock only).
+ * T-033 / T-048: the tool contract as a whole: what clients accept, descriptions, the strictness
+ * of the published schemas, docs/TOOLS.md, and consistent results (mock only).
  */
 import { readFileSync } from 'node:fs';
 import { Client, InMemoryTransport } from '@modelcontextprotocol/client';
@@ -13,7 +13,46 @@ import { dictionaryFixture } from './fake-sn.js';
 import { claim, claimCompare, harness, withIncidents } from './mcp-harness.js';
 
 const TOOLS_MD = readFileSync(new URL('../../../docs/TOOLS.md', import.meta.url), 'utf8');
-const MAX_TOOLS_LIST_BYTES = 12_000;
+/**
+ * Limits that supported clients really apply (T-048), rather than a size budget of our own:
+ * - Claude Code 2.1 passes an MCP tool description, and the server instructions, to the model up
+ *   to 4,096 characters (16,384 once loaded through tool search); the rest is cut.
+ * - Tool names: model APIs take at most 64 characters, and clients add a prefix
+ *   (Claude Code `mcp__<server>__`, Codex `mcp__sn_mcp`, Vibe `mcp_sn_mcp.`).
+ * - Codex simplifies a tool input schema over ~5,000 bytes (CODEX_INPUT_SCHEMA_BYTES).
+ * - Schemas: only keywords every client passes through to its model API. Tuples (`prefixItems`,
+ *   `items: false`), `propertyNames` and `$ref` are avoided; every array says what its items are.
+ * The total size has no budget. RUNAWAY_BYTES only catches an accidental blow-up.
+ */
+const CLAUDE_CODE_DESCRIPTION_CHARS = 4096;
+/**
+ * The Codex engine in ChatGPT Desktop (codex-cli 0.166) passes a tool's input schema to the model
+ * intact up to about 5,000 bytes, and above that strips every description and nested type
+ * (measured with a stub server: 4,984 bytes kept, ~5,100 simplified). Kept with a margin.
+ */
+const CODEX_INPUT_SCHEMA_BYTES = 4500;
+const LONGEST_CLIENT_PREFIX = 'mcp__sn-mcp__';
+const PORTABLE_KEYWORDS = new Set([
+  '$schema',
+  'type',
+  'properties',
+  'required',
+  'additionalProperties',
+  'items',
+  'anyOf',
+  'enum',
+  'const',
+  'description',
+  'minLength',
+  'maxLength',
+  'pattern',
+  'minimum',
+  'maximum',
+  'minItems',
+  'maxItems',
+  'default',
+]);
+const RUNAWAY_BYTES = 256 * 1024;
 
 async function listTools() {
   const server = createMcpServer({ cachedRegistry: undefined } as unknown as BridgeClient, {
@@ -41,11 +80,78 @@ const DATA_TOOLS = [
   'compare_records',
 ];
 
+function keywordsOf(schema: unknown, out: Set<string>, arrays: string[], path = ''): void {
+  if (Array.isArray(schema)) {
+    for (const [i, s] of schema.entries()) keywordsOf(s, out, arrays, `${path}[${i}]`);
+    return;
+  }
+  if (!schema || typeof schema !== 'object') return;
+  const o = schema as Record<string, unknown>;
+  if (o.type === 'array' && (typeof o.items !== 'object' || o.items === null)) arrays.push(path);
+  for (const [k, v] of Object.entries(o)) {
+    out.add(k);
+    if (k === 'properties') {
+      for (const [name, p] of Object.entries(v as object)) {
+        keywordsOf(p, out, arrays, `${path}.${name}`);
+      }
+    } else if (k !== 'enum' && k !== 'const' && k !== 'default')
+      keywordsOf(v, out, arrays, `${path}/${k}`);
+  }
+}
+
 describe('tools/list', () => {
-  it(`stays within ${MAX_TOOLS_LIST_BYTES} bytes`, async () => {
-    const size = Buffer.byteLength(JSON.stringify({ tools: await listTools() }));
-    expect(size).toBeLessThanOrEqual(MAX_TOOLS_LIST_BYTES);
+  it('fits the limits supported clients apply (no size budget of our own)', async () => {
+    const tools = await listTools();
+    for (const t of tools) {
+      expect(t.description?.length ?? 0, t.name).toBeLessThanOrEqual(CLAUDE_CODE_DESCRIPTION_CHARS);
+      expect(`${LONGEST_CLIENT_PREFIX}${t.name}`.length, t.name).toBeLessThanOrEqual(64);
+      expect(t.name, t.name).toMatch(/^[a-z_]+$/);
+      expect(JSON.stringify(t.inputSchema).length, t.name).toBeLessThanOrEqual(
+        CODEX_INPUT_SCHEMA_BYTES,
+      );
+    }
+    expect(INSTRUCTIONS.length).toBeLessThanOrEqual(CLAUDE_CODE_DESCRIPTION_CHARS);
+    const size = Buffer.byteLength(JSON.stringify({ tools }));
+    expect(size).toBeLessThan(RUNAWAY_BYTES);
     if (process.env.SIZE_REPORT) console.error(`tools/list: ${size} bytes`);
+  });
+
+  it('publishes portable JSON Schema: no tuples, propertyNames or $ref; every array typed', async () => {
+    for (const t of await listTools()) {
+      for (const schema of [t.inputSchema, t.outputSchema]) {
+        const keys = new Set<string>();
+        const untyped: string[] = [];
+        keywordsOf(schema, keys, untyped);
+        expect(
+          [...keys].filter((k) => !PORTABLE_KEYWORDS.has(k)),
+          t.name,
+        ).toEqual([]);
+        expect(untyped, t.name).toEqual([]);
+        expect(schema?.type, t.name).toBe('object');
+      }
+    }
+  });
+
+  it('publishes the filter structure itself, not a stub (T-048)', async () => {
+    const tools = await listTools();
+    for (const name of ['query_records', 'aggregate_records']) {
+      const props = (tools.find((t) => t.name === name)?.inputSchema.properties ?? {}) as Record<
+        string,
+        unknown
+      >;
+      const where = JSON.stringify(props.where);
+      for (const op of ['contains', 'not_in', 'between', 'within_last', 'is_empty', 'or']) {
+        expect(where, `${name}: ${op}`).toContain(`"${op}"`);
+      }
+      expect(where, name).toContain('"minute"'); // the relative-date units
+    }
+    const q = tools.find((t) => t.name === 'query_records')?.inputSchema.properties as Record<
+      string,
+      { description?: string }
+    >;
+    for (const input of ['encoded_query', 'fields', 'display_value', 'cursor', 'scope_id']) {
+      expect(q[input]?.description, input).toBeTruthy();
+    }
   });
 
   it('every tool has an output schema and a description; annotations are read-only', async () => {
@@ -54,7 +160,6 @@ describe('tools/list', () => {
     for (const t of tools) {
       expect(t.outputSchema, t.name).toBeDefined();
       expect(t.description?.length ?? 0, t.name).toBeGreaterThan(50);
-      expect(t.description?.length ?? 0, t.name).toBeLessThan(500);
       expect(t.annotations, t.name).toEqual({ readOnlyHint: true, destructiveHint: false });
     }
   });
@@ -66,7 +171,7 @@ describe('tools/list', () => {
       expect(d, name).toMatch(/cursor|`next`|omitted|one record/i);
     }
     const q = tools.find((t) => t.name === 'query_records')?.description ?? '';
-    expect(q).toMatch(/Prefer filters/);
+    expect(q).toMatch(/where.*preferred|prefer a short `fields`/);
     expect(q).toMatch(/fields/);
     expect(q).toMatch(/aggregate_records/);
     expect(q).toMatch(/complete/);

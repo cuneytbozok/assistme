@@ -14,7 +14,6 @@ import { toolError } from '../results.js';
 import {
   CursorInput,
   InstanceInput,
-  lean,
   READ_ONLY,
   ResultEnvelope,
   ScopeIdInput,
@@ -81,13 +80,18 @@ export function registerGetRelatedRecords(server: McpServer, ctx: ToolContext): 
     'get_related_records',
     {
       description:
-        'Finds what references a record, from the dictionary: every relation with a count, `samples` sys_ids (default 3) and a `list_all` call. Continue with `cursor`.',
+        'Finds what references a record: every dictionary field that points at its table or a parent table (e.g. incidents, tasks and CI relationships pointing at a CI). Returns `data.relations` with `table`, `field`, `count`, `samples` (sys_ids, default 3) and `list_all`, the query_records call for all of them. Continue with `cursor`.',
       inputSchema: z.strictObject({
         scope_id: ScopeIdInput,
         instance: InstanceInput,
         table: TableInput.optional(),
         sys_id: SysIdInput.optional(),
-        samples: lean(z.int().min(0).max(MAX_SAMPLES), z.number()).optional(),
+        samples: z
+          .int()
+          .min(0)
+          .max(MAX_SAMPLES)
+          .optional()
+          .describe('sys_ids returned per relation (default 3)'),
         cursor: CursorInput,
         max_chars: maxCharsInput(config),
       }),

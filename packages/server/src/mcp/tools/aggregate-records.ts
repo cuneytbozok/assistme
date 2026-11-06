@@ -19,7 +19,6 @@ import {
   AnyOfInput,
   CursorInput,
   InstanceInput,
-  lean,
   READ_ONLY,
   ResultEnvelope,
   ScopeIdInput,
@@ -99,22 +98,31 @@ export function registerAggregateRecords(server: McpServer, ctx: ToolContext): v
     'aggregate_records',
     {
       description:
-        'Counts and summarizes without reading rows: prefer it to query_records for "how many" and distributions. Filters as in query_records. `group_by`: 1–2 fields, all groups largest first. `aggregates`: up to 4 {fn: avg|min|max|sum, field}. Continue with `cursor`.',
+        'Counts and summarizes without reading rows (Stats API): prefer it to query_records for "how many", distributions and averages. Filters as in query_records (`where`, `any_of` or `encoded_query`). Without `group_by`, returns `data.count` and the aggregates; with `group_by` (1–2 fields), `data.group_count` and `data.groups`, largest first, every group reachable by cursor. `aggregates`: up to 4 {fn: avg|min|max|sum, field}. Continue with `cursor`.',
       inputSchema: z.strictObject({
         scope_id: ScopeIdInput,
         instance: InstanceInput,
         table: TableInput.optional(),
         where: WhereInput.optional(),
         any_of: AnyOfInput.optional(),
-        encoded_query: lean(z.string().min(1).max(MAX_RAW_QUERY_LENGTH)).optional(),
-        group_by: lean(
-          z.array(FieldPathSchema).min(1).max(MAX_GROUP_BY_FIELDS),
-          z.array(z.string()),
-        ).optional(),
-        aggregates: lean(
-          z.array(AggregateInput).min(1).max(MAX_AGGREGATES),
-          z.array(z.looseObject({})),
-        ).optional(),
+        encoded_query: z
+          .string()
+          .min(1)
+          .max(MAX_RAW_QUERY_LENGTH)
+          .optional()
+          .describe('Raw ServiceNow encoded query, as in query_records; not with where or any_of'),
+        group_by: z
+          .array(FieldPathSchema)
+          .min(1)
+          .max(MAX_GROUP_BY_FIELDS)
+          .optional()
+          .describe('Fields to group by, e.g. ["state"]'),
+        aggregates: z
+          .array(AggregateInput)
+          .min(1)
+          .max(MAX_AGGREGATES)
+          .optional()
+          .describe('e.g. [{"fn": "avg", "field": "reassignment_count"}]'),
         cursor: CursorInput,
         max_chars: maxCharsInput(config),
       }),

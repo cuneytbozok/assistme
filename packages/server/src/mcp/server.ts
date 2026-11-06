@@ -28,7 +28,6 @@ import { ok, provenance, scopeSuffix, toolError } from './results.js';
 import { ScopeStore } from './scope-store.js';
 import { registerAggregateRecords } from './tools/aggregate-records.js';
 import {
-  lean,
   type Ok,
   READ_ONLY,
   ResultEnvelope,
@@ -49,7 +48,7 @@ import { registerSearchCode } from './tools/search-code.js';
 export { ScopeIdInput, UNTRUSTED_NOTE };
 
 export const SERVER_NAME = 'sn-mcp';
-export const SERVER_VERSION = '0.1.8';
+export const SERVER_VERSION = '0.1.9';
 
 export const INSTRUCTIONS = `Read-only access to ServiceNow instances through the user's own browser session.
 
@@ -201,7 +200,7 @@ export function createMcpServer(
     'list_instances',
     {
       description:
-        'Lists the instances the user registered: alias, host, env, policy and connection. `connector_access` can be shared between conversations: always use your own scope_id. Start here.',
+        'Start here. Lists the ServiceNow instances the user registered in the sn-mcp Chrome extension: `alias` (pass it to request_scope), `label`, `host`, `env` (dev, test, prod), `policy`, `connection` (whether the extension can reach it now) and `connector_access`. `connector_access` is per connector process and can be shared between conversations: it never replaces your own scope_id. Only the user can register instances.',
       inputSchema: z.strictObject({}),
       outputSchema: ResultEnvelope,
       annotations: READ_ONLY,
@@ -240,15 +239,21 @@ export function createMcpServer(
     'request_scope',
     {
       description:
-        "Asks the user for read access to one instance, or two (`instances`) to compare. Returns an approval code: tell the user to approve it in the sn-mcp extension popup, then call claim_scope. You can't approve it yourself.",
+        "Asks the user for read-only access to one instance (`instance`), or to two (`instances`) for compare_records across instances. Returns `request_id`, a short `approval_code`, `expires_in_seconds` and `next_step`. Write the approval code in a message to the user before any other tool call (they can't see tool results), and ask them to approve it in the sn-mcp extension popup only if it matches. Then call claim_scope. You can't approve it yourself, and access is never widened or switched to another instance without a new approval.",
       inputSchema: z.strictObject({
-        instance: lean(AliasSchema).optional().describe('Alias from list_instances'),
-        instances: lean(z.array(AliasSchema).min(1).max(2), z.array(z.string()))
+        instance: AliasSchema.optional().describe('Alias from list_instances (one instance)'),
+        instances: z
+          .array(AliasSchema)
+          .min(1)
+          .max(2)
           .optional()
-          .describe('Two aliases to compare'),
-        purpose: lean(
-          z.string().min(1).max(MAX_PURPOSE_LENGTH).regex(NO_CONTROL_CHARS_RE),
-        ).describe('Reason shown to the user'),
+          .describe('Two aliases, for compare_records across instances (instead of instance)'),
+        purpose: z
+          .string()
+          .min(1)
+          .max(MAX_PURPOSE_LENGTH)
+          .regex(NO_CONTROL_CHARS_RE)
+          .describe('Short reason shown to the user in the approval popup'),
       }),
       outputSchema: ResultEnvelope,
       annotations: READ_ONLY,
@@ -304,9 +309,9 @@ export function createMcpServer(
     'claim_scope',
     {
       description:
-        'Checks a request_scope request: "pending" until approved, then a scope_id (once only) for data tools.',
+        'Checks a request_scope request. `status`: "pending" (the user hasn\'t approved yet: wait for them, then call again), "approved" (returns `scope_id`, once only: keep it for this conversation and pass it to every data tool), "denied", "expired" or "claimed". Never reuse a scope_id from another conversation.',
       inputSchema: z.strictObject({
-        request_id: lean(RequestIdSchema).describe('From request_scope'),
+        request_id: RequestIdSchema.describe('From request_scope'),
       }),
       outputSchema: ResultEnvelope,
       annotations: READ_ONLY,
@@ -358,7 +363,7 @@ export function createMcpServer(
     'release_scope',
     {
       description:
-        "Ends a scope_id's access immediately. Call it only when the user says they're finished. It only narrows access.",
+        "Ends a scope_id's access immediately. Call it only when the user says they're finished: a scope lasts as long as the user chose when approving, and follow-up questions keep using it. It only narrows access.",
       inputSchema: z.strictObject({ scope_id: ScopeIdInput }),
       outputSchema: ResultEnvelope,
       annotations: READ_ONLY,

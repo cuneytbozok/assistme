@@ -41,7 +41,6 @@ import {
   CountInput,
   CursorInput,
   InstanceInput,
-  lean,
   type Ok,
   OrderByInput,
   READ_ONLY,
@@ -90,27 +89,51 @@ export function registerQueryRecords(server: McpServer, ctx: ToolContext): void 
     'query_records',
     {
       description:
-        'Reads records from a table. Prefer filters and a short `fields` list over reading everything; use aggregate_records to count. `where` is an AND list of {field, op, value} or {or:[…]}; op: = != > >= < <= contains not_contains starts_with ends_with in not_in is_empty is_not_empty between within_last older_than. `limit` defaults to 20, with no maximum. Continue with `cursor`; `complete` is true only when `omitted` is empty.',
+        'Reads records from a table (`data.records`). Filter with `where` (preferred), `any_of`, or a raw `encoded_query`; prefer a short `fields` list, and use aggregate_records to count. `where` is an AND list of {field, op, value} or {or: [conditions]}. field: the column name (lowercase, not the label; dot-walk references with ".", e.g. caller_id.name). value by op: = != > >= < <= contains not_contains starts_with ends_with take one stored value: a choice value (state 2, not "In Progress"), a sys_id for a reference, true/false; in / not_in take a list (no ","); between takes [low, high], inclusive, date-times as "YYYY-MM-DD HH:MM:SS"; within_last / older_than take {amount, unit}, relative to now; is_empty / is_not_empty take none. Every field is checked against the dictionary first; an unknown one gives INVALID_FIELD with suggestions. `limit` defaults to 20, with no maximum: continue with {scope_id, cursor} while page.next_cursor is set; `complete` is true only when nothing was left out. Read `hints`: they explain query rewrites and why nothing matched. On logs and other busy tables, start with a short time window (sys_created_on within_last).',
       inputSchema: z.strictObject({
         scope_id: ScopeIdInput,
         instance: InstanceInput,
         table: TableInput.optional(),
         where: WhereInput.optional(),
-        any_of: AnyOfInput.optional().describe('2–10 alternative where lists'),
-        encoded_query: lean(z.string().min(1).max(MAX_RAW_QUERY_LENGTH))
+        any_of: AnyOfInput.optional(),
+        encoded_query: z
+          .string()
+          .min(1)
+          .max(MAX_RAW_QUERY_LENGTH)
           .optional()
-          .describe('Raw query, validated; prefer where'),
-        text: lean(z.string().min(1).max(500)).optional().describe('Full-text search'),
-        order_by: OrderByInput.optional().describe('[{field, direction}]'),
-        display_value: z.enum(['all', 'true', 'false']).optional(),
-        fields: lean(
-          z.union([z.tuple([z.literal('*')]), z.array(FieldPathSchema).min(1).max(49)]),
-          z.array(z.string()),
-        )
+          .describe(
+            'Raw ServiceNow encoded query, e.g. active=true^priority<=2^ORDERBYDESCsys_created_on. A query copied from a list (with ^EQ) works. javascript: values are refused; the error suggests a native rewrite. Not with where, any_of, text or order_by.',
+          ),
+        text: z
+          .string()
+          .min(1)
+          .max(500)
           .optional()
-          .describe('Or ["*"] for all'),
-        limit: CountInput.optional(),
-        include_total: z.boolean().optional(),
+          .describe('Keyword search over the text index (matches whole words); combine with where'),
+        order_by: OrderByInput.optional(),
+        display_value: z
+          .enum(['all', 'true', 'false'])
+          .optional()
+          .describe('false (default): stored values; true: display values; all: both'),
+        fields: z
+          .array(z.string())
+          .min(1)
+          .max(49)
+          .superRefine((f, ctx) => {
+            const all = f.length === 1 && f[0] === '*';
+            if (!all && !f.every((x) => FieldPathSchema.safeParse(x).success)) {
+              ctx.addIssue({ code: 'custom', message: 'field names, or ["*"] for all fields' });
+            }
+          })
+          .optional()
+          .describe(
+            'Column names to return (up to 49; sys_id is always added), or ["*"] for every field. Default: a short projection (number, name, short_description, …).',
+          ),
+        limit: CountInput.optional().describe('Rows wanted in total (default 20, no maximum)'),
+        include_total: z
+          .boolean()
+          .optional()
+          .describe('Also count all matching rows (page.total); costs a count'),
         cursor: CursorInput,
         max_chars: maxCharsInput(config),
       }),

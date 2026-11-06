@@ -3,7 +3,7 @@
   "manifest_version": "0.4",
   "name": "sn-mcp",
   "display_name": "ServiceNow (read-only)",
-  "version": "0.1.8",
+  "version": "0.1.9",
   "description": "Read-only access to ServiceNow instances through your own Chrome session.",
   "long_description": "Lets Claude investigate ServiceNow instances you registered in the sn-mcp Chrome extension. It only reads, only uses your existing browser session, and only reaches an instance after you approve a request in the extension. Needs the sn-mcp native host and Chrome extension: see docs/INSTALL.md.",
   "author": { "name": "Cüneyt Bozok" },
