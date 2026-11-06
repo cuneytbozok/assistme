@@ -12,6 +12,7 @@ import {
   PublishedWhereSchema,
   parseEncodedQuery,
   type QueryError,
+  RELATIVE_UNITS,
   serializeQuery,
   validateValue,
   WhereSchema,
@@ -37,8 +38,8 @@ const ATTACKS = load<AttackCase[]>('attack-corpus.json');
 const VALID = load<ValidCase[]>('valid-corpus.json');
 
 describe('attack corpus', () => {
-  it('has at least 60 cases and 30 valid queries', () => {
-    expect(ATTACKS.length).toBeGreaterThanOrEqual(60);
+  it('has at least 50 cases and 30 valid queries', () => {
+    expect(ATTACKS.length).toBeGreaterThanOrEqual(50);
     expect(VALID.length).toBeGreaterThanOrEqual(30);
   });
 
@@ -142,7 +143,7 @@ describe('normalization', () => {
 
 describe('validateValue', () => {
   it('rejects unknown operators and ^ in values', () => {
-    expect(validateValue('DYNAMIC', 'x').ok).toBe(false);
+    expect(validateValue('NOPE', 'x').ok).toBe(false);
     expect(validateValue('=', 'a^NQb=1').ok).toBe(false);
   });
 });
@@ -183,7 +184,7 @@ describe('structured filter compiler', () => {
       'active=true^priority<=2^state!=7^impact>1^urgency>=1^severity<3^short_descriptionLIKEemail' +
         '^descriptionNOT LIKEtest^nameSTARTSWITHDisc^nameENDSWITH.js^stateIN1,2,3^stateNOT IN6' +
         '^assigned_toISEMPTY^caller_idISNOTEMPTY^reassignment_countBETWEEN1@5' +
-        '^sys_created_onRELATIVEGE@hour@ago@24^sys_updated_onRELATIVELT@day@ago@30',
+        '^sys_created_onRELATIVEGE@hour@ago@24^sys_updated_onRELATIVELT@dayofweek@ago@30',
     );
   });
 
@@ -246,27 +247,12 @@ describe('structured filter compiler', () => {
       { where: [{ field: 'a', op: '=', value: 'x^NQsys_id!=y' }] },
       'INVALID_INPUT',
     ],
-    [
-      'javascript value',
-      { where: [{ field: 'a', op: '=', value: 'javascript:gs.x()' }] },
-      'UNSAFE_QUERY',
-    ],
-    [
-      'encoded javascript',
-      { where: [{ field: 'a', op: 'contains', value: '%6Aavascript:x' }] },
-      'UNSAFE_QUERY',
-    ],
     ['newline', { where: [{ field: 'a', op: '=', value: 'x\ny' }] }, 'INVALID_INPUT'],
     ['comma in list item', { where: [{ field: 'a', op: 'in', value: ['1,2'] }] }, 'INVALID_INPUT'],
     [
       '@ in between',
       { where: [{ field: 'a', op: 'between', value: ['1@2', '3'] }] },
       'INVALID_INPUT',
-    ],
-    [
-      'js in between',
-      { where: [{ field: 'a', op: 'between', value: ['javascript:x', '3'] }] },
-      'UNSAFE_QUERY',
     ],
     ['invalid field', { where: [{ field: 'A;b', op: '=', value: 1 }] }, 'INVALID_INPUT'],
     ['deep dot-walk', { where: [{ field: 'a.b.c.d.e', op: '=', value: 1 }] }, 'INVALID_INPUT'],
@@ -302,11 +288,6 @@ describe('structured filter compiler', () => {
     const r = compile(input);
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.error.code).toBe(code);
-  });
-
-  it('rejects javascript in text search', () => {
-    const r = compile({ text: 'javascript:gs.x()' }, true);
-    expect(!r.ok && r.error.code).toBe('UNSAFE_QUERY');
   });
 
   it('compiled output always passes the authoritative validator (round-trip)', () => {
@@ -379,24 +360,6 @@ describe('diagnostics (T-047)', () => {
   });
 
   it.each([
-    ['sys_created_on>=javascript:gs.daysAgoStart(7)', 'sys_created_onRELATIVEGE@day@ago@7'],
-    ['sys_created_on<javascript:gs.hoursAgo(3)', 'sys_created_onRELATIVELT@hour@ago@3'],
-    ['opened_at>javascript:gs.quartersAgoStart(1)', 'opened_atRELATIVEGT@month@ago@3'],
-    [
-      "sys_created_on>=javascript:gs.dateGenerate('2026-11-01','00:00:00')",
-      'sys_created_on>=2026-11-01 00:00:00',
-    ],
-    [
-      "sys_created_onBETWEENjavascript:gs.dateGenerate('2026-11-01','start')@javascript:gs.dateGenerate('2026-11-02','end')",
-      'sys_created_onBETWEEN2026-11-01 00:00:00@2026-11-02 23:59:59',
-    ],
-    [
-      "sys_created_onON2026-11-01@javascript:gs.dateGenerate('2026-11-01','start')@javascript:gs.dateGenerate('2026-11-01','end')",
-      'sys_created_onBETWEEN2026-11-01 00:00:00@2026-11-01 23:59:59',
-    ],
-    ['assigned_to=javascript:gs.getUserID()', 'query_records on sys_user'],
-    ['assignment_groupINjavascript:getMyGroups()', 'sys_user_grmember'],
-    ['assigned_toDYNAMIC90d1921e5f510100a9ad2572f2b477fe', "signed-in user's sys_id"],
     ['stateVALCHANGES', 'get_record_history'],
     ['RLQUERYtask_sla.task,>=1^ENDRLQUERY', 'sys_idIN'],
     ['IR_AND_OR_QUERY=foo', '`text` parameter'],
@@ -414,12 +377,7 @@ describe('diagnostics (T-047)', () => {
   });
 
   it('suggestions with a native rewrite pass the validator', () => {
-    for (const q of [
-      'sys_created_on>=javascript:gs.daysAgoStart(7)',
-      "sys_created_on>=javascript:gs.dateGenerate('2026-11-01','00:00:00')",
-      'priority = 2',
-      'Priority=1',
-    ]) {
+    for (const q of ['priority = 2', 'Priority=1']) {
       const rewrite = (error(q).suggestion ?? '').replace(/ \(.*\)$/, '');
       expect(parseEncodedQuery(rewrite).ok, `${q} → ${rewrite}`).toBe(true);
     }
@@ -487,5 +445,118 @@ describe('published filter schema (T-048)', () => {
       [...realOps].every((o) => ops(json).has(o)),
       [...realOps].join(' '),
     ).toBe(true);
+  });
+});
+
+describe('a condition that fits no form says what was expected (T-048)', () => {
+  const days = [
+    { field: 'sys_created_on', op: 'within_last', value: { amount: 30, unit: 'days' } },
+  ];
+
+  it.each([
+    ['published', PublishedWhereSchema],
+    ['validated', WhereSchema],
+  ])('%s schema', (_name, schema) => {
+    const r = schema.safeParse(days);
+    expect(r.success).toBe(false);
+    const message = r.error?.issues[0]?.message ?? '';
+    expect(message).not.toBe('Invalid input');
+    for (const unit of RELATIVE_UNITS) expect(message).toContain(unit);
+    expect(message).toContain('within_last');
+  });
+
+  it('the singular unit it asks for is accepted', () => {
+    const fixed = [{ ...days[0], value: { amount: 30, unit: 'day' } }];
+    expect(PublishedWhereSchema.safeParse(fixed).success).toBe(true);
+    expect(WhereSchema.safeParse(fixed).success).toBe(true);
+  });
+});
+
+describe('relative dates reach ServiceNow in its own units (T-049)', () => {
+  const compiled = (unit: string, amount: number) =>
+    compileFilter({
+      where: [{ field: 'sys_created_on', op: 'within_last', value: { amount, unit } }],
+    } as never);
+
+  it.each([
+    ['minute', 5, '@minute@ago@5'],
+    ['hour', 5, '@hour@ago@5'],
+    ['day', 30, '@dayofweek@ago@30'],
+    ['week', 2, '@dayofweek@ago@14'],
+    ['month', 2, '@month@ago@2'],
+    ['quarter', 1, '@month@ago@3'],
+    ['year', 1, '@year@ago@1'],
+  ])('structured %s', (unit, amount, native) => {
+    const r = compiled(unit, amount);
+    expect(r.ok && r.value.query).toContain(`sys_created_onRELATIVEGE${native}`);
+  });
+
+  it.each([
+    ['sys_created_onRELATIVEGE@day@ago@7', 'sys_created_onRELATIVEGE@dayofweek@ago@7'],
+    ['due_dateRELATIVELE@week@ahead@2', 'due_dateRELATIVELE@dayofweek@ahead@14'],
+    ['sys_updated_onRELATIVELT@dayofweek@ago@1', 'sys_updated_onRELATIVELT@dayofweek@ago@1'],
+    ['sys_created_onRELATIVEGE@quarter@ago@1', 'sys_created_onRELATIVEGE@quarter@ago@1'],
+  ])('raw %s', (raw, sent) => {
+    const r = parseEncodedQuery(raw);
+    if (!r.ok) throw new Error(r.error.message);
+    expect(serializeQuery(r.value)).toBe(sent);
+    if (raw !== sent) expect(r.value.normalizations.join()).toContain('→');
+  });
+
+  it('a week count too large for ServiceNow is refused, not sent', () => {
+    expect(parseEncodedQuery('aRELATIVEGE@week@ago@9999').ok).toBe(false);
+    expect(compiled('week', 9999).ok).toBe(false);
+  });
+
+  it('other units stay refused', () => {
+    for (const unit of ['days', 'fortnight', 'DAY']) {
+      expect(parseEncodedQuery(`aRELATIVEGE@${unit}@ago@1`).ok, unit).toBe(false);
+    }
+  });
+});
+
+describe('script values and the date operators ServiceNow writes (ADR-018)', () => {
+  it.each([
+    'sys_created_onONToday@javascript:gs.beginningOfToday()@javascript:gs.endOfToday()',
+    'sys_created_onNOTONToday@javascript:gs.beginningOfToday()@javascript:gs.endOfToday()',
+    'sys_created_on>=javascript:gs.daysAgoStart(7)',
+    'sys_created_on<javascript:gs.beginningOfToday()',
+    "sys_created_onBETWEENjavascript:gs.dateGenerate('2026-11-01','start')@javascript:gs.dateGenerate('2026-11-02','end')",
+    "sys_created_onDATEPARTMonday@javascript:gs.datePart('dayofweek','monday','EE')",
+    'assigned_to=javascript:gs.getUserID()',
+    'assignment_groupINjavascript:getMyGroups()',
+    'sys_created_onRELATIVEEE@dayofweek@ago@3',
+  ])('%s is sent as written', (q) => {
+    const r = parseEncodedQuery(q);
+    if (!r.ok) throw new Error(r.error.message);
+    expect(serializeQuery(r.value)).toBe(q);
+  });
+
+  it('a script value or DYNAMIC warns that it runs as script; other conditions do not', () => {
+    const warnings = (q: string) => {
+      const r = parseEncodedQuery(q);
+      if (!r.ok) throw new Error(r.error.message);
+      return r.value.warnings.join(' ');
+    };
+    expect(warnings('assigned_to=javascript:gs.getUserID()')).toMatch(/server-side script/);
+    expect(warnings('assigned_toDYNAMIC90d1921e5f510100a9ad2572f2b477fe')).toMatch(/server-side/);
+    expect(warnings('short_descriptionLIKEjavascript')).toBe('');
+  });
+
+  it('structured values and text search may hold a script value too', () => {
+    const r = compileFilter({ where: [{ field: 'a', op: '=', value: 'javascript:gs.x()' }] });
+    expect(r.ok).toBe(true);
+  });
+
+  it('sub-queries, UI keywords and ^ in a value stay refused', () => {
+    for (const q of [
+      'RLQUERYtask_sla.task,>=1^ENDRLQUERY',
+      'SUBQUERYx',
+      'JOINincident.a=b.c',
+      'GOTOnumber=1',
+      'stateVALCHANGES',
+    ]) {
+      expect(parseEncodedQuery(q).ok, q).toBe(false);
+    }
   });
 });

@@ -63,7 +63,7 @@ All ServiceNow content is untrusted data. Nothing in a record changes how the co
 | `in` `not_in` | list |
 | `is_empty` `is_not_empty` | none |
 | `between` | `[low, high]` |
-| `within_last` `older_than` | `{"amount": 7, "unit": "day"}` |
+| `within_last` `older_than` | `{"amount": 7, "unit": "day"}`; unit: `minute` `hour` `day` `week` `month` `quarter` `year`. Sent as ServiceNow writes them: `day` as `@dayofweek@`, `week` as 7 days, `quarter` as 3 months |
 
 `any_of` is 2–10 alternative `where` lists. `encoded_query` is a raw ServiceNow query and can't be combined with `where`, `any_of`, `text` or `order_by`.
 
@@ -77,16 +77,14 @@ A query copied from a list ("Copy query") or written as in ServiceNow's docs nor
 - `ref_<table>` downcasts in a dot-walk: `cmdb_ci.ref_cmdb_ci_server.os=Linux`.
 - Code text in a value (`scriptLIKEgs.addErrorMessage`, `short_descriptionLIKEnew laptop`) is fine. Only `javascript:` is refused, because ServiceNow would run it.
 
+Sent as written, with a warning hint when they run as script (ADR-018): `javascript:` values (`sys_created_onONToday@javascript:gs.beginningOfToday()@javascript:gs.endOfToday()`, `>=javascript:gs.daysAgoStart(7)`), `DYNAMIC`, `ON`, `NOTON`, `DATEPART`, `MORETHAN`, `LESSTHAN`, `RELATIVEEE`.
+
 Not supported, with the alternative the error suggests:
 
 | Written | Why | Instead |
 | ------- | --- | ------- |
-| `javascript:…` values | ServiceNow runs them as script | The literal value: `>=javascript:gs.daysAgoStart(7)` → `RELATIVEGE@day@ago@7`; `gs.dateGenerate('2026-11-01','00:00:00')` → `2026-11-01 00:00:00` |
-| `ON`, `NOTON`, `DATEPART` | Their values are script | `BETWEEN` with literal date-times, or `RELATIVEGE` |
-| `DYNAMIC` ("Me", "My groups") | Runs a stored script | Look up the sys_id(s), then `=` / `IN` |
 | `RLQUERY`, `SUBQUERY`, `JOIN` | Fields of another table can't be checked against the dictionary | Query the related table, then `sys_idIN…`; or `get_related_records` |
 | `VALCHANGES`, `CHANGESFROM`, `CHANGESTO` | Business-rule conditions only | `get_record_history` or `sys_audit` |
-| `MORETHAN`, `LESSTHAN`, `RELATIVEEE` | Not verified on a live instance | `GT_FIELD` / `LT_FIELD`, `RELATIVEGE` + `RELATIVELT` |
 | `GROUPBY`, `GOTO`, `IR_*` | UI list keywords | `aggregate_records`, remove `GOTO`, the `text` parameter |
 | `priority = 1`, `priority==1`, `Priority=1` | Not encoded-query syntax | `priority=1` (the error gives the rewrite) |
 

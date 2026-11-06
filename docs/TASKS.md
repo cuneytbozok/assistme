@@ -58,6 +58,7 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 | T-046 | Mistral Vibe as a local STDIO client            | 037      | DONE        |
 | T-047 | Native encoded-query compatibility + diagnostics | 018, 034 | DONE        |
 | T-048 | Tool definitions within real client limits      | 033, 043, 046 | BLOCKED |
+| T-049 | Relative dates and script values as ServiceNow writes them | 047 | DONE |
 
 ---
 
@@ -1629,8 +1630,9 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
   - `npm run lint`: 17 errors, 24 warnings, the same as before this change, all in files it doesn't touch (`brag-output/`, `biome.json`, `test/e2e/vibe-client.ts`). `biome check` on the changed files: no errors.
   - AC1, AC2: attack corpus 103 cases (adds aliases, `^EQ` and text-search placements), refused in the shared parser and in the extension's `revalidate` / `buildRequest`; valid corpus 63 cases, each a fixed point of `serializeQuery`. AC3–AC5: `server/test/query-compat.test.ts`, 20 tests (including `aggregate_records` reporting the rewrite). AC6: `tools/list` 11,939 bytes (was 11,938).
   - The new live scenario passes against the in-memory fake (`live-scenarios.test.ts`), which checks its logic only.
+- **Note (2026-11-06, later):** T-049 changed two things this task recorded. `javascript:` is no longer refused (ADR-018), so AC1, AC2 and AC4 hold only for what stays refused. The "rewrite ran" evidence below only showed that the call succeeded: the suggested `@day@` rewrite selected no rows, which T-049 fixed.
 - **Note (2026-11-06):** the user accepted both decisions (no `strict` profile, larger query bounds). The tool definitions changed afterwards in T-048 (server 0.1.9); validation and the query rules didn't, so this task's evidence still applies, and the live run below uses 0.1.9.
-- **Evidence (2026-11-06, live on `dev469966`, the user's Mac, server 0.1.9, reloaded extension, `docs/evidence/T-047/live-native-encoded.json`):**
+- **Evidence (2026-11-06, live on `dev469966`, the user's Mac, server 0.1.9, reloaded extension; `docs/evidence/T-047/live-native-encoded.json` now holds the later T-049 run of the same scenario):**
   - AC7: `npm run e2e:live -- --instance dev469966 --only "native encoded"`: 1 passed, after two failures below. Rows, native vs canonical: `^EQ` 40/40, `NOTLIKE` 59/59, `CONTAINS` 8/8, empty `=` 28/28, empty `!=` 39/39, of 67 incidents (28+39 and 59+8 both make 67). `javascript:` date refused and its rewrite ran. `state=Closed` label hint: yes. `ref_` downcast: 11 rows, all with the field. Longest `IN` accepted: 226 sys_ids, 7,465 characters (7,929 URL-encoded); 227 got HTTP 414 with our explanation.
   - First live run: 230 sys_ids (7,597 characters) got HTTP 414. Second, measuring: 169 sys_ids were refused with "Pagination not supported", because ServiceNow couldn't fit the query into the `Link` header's URLs, well below the URL limit. **Fix:** the extension always sends `sysparm_suppress_pagination_header=true` on `table.list`. Paging is by offset and the `Link` header is never read, so nothing is lost. The parameter is fixed and allowlisted; requests stay GET-only.
   - `npm test` on the Mac: shared 308, extension 318, server 506 passed, 3 skipped. `npm run lint`: 27 errors, all in `brag-output/work/`; none in the code. The earlier lint note's `biome.json` and `vibe-client.ts` errors don't appear here.
@@ -1661,5 +1663,30 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
   - AC4: `chatgpt-client.ts --discovery-only` with codex-cli 0.166.0-alpha.6 for Linux (`docs/evidence/T-048/codex-0.166.0-alpha.6-linux-discovery.json`): 14 tools, read-only; one `exec` turn against a local stand-in model (no API key, no OpenAI request) received all 14 with `query_records` carrying 20 descriptions and the typed `where`.
   - AC5: `vibe-client.ts --discovery-only` with Vibe 3.1.0 for Linux and its scripted model (`docs/evidence/T-048/vibe-3.1.0-linux-discovery.json`): 14 tools; the declaration types `op` as the 17 operators, `value` with the units, and the result with `hints`, `omitted`, `page`.
   - Broker connectivity fails in both runs, as expected: this container has no Chrome or extension.
-- **What remains (the blocker):** AC6, and AC4–AC5 in the user's own apps rather than Linux builds of the same versions. On the Mac: `npm run e2e:chatgpt -- --discovery-only`, `npm run e2e:vibe -- --discovery-only`, and Claude Desktop with the 0.1.9 bundle asked for one filtered read. Not tested anywhere: a real OpenAI or Mistral model receiving these schemas.
+  - AC4, AC5 on the Mac (2026-11-06, server 0.1.9): `npm run e2e:chatgpt -- --discovery-only` and `npm run e2e:vibe -- --discovery-only` passed in the user's ChatGPT Desktop engine and Vibe, with the extension reachable (`docs/evidence/T-048/*-mac-discovery.json`).
+  - Claude Code session in the Desktop app, bundles 0.1.9 and 0.1.10: the tools were accepted and called. **What the model received in that session shows `where` items as empty objects, with no operators or units**, so the first filtered read failed on `"unit": "days"` with a bare `Invalid input`. Where they get lost wasn't established. Hence 0.1.10: the units are in the tool descriptions and a bad condition says what was expected (seen live in the error text; the session kept its earlier tool descriptions).
+- **What remains (the blocker):** AC6 on the final bundle: install 0.1.11 in Claude Desktop and run one filtered read. Not tested anywhere: a real OpenAI or Mistral model receiving these schemas.
 
+### T-049 — Relative dates and script values as ServiceNow writes them
+
+- **Status:** DONE
+- **Purpose:** Date filters failed or silently returned nothing. Found during T-048's live check on 2026-11-06, when `within_last 120 day` returned 0 rows with `complete: true` while `within_last 2 month` returned 8. Requested by the user, who also decided to allow script values (ADR-018).
+- **Dependencies:** T-047
+- **Deliverables:** `packages/shared/src/query/{operators,encoded-query,filter-compiler,diagnostics,normalize}.ts`; `server/src/mcp/filter-check.ts`, `tools/query-records.ts`, `tools/aggregate-records.ts`, `tools/search-code.ts`; tests, both corpora and `server/test/fake-sn.ts`; a row-count check in `test/e2e/scenarios.ts`; `CLAUDE.md` rule 1, `README.md`, `docs/SECURITY.md`, `PRODUCT_SPEC.md`, `ARCHITECTURE.md`, `TOOLS.md`, ADR-018; server 0.1.11.
+- **Findings:**
+  - ServiceNow's relative units, from the user's screenshots of the condition builder: Minutes, Hours, Days, Months, Quarters, Years. Days are `@dayofweek@` (the user's example: `sys_updated_onRELATIVELT@dayofweek@ago@1`). `@day@` and `@week@`, which the connector had sent since T-003, raise no error and match no rows. Only `minute` and `year` had been run live before, and `month` and `hour` worked.
+  - `@quarter@ago@1` isn't "the last 3 months": it selected 40 rows where the rows' dates give 9. Its meaning wasn't worked out.
+  - `now-sdk query` 4.14.0 (read from the package) sends the query unchecked. Its [encoded query guide](https://servicenow.github.io/sdk/guides/encoded-query-guide) writes dates with `javascript:` and doesn't mention `RELATIVE*`. All of the guide's real examples now pass the validator, except its `priority = 2`, which the guide itself calls wrong.
+- **Acceptance criteria:**
+  1. Structured `minute`, `hour`, `day`, `week`, `month`, `quarter` and `year` select the rows their dates say, live, and `within_last` + `older_than` = all rows.
+  2. Raw `@day@` and `@week@` are rewritten to the native form, with a hint; `@dayofweek@` and `@quarter@` are sent as written.
+  3. The `javascript:` date forms of the UI and the guide run live and select the rows their dates say; a script value gets a warning hint.
+  4. The rules, docs and README say a query can run script (ADR-018).
+- **Verification:** `npm run build`, `npm test`, `npm run lint`; `npm run e2e:live -- --instance dev469966`.
+- **Evidence (2026-11-06, the user's Mac, reloaded extension):**
+  - `npm test`: shared 274, extension 269, server 505 passed, 3 skipped. The counts fell because 49 attack cases that are now valid left the corpus (it runs in both shared and extension). `biome check`: errors only in `brag-output/work/`.
+  - AC1, AC3, live on `dev469966` (`docs/evidence/T-047/live-native-encoded.json`), rows / rows the dates allow: 9000 minutes 0/0; 9000 hours 40/40; 60 days 9/9; 20 weeks 40/40; 2 months 9/9; 1 quarter 9/9; 1 year 40/40. `daysAgoStart(60)` 9/9; `<daysAgoStart(1)` 67/67; `ON Last 3 months` 9/9; `ON Today` 0/0, which only shows the term was applied, as no incident was created today. The window checks allow a 2-day margin.
+  - AC2: raw `@day@ago@60` returned the same total as the structured form, with the rewrite in the hints.
+  - Full regression (`docs/evidence/T-034/results.json`): 19 passed, 0 failed, 0 skipped, in 10.5 minutes. Upstream requests match the previous run in all 18 other scenarios; this scenario went from 28 to 50. syslog: 2,509 rows, 1 added and 1 moved during the walk.
+  - The first runs failed, and are why the checks read rows: `within_last 1 quarter` gave 40 rows against 9, so structured `quarter` is now sent as 3 months.
+  - **Not verified:** `DYNAMIC`, `DATEPART`, `NOTON`, `RELATIVEEE`, `MORETHAN` and `LESSTHAN` pass the validator but weren't run live with a row check. Whether a script with side effects runs in a Table API query wasn't tried on purpose.

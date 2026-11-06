@@ -13,6 +13,7 @@ import {
 import {
   MAX_LIST_ITEMS,
   MAX_VALUE_LENGTH,
+  nativeRelativeValue,
   RELATIVE_UNITS,
   TEXT_SEARCH_FIELD,
 } from './operators.js';
@@ -96,10 +97,19 @@ export const FilterConditionSchema = z.union([
 ]);
 export type FilterCondition = z.infer<typeof FilterConditionSchema>;
 
-export const FilterTermSchema = z.union([
-  FilterConditionSchema,
-  z.strictObject({ or: z.array(FilterConditionSchema).min(2).max(10) }),
-]);
+/** How a relative date is written, for tool descriptions and errors: clients may not show types. */
+export const RELATIVE_VALUE_HELP = `{amount, unit}, relative to now, with unit one of ${RELATIVE_UNITS.join(', ')} (singular): {"amount": 30, "unit": "day"}`;
+
+/**
+ * Replaces zod's bare "Invalid input" for a condition that fits no form. Some clients don't show
+ * the model the typed `where` (seen live in a Claude Code session, T-048), so this has to teach.
+ */
+const FILTER_TERM_ERROR = `Not a valid filter condition. Expected {field, op, value} or {or: [2-10 conditions]}. value by op: one stored value for = != > >= < <= contains not_contains starts_with ends_with; a list for in / not_in; [low, high] for between; ${RELATIVE_VALUE_HELP} for within_last / older_than; none for is_empty / is_not_empty.`;
+
+export const FilterTermSchema = z.union(
+  [FilterConditionSchema, z.strictObject({ or: z.array(FilterConditionSchema).min(2).max(10) })],
+  { error: FILTER_TERM_ERROR },
+);
 export type FilterTerm = z.infer<typeof FilterTermSchema>;
 
 export const WhereSchema = z
@@ -144,10 +154,10 @@ const PublishedCondition = z.strictObject({
     .optional()
     .describe('Depends on op (see the tool description); none for is_empty / is_not_empty'),
 });
-const PublishedTerm = z.union([
-  PublishedCondition,
-  z.strictObject({ or: z.array(PublishedCondition).min(2).max(10) }),
-]);
+const PublishedTerm = z.union(
+  [PublishedCondition, z.strictObject({ or: z.array(PublishedCondition).min(2).max(10) })],
+  { error: FILTER_TERM_ERROR },
+);
 export const PublishedWhereSchema = z
   .array(PublishedTerm)
   .min(1)
@@ -242,7 +252,7 @@ function compileCondition(c: FilterCondition): QueryResult<string> {
     case 'within_last':
     case 'older_than':
       operator = c.op === 'within_last' ? 'RELATIVEGE' : 'RELATIVELT';
-      value = `@${c.value.unit}@ago@${c.value.amount}`;
+      value = nativeRelativeValue(c.value.unit, 'ago', c.value.amount);
       break;
     default:
       operator = SIMPLE_OPS[c.op] as string;

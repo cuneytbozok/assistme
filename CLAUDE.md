@@ -12,7 +12,8 @@ We are not building another AI assistant. Claude provides the reasoning, MCP pro
 
 1. **Read-only ServiceNow.**
    - Only `GET` requests to the allowlisted endpoints: Table API `/api/now/table/...` and Stats API `/api/now/stats/...`.
-   - No create, update, delete, execute, deploy, or script execution of any kind.
+   - The connector itself has no create, update, delete, execute or deploy operation.
+   - **Exception, the user's decision of 2026-11-06 (ADR-018):** `javascript:` values and `DYNAMIC` in a query are sent. ServiceNow runs them as server-side script in the signed-in session, so a query can do more than read. Don't describe the connector as unable to run scripts.
 2. **No generic HTTP.**
    - The MCP server sends _operation descriptors_ (closed union), never URLs, methods, or headers.
    - Only the extension's request builder constructs URLs.

@@ -1,11 +1,11 @@
 {
   "note": "Live run against a real instance. Shapes, counts and sizes only; no record content.",
-  "started": "2026-11-06T08:52:27.448Z",
-  "finished": "2026-11-06T08:52:38.801Z",
+  "started": "2026-11-06T09:36:32.796Z",
+  "finished": "2026-11-06T09:36:48.717Z",
   "instance": "dev469966",
   "env": "dev",
   "tools": 14,
-  "tools_list_bytes": 33841,
+  "tools_list_bytes": 34264,
   "released": true,
   "counts": {
     "pass": 1,
@@ -40,6 +40,66 @@
           ]
         },
         "all_incidents": 67,
+        "relative": {
+          "9000 minute": {
+            "rows": 0,
+            "lo": 0,
+            "hi": 0
+          },
+          "9000 hour": {
+            "rows": 40,
+            "lo": 40,
+            "hi": 40
+          },
+          "60 day": {
+            "rows": 9,
+            "lo": 9,
+            "hi": 9
+          },
+          "20 week": {
+            "rows": 40,
+            "lo": 40,
+            "hi": 40
+          },
+          "2 month": {
+            "rows": 9,
+            "lo": 9,
+            "hi": 9
+          },
+          "1 quarter": {
+            "rows": 9,
+            "lo": 9,
+            "hi": 9
+          },
+          "1 year": {
+            "rows": 40,
+            "lo": 40,
+            "hi": 40
+          }
+        },
+        "scripted": {
+          "daysAgoStart(60)": {
+            "rows": 9,
+            "lo": 9,
+            "hi": 9
+          },
+          "older than 1 day": {
+            "rows": 67,
+            "lo": 67,
+            "hi": 67
+          },
+          "ON Today": {
+            "rows": 0,
+            "lo": 0,
+            "hi": 0
+          },
+          "ON Last 3 months": {
+            "rows": 9,
+            "lo": 9,
+            "hi": 9
+          }
+        },
+        "native_quarter_rows": 40,
         "label_hint": true,
         "long_in_accepted_items": 226,
         "long_in_accepted_query_chars": 7465,
@@ -49,9 +109,9 @@
         "downcast_rows": 11
       },
       "measure": {
-        "calls": 25,
-        "max_result_chars": 2712,
-        "requests_used": 28
+        "calls": 45,
+        "max_result_chars": 15394,
+        "requests_used": 50
       }
     }
   ]

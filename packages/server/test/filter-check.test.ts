@@ -59,7 +59,7 @@ describe('buildFilterCheck: no false alarms', () => {
     ['reference by display value', 'ref=Joe', { ref: ID }],
     ['reference contains', 'refLIKEJoe', { ref: ID }],
     ['date in another time zone', 'when=2020-01-01 10:00:00', { when: '2020-01-01 02:00:00' }],
-    ['relative date', 'whenRELATIVEGE@day@ago@1', { when: '2000-01-01 00:00:00' }],
+    ['relative date', 'whenRELATIVEGE@dayofweek@ago@1', { when: '2000-01-01 00:00:00' }],
     ['not-equal', 'text!=abc', { text: 'abc' }],
     ['dot-walk', 'ref.name=x', { ref: ID, 'ref.name': 'y' }],
     ['blank value, maybe a field ACL', 'text=abc', { text: '' }],

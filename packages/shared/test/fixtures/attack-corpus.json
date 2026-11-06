@@ -1,212 +1,8 @@
 [
   {
-    "name": "js in IN list",
-    "query": "sys_idINjavascript:gs.getUser().getID()",
-    "expect": "UNSAFE_QUERY",
-    "allowTextSearch": false
-  },
-  {
-    "name": "js deleteMultiple",
-    "query": "sys_id=javascript:new GlideRecord('incident').deleteMultiple()",
-    "expect": "UNSAFE_QUERY",
-    "allowTextSearch": false
-  },
-  {
-    "name": "js mixed case in LIKE",
-    "query": "short_descriptionLIKEJavaScript:alert(1)",
-    "expect": "UNSAFE_QUERY",
-    "allowTextSearch": false
-  },
-  {
-    "name": "js upper",
-    "query": "assigned_to=JAVASCRIPT:gs.getUserID()",
-    "expect": "UNSAFE_QUERY",
-    "allowTextSearch": false
-  },
-  {
-    "name": "js alternating case",
-    "query": "assigned_to=JaVaScRiPt:gs.getUserID()",
-    "expect": "UNSAFE_QUERY",
-    "allowTextSearch": false
-  },
-  {
-    "name": "js with space",
-    "query": "sys_id=java script:gs.getUserID()",
-    "expect": "UNSAFE_QUERY",
-    "allowTextSearch": false
-  },
-  {
     "name": "js with tab (control char)",
     "query": "sys_id=java\tscript:gs.getUserID()",
     "expect": "INVALID_INPUT",
-    "allowTextSearch": false
-  },
-  {
-    "name": "js url-encoded",
-    "query": "sys_id=%6Aavascript:gs.getUserID()",
-    "expect": "UNSAFE_QUERY",
-    "allowTextSearch": false
-  },
-  {
-    "name": "js double url-encoded",
-    "query": "sys_id=%256Aavascript:gs.getUserID()",
-    "expect": "UNSAFE_QUERY",
-    "allowTextSearch": false
-  },
-  {
-    "name": "js fully url-encoded colon",
-    "query": "sys_id=javascript%3Ags.getUserID()",
-    "expect": "UNSAFE_QUERY",
-    "allowTextSearch": false
-  },
-  {
-    "name": "js decimal html entity",
-    "query": "sys_id=&#106;avascript:gs.getUserID()",
-    "expect": "UNSAFE_QUERY",
-    "allowTextSearch": false
-  },
-  {
-    "name": "js hex html entity",
-    "query": "sys_id=&#x6A;avascript:gs.getUserID()",
-    "expect": "UNSAFE_QUERY",
-    "allowTextSearch": false
-  },
-  {
-    "name": "js &colon; entity",
-    "query": "sys_id=javascript&colon;gs.getUserID()",
-    "expect": "UNSAFE_QUERY",
-    "allowTextSearch": false
-  },
-  {
-    "name": "js fullwidth (NFKC)",
-    "query": "sys_id=ｊａｖａｓｃｒｉｐｔ:gs.getUserID()",
-    "expect": "UNSAFE_QUERY",
-    "allowTextSearch": false
-  },
-  {
-    "name": "js zero-width space",
-    "query": "sys_id=java​script:gs.getUserID()",
-    "expect": "UNSAFE_QUERY",
-    "allowTextSearch": false
-  },
-  {
-    "name": "js soft hyphen",
-    "query": "sys_id=java­script:gs.getUserID()",
-    "expect": "UNSAFE_QUERY",
-    "allowTextSearch": false
-  },
-  {
-    "name": "js bidi override",
-    "query": "sys_id=java‮script:gs.getUserID()",
-    "expect": "UNSAFE_QUERY",
-    "allowTextSearch": false
-  },
-  {
-    "name": "js BOM inside",
-    "query": "sys_id=java﻿script:gs.getUserID()",
-    "expect": "UNSAFE_QUERY",
-    "allowTextSearch": false
-  },
-  {
-    "name": "js \\u escape",
-    "query": "sys_id=\\u006aavascript:gs.getUserID()",
-    "expect": "UNSAFE_QUERY",
-    "allowTextSearch": false
-  },
-  {
-    "name": "js \\u{} escape",
-    "query": "sys_id=\\u{6a}avascript:gs.getUserID()",
-    "expect": "UNSAFE_QUERY",
-    "allowTextSearch": false
-  },
-  {
-    "name": "js \\x escape",
-    "query": "sys_id=\\x6aavascript:gs.getUserID()",
-    "expect": "UNSAFE_QUERY",
-    "allowTextSearch": false
-  },
-  {
-    "name": "js dotted letters",
-    "query": "sys_id=j.a.v.a.s.c.r.i.p.t:gs.getUserID()",
-    "expect": "UNSAFE_QUERY",
-    "allowTextSearch": false
-  },
-  {
-    "name": "js in BETWEEN",
-    "query": "sys_created_onBETWEENjavascript:gs.dateGenerate('2026-01-01','00:00:00')@javascript:gs.endOfToday()",
-    "expect": "UNSAFE_QUERY",
-    "allowTextSearch": false
-  },
-  {
-    "name": "js after ^NQ",
-    "query": "active=true^NQsys_id=javascript:gs.getUserID()",
-    "expect": "UNSAFE_QUERY",
-    "allowTextSearch": false
-  },
-  {
-    "name": "js after ^OR",
-    "query": "active=true^ORsys_id=javascript:gs.getUserID()",
-    "expect": "UNSAFE_QUERY",
-    "allowTextSearch": false
-  },
-  {
-    "name": "js in STARTSWITH",
-    "query": "nameSTARTSWITHjavascript:gs.getUserID()",
-    "expect": "UNSAFE_QUERY",
-    "allowTextSearch": false
-  },
-  {
-    "name": "js in NOT IN",
-    "query": "stateNOT IN1,javascript:gs.getUserID()",
-    "expect": "UNSAFE_QUERY",
-    "allowTextSearch": false
-  },
-  {
-    "name": "js in text search",
-    "query": "123TEXTQUERY321=javascript:gs.getUserID()",
-    "expect": "UNSAFE_QUERY",
-    "allowTextSearch": true
-  },
-  {
-    "name": "DYNAMIC filter",
-    "query": "assigned_toDYNAMIC90d1921e5f510100a9ad2572f2b477fe",
-    "expect": "UNSAFE_QUERY",
-    "allowTextSearch": false
-  },
-  {
-    "name": "ON with js",
-    "query": "sys_created_onONToday@javascript:gs.beginningOfToday()@javascript:gs.endOfToday()",
-    "expect": "UNSAFE_QUERY",
-    "allowTextSearch": false
-  },
-  {
-    "name": "ON plain",
-    "query": "sys_created_onONToday",
-    "expect": "UNSAFE_QUERY",
-    "allowTextSearch": false
-  },
-  {
-    "name": "NOTON",
-    "query": "sys_created_onNOTONToday@x@y",
-    "expect": "UNSAFE_QUERY",
-    "allowTextSearch": false
-  },
-  {
-    "name": "DATEPART",
-    "query": "sys_created_onDATEPARTMonday@javascript:gs.datePart('dayofweek','monday','EE')",
-    "expect": "UNSAFE_QUERY",
-    "allowTextSearch": false
-  },
-  {
-    "name": "MORETHAN",
-    "query": "sys_updated_onMORETHANsys_created_on@hour@after@1",
-    "expect": "UNSAFE_QUERY",
-    "allowTextSearch": false
-  },
-  {
-    "name": "LESSTHAN",
-    "query": "sys_updated_onLESSTHANsys_created_on@hour@after@1",
-    "expect": "UNSAFE_QUERY",
     "allowTextSearch": false
   },
   {
@@ -224,12 +20,6 @@
   {
     "name": "CHANGESTO",
     "query": "stateCHANGESTO2",
-    "expect": "UNSAFE_QUERY",
-    "allowTextSearch": false
-  },
-  {
-    "name": "RELATIVEEE",
-    "query": "sys_created_onRELATIVEEE@day@ago@1",
     "expect": "UNSAFE_QUERY",
     "allowTextSearch": false
   },
@@ -446,7 +236,7 @@
   {
     "name": "RELATIVE js",
     "query": "sys_created_onRELATIVEGE@javascript:gs.getUserID()",
-    "expect": "UNSAFE_QUERY",
+    "expect": "INVALID_INPUT",
     "allowTextSearch": false
   },
   {
@@ -492,78 +282,6 @@
     "allowTextSearch": true
   },
   {
-    "name": "js space before colon",
-    "query": "sys_id=javascript :gs.getUserID()",
-    "expect": "UNSAFE_QUERY",
-    "allowTextSearch": false
-  },
-  {
-    "name": "js spaces everywhere",
-    "query": "sys_id=j a v a s c r i p t : gs.getUserID()",
-    "expect": "UNSAFE_QUERY",
-    "allowTextSearch": false
-  },
-  {
-    "name": "js double-encoded colon",
-    "query": "sys_id=javascript%253Ags.getUserID()",
-    "expect": "UNSAFE_QUERY",
-    "allowTextSearch": false
-  },
-  {
-    "name": "js decimal entity colon",
-    "query": "sys_id=javascript&#58;gs.getUserID()",
-    "expect": "UNSAFE_QUERY",
-    "allowTextSearch": false
-  },
-  {
-    "name": "js hex entity colon",
-    "query": "sys_id=javascript&#x3A;gs.getUserID()",
-    "expect": "UNSAFE_QUERY",
-    "allowTextSearch": false
-  },
-  {
-    "name": "js unicode escape colon",
-    "query": "sys_id=javascript\\u003ags.getUserID()",
-    "expect": "UNSAFE_QUERY",
-    "allowTextSearch": false
-  },
-  {
-    "name": "js fullwidth colon",
-    "query": "sys_id=javascript：gs.getUserID()",
-    "expect": "UNSAFE_QUERY",
-    "allowTextSearch": false
-  },
-  {
-    "name": "js small colon",
-    "query": "sys_id=javascript﹕gs.getUserID()",
-    "expect": "UNSAFE_QUERY",
-    "allowTextSearch": false
-  },
-  {
-    "name": "js zero-width before colon",
-    "query": "sys_id=javascript​:gs.getUserID()",
-    "expect": "UNSAFE_QUERY",
-    "allowTextSearch": false
-  },
-  {
-    "name": "js mid-value",
-    "query": "short_descriptionLIKEhello javascript:gs.getUserID()",
-    "expect": "UNSAFE_QUERY",
-    "allowTextSearch": false
-  },
-  {
-    "name": "js after a word",
-    "query": "short_descriptionLIKEnotjavascript:gs.getUserID()",
-    "expect": "UNSAFE_QUERY",
-    "allowTextSearch": false
-  },
-  {
-    "name": "js in list after harmless word",
-    "query": "sys_idINjavascript,javascript:gs.getUserID()",
-    "expect": "UNSAFE_QUERY",
-    "allowTextSearch": false
-  },
-  {
     "name": "conditions after ^EQ",
     "query": "active=true^EQ^priority=1",
     "expect": "INVALID_INPUT",
@@ -586,18 +304,6 @@
     "query": "a=1^NQ123TEXTQUERY321=foo",
     "expect": "INVALID_INPUT",
     "allowTextSearch": true
-  },
-  {
-    "name": "js through CONTAINS alias",
-    "query": "short_descriptionCONTAINSjavascript:gs.getUserID()",
-    "expect": "UNSAFE_QUERY",
-    "allowTextSearch": false
-  },
-  {
-    "name": "js through NOTLIKE alias",
-    "query": "nameNOTLIKEjavascript:gs.getUserID()",
-    "expect": "UNSAFE_QUERY",
-    "allowTextSearch": false
   },
   {
     "name": "js after ^EQ",

@@ -58,9 +58,8 @@ export function hasControlChars(value: string): boolean {
 }
 
 /**
- * Enforced everywhere (server + extension): ServiceNow evaluates `javascript:` values
- * server-side, so that prefix is rejected in any disguise, anywhere in any value. The word alone
- * runs nothing, and it is common in table names and in text people search for (ADR-005 addendum).
+ * ServiceNow evaluates `javascript:` values server-side. Allowed since ADR-018, so this no longer
+ * refuses anything: it decides when a value gets the warning hint, and when rows can't be checked.
  */
 export function containsScriptMarker(value: string): boolean {
   const n = normalizeForInspection(value);

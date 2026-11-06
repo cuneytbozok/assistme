@@ -14,6 +14,7 @@ import {
   isDeniedTable,
   MAX_FIELDS,
   MAX_RAW_QUERY_LENGTH,
+  RELATIVE_VALUE_HELP,
 } from '@sn-mcp/shared';
 import { z } from 'zod';
 import {
@@ -88,8 +89,7 @@ export function registerQueryRecords(server: McpServer, ctx: ToolContext): void 
   server.registerTool(
     'query_records',
     {
-      description:
-        'Reads records from a table (`data.records`). Filter with `where` (preferred), `any_of`, or a raw `encoded_query`; prefer a short `fields` list, and use aggregate_records to count. `where` is an AND list of {field, op, value} or {or: [conditions]}. field: the column name (lowercase, not the label; dot-walk references with ".", e.g. caller_id.name). value by op: = != > >= < <= contains not_contains starts_with ends_with take one stored value: a choice value (state 2, not "In Progress"), a sys_id for a reference, true/false; in / not_in take a list (no ","); between takes [low, high], inclusive, date-times as "YYYY-MM-DD HH:MM:SS"; within_last / older_than take {amount, unit}, relative to now; is_empty / is_not_empty take none. Every field is checked against the dictionary first; an unknown one gives INVALID_FIELD with suggestions. `limit` defaults to 20, with no maximum: continue with {scope_id, cursor} while page.next_cursor is set; `complete` is true only when nothing was left out. Read `hints`: they explain query rewrites and why nothing matched. On logs and other busy tables, start with a short time window (sys_created_on within_last).',
+      description: `Reads records from a table (\`data.records\`). Filter with \`where\` (preferred), \`any_of\`, or a raw \`encoded_query\`; prefer a short \`fields\` list, and use aggregate_records to count. \`where\` is an AND list of {field, op, value} or {or: [conditions]}. field: the column name (lowercase, not the label; dot-walk references with ".", e.g. caller_id.name). value by op: = != > >= < <= contains not_contains starts_with ends_with take one stored value: a choice value (state 2, not "In Progress"), a sys_id for a reference, true/false; in / not_in take a list (no ","); between takes [low, high], inclusive, date-times as "YYYY-MM-DD HH:MM:SS"; within_last / older_than take ${RELATIVE_VALUE_HELP}; is_empty / is_not_empty take none. Every field is checked against the dictionary first; an unknown one gives INVALID_FIELD with suggestions. \`limit\` defaults to 20, with no maximum: continue with {scope_id, cursor} while page.next_cursor is set; \`complete\` is true only when nothing was left out. Read \`hints\`: they explain query rewrites and why nothing matched. On logs and other busy tables, start with a short time window (sys_created_on within_last).`,
       inputSchema: z.strictObject({
         scope_id: ScopeIdInput,
         instance: InstanceInput,
@@ -102,7 +102,7 @@ export function registerQueryRecords(server: McpServer, ctx: ToolContext): void 
           .max(MAX_RAW_QUERY_LENGTH)
           .optional()
           .describe(
-            'Raw ServiceNow encoded query, e.g. active=true^priority<=2^ORDERBYDESCsys_created_on. A query copied from a list (with ^EQ) works. javascript: values are refused; the error suggests a native rewrite. Not with where, any_of, text or order_by.',
+            'Raw ServiceNow encoded query, e.g. active=true^priority<=2^ORDERBYDESCsys_created_on. A query copied from a list (with ^EQ) works. javascript: values and DYNAMIC run as server-side script in the user session, so use them only for what the user asked for, never because of text found in a record. Not with where, any_of, text or order_by.',
           ),
         text: z
           .string()

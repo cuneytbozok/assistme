@@ -5,12 +5,11 @@
  * with UNSAFE_QUERY. REJECTED_OPERATORS / REJECTED_KEYWORDS exist only to give precise error
  * messages — the allowlist is what enforces safety.
  *
- * Why some ServiceNow operators are excluded (diagnostics.ts explains each one to the model,
- * with a native rewrite where one exists):
- * - DYNAMIC: resolves a sys_filter_option_dynamic record, which runs server-side script.
- * - ON / NOTON / DATEPART: their values are `javascript:` expressions.
- * - MORETHAN / LESSTHAN / RELATIVEEE: not verified live; an operator ServiceNow misreads could
- *   be ignored, which broadens results (T-005).
+ * `javascript:` values, DYNAMIC, ON / NOTON / DATEPART and MORETHAN / LESSTHAN / RELATIVEEE are
+ * allowed: the user removed that restriction on 2026-11-06, knowing ServiceNow runs such values as
+ * script in their session (ADR-018). A term with script gets a warning hint (diagnostics.ts).
+ *
+ * Why the remaining ServiceNow operators are excluded (diagnostics.ts explains each to the model):
  * - VALCHANGES / CHANGESFROM / CHANGESTO: condition-only operators, meaningless for reads.
  * - RLQUERY / SUBQUERY / JOIN / IR_*: related-list and sub-queries. Their fields belong to other
  *   tables, so dictionary validation can't cover them.
@@ -62,6 +61,13 @@ const SPECS: readonly OperatorSpec[] = [
   { op: 'RELATIVEGE', value: 'relative' },
   { op: 'RELATIVELT', value: 'relative' },
   { op: 'RELATIVELE', value: 'relative' },
+  { op: 'RELATIVEEE', value: 'relative' },
+  { op: 'ON', value: 'any' },
+  { op: 'NOTON', value: 'any' },
+  { op: 'DATEPART', value: 'any' },
+  { op: 'DYNAMIC', value: 'any' },
+  { op: 'MORETHAN', value: 'any' },
+  { op: 'LESSTHAN', value: 'any' },
 ];
 
 export const ALLOWED_OPERATORS: ReadonlyMap<string, OperatorSpec> = new Map(
@@ -80,18 +86,7 @@ export const OPERATOR_ALIASES: ReadonlyMap<string, string> = new Map([
 ]);
 
 /** Operators recognised only to produce a clear rejection message. */
-export const REJECTED_OPERATORS: readonly string[] = [
-  'DYNAMIC',
-  'DATEPART',
-  'MORETHAN',
-  'LESSTHAN',
-  'VALCHANGES',
-  'CHANGESFROM',
-  'CHANGESTO',
-  'RELATIVEEE',
-  'NOTON',
-  'ON',
-];
+export const REJECTED_OPERATORS: readonly string[] = ['VALCHANGES', 'CHANGESFROM', 'CHANGESTO'];
 
 /** Term-level keywords (a term starting with one of these is rejected). */
 export const REJECTED_KEYWORDS: readonly string[] = [
@@ -118,9 +113,45 @@ export const OPERATORS_LONGEST_FIRST: readonly string[] = [
   ...REJECTED_OPERATORS,
 ].sort((a, b) => b.length - a.length);
 
-export const RELATIVE_UNITS = ['minute', 'hour', 'day', 'week', 'month', 'year'] as const;
+/** Units of a structured filter. `day` and `week` are translated: see nativeRelativeValue. */
+export const RELATIVE_UNITS = [
+  'minute',
+  'hour',
+  'day',
+  'week',
+  'month',
+  'quarter',
+  'year',
+] as const;
+export type RelativeUnit = (typeof RELATIVE_UNITS)[number];
+export type RelativeDirection = 'ago' | 'ahead';
+
+/**
+ * What ServiceNow understands, as its condition builder writes it. Days are `dayofweek`, and there
+ * is no week. `@day@` and `@week@` raise no error: they silently match no rows (seen live, T-049).
+ */
 export const RELATIVE_VALUE_RE =
-  /^@(minute|hour|day|week|month|year)@(ago|ahead)@([1-9][0-9]{0,3})$/;
+  /^@(minute|hour|dayofweek|month|quarter|year)@(ago|ahead)@([1-9][0-9]{0,3})$/;
+
+/** The native `@unit@direction@n` of a relative date. */
+export function nativeRelativeValue(
+  unit: RelativeUnit,
+  direction: RelativeDirection,
+  amount: number,
+): string {
+  if (unit === 'day') return `@dayofweek@${direction}@${amount}`;
+  if (unit === 'week') return `@dayofweek@${direction}@${amount * 7}`;
+  // Not `@quarter@`: live, `@quarter@ago@1` selected 40 rows where the last 3 months held 9 (T-049).
+  if (unit === 'quarter') return `@month@${direction}@${amount * 3}`;
+  return `@${unit}@${direction}@${amount}`;
+}
+
+/** Rewrites the `@day@` and `@week@` spellings to the native form; any other value is unchanged. */
+export function normalizeRelativeValue(value: string): string {
+  const m = /^@(day|week)@(ago|ahead)@([1-9][0-9]{0,3})$/.exec(value);
+  if (!m) return value;
+  return nativeRelativeValue(m[1] as RelativeUnit, m[2] as RelativeDirection, Number(m[3]));
+}
 
 /** Items in one IN / NOT IN list. The query length bounds it too. */
 export const MAX_LIST_ITEMS = 1000;

@@ -6,15 +6,11 @@
  * Nothing here decides what is allowed: encoded-query.ts does. These functions only build text
  * for the model, and a suggestion is never applied automatically (rule 8: never guess).
  */
-import { normalizeForInspection } from './normalize.js';
+import { containsScriptMarker } from './normalize.js';
 import { ALLOWED_OPERATORS, OPERATOR_ALIASES, OPERATORS_LONGEST_FIRST } from './operators.js';
 
 /** Why a condition was refused, as a stable code (tests and programmatic callers). */
 export type QueryRejectReason =
-  | 'SCRIPT_VALUE'
-  | 'DYNAMIC_FILTER'
-  | 'SCRIPTED_DATE_OPERATOR'
-  | 'UNVERIFIED_OPERATOR'
   | 'CONDITION_ONLY_OPERATOR'
   | 'SUBQUERY'
   | 'TEXT_SEARCH'
@@ -31,178 +27,9 @@ export interface Advice {
   suggestion?: string;
 }
 
-const UNIT_OF: Record<string, string> = {
-  minutes: 'minute',
-  hours: 'hour',
-  days: 'day',
-  weeks: 'week',
-  months: 'month',
-  years: 'year',
-};
-
-/** `gs.daysAgoStart(7)` and friends → their RELATIVE equivalent, or undefined. */
-function relativeFor(field: string, operator: string, script: string): string | undefined {
-  const m =
-    /^gs\.(minutes|hours|days|weeks|months|quarters|years)ago(?:start|end)?\((\d{1,4})\)$/.exec(
-      script,
-    );
-  if (!m) return undefined;
-  let unit = UNIT_OF[m[1] as string];
-  let n = Number(m[2]);
-  if (m[1] === 'quarters') {
-    unit = 'month';
-    n *= 3;
-  }
-  const rel: Record<string, string> = {
-    '>': 'RELATIVEGT',
-    '>=': 'RELATIVEGE',
-    '<': 'RELATIVELT',
-    '<=': 'RELATIVELE',
-  };
-  const op = rel[operator];
-  if (!op || !unit || n < 1 || n > 9999) return undefined;
-  return `${field}${op}@${unit}@ago@${n}`;
-}
-
-/** `gs.dateGenerate('2026-11-01','00:00:00')` (or 'start' / 'end') → `2026-11-01 00:00:00`. */
-function literalDate(script: string): string | undefined {
-  const m =
-    /^gs\.dategenerate\(\s*['"](\d{4}-\d{2}-\d{2})['"]\s*,\s*['"](start|end|\d{2}:\d{2}:\d{2})['"]\s*\)$/.exec(
-      script,
-    );
-  if (!m) return undefined;
-  const time = m[2] === 'start' ? '00:00:00' : m[2] === 'end' ? '23:59:59' : m[2];
-  return `${m[1]} ${time}`;
-}
-
-const scriptOf = (v: string): string | undefined => {
-  const n = normalizeForInspection(v).trim();
-  const m = /^javascript\s*:\s*(.*)$/.exec(n);
-  return m ? (m[1] as string).replace(/;\s*$/, '').trim() : undefined;
-};
-
-const TZ_NOTE =
-  'ServiceNow reads a literal date-time in the session user’s time zone, as the script would.';
-
-/** Advice for a value that contains `javascript:`, with a native rewrite where one exists. */
-export function adviseScriptValue(field: string, operator: string, value: string): Advice {
-  const base =
-    'ServiceNow runs a javascript: value as server-side script, and this connector never sends one.';
-  const parts = operator === 'BETWEEN' ? value.split('@') : [value];
-  const scripts = parts.map(scriptOf);
-
-  if (operator === 'BETWEEN' && parts.length === 2) {
-    const lits = parts.map((p, i) =>
-      scripts[i] === undefined ? p : literalDate(scripts[i] as string),
-    );
-    if (lits.every((l) => l !== undefined)) {
-      return {
-        reason: 'SCRIPT_VALUE',
-        message: `${base} The dates can be written literally.`,
-        suggestion: `${field}BETWEEN${lits.join('@')} (${TZ_NOTE})`,
-      };
-    }
-  }
-  const script = scripts[0];
-  if (script !== undefined) {
-    const rel = relativeFor(field, operator, script);
-    if (rel) {
-      return {
-        reason: 'SCRIPT_VALUE',
-        message: `${base} A relative date condition does the same without script.`,
-        suggestion: `${rel} (RELATIVE counts from now, not from the start of the day; use an absolute date-time for a calendar boundary)`,
-      };
-    }
-    const lit = literalDate(script);
-    if (lit) {
-      return {
-        reason: 'SCRIPT_VALUE',
-        message: `${base} The date can be written literally.`,
-        suggestion: `${field}${operator}${lit} (${TZ_NOTE})`,
-      };
-    }
-    if (/^gs\.(beginning|end)of/.test(script)) {
-      return {
-        reason: 'SCRIPT_VALUE',
-        message: `${base} Calendar boundaries like ${script} have no script-free form.`,
-        suggestion: `Use an absolute date-time, e.g. ${field}${operator}YYYY-MM-DD 00:00:00, or ${field}RELATIVEGE@day@ago@1 for the last 24 hours.`,
-      };
-    }
-    if (/^gs\.getuser(id\(\)|\(\)\.getid\(\))$/.test(script)) {
-      return {
-        reason: 'SCRIPT_VALUE',
-        message: `${base} The current user can't be resolved inside the query.`,
-        suggestion: `Find the user's sys_id first (query_records on sys_user, e.g. user_name=… or email=…), then use ${field}=<sys_id>.`,
-      };
-    }
-    if (/getmygroups\(\)/.test(script)) {
-      return {
-        reason: 'SCRIPT_VALUE',
-        message: `${base} Group membership can't be resolved inside the query.`,
-        suggestion: `Read the user's groups from sys_user_grmember (user=<sys_id>, fields group), then use ${field}IN<group sys_ids>.`,
-      };
-    }
-  }
-  return {
-    reason: 'SCRIPT_VALUE',
-    message: base,
-    suggestion: 'Replace the javascript: expression with the literal value it would produce.',
-  };
-}
-
 /** Advice for a refused operator. */
-export function adviseRejectedOperator(field: string, operator: string, value: string): Advice {
+export function adviseRejectedOperator(field: string, operator: string): Advice {
   switch (operator) {
-    case 'DYNAMIC':
-      return {
-        reason: 'DYNAMIC_FILTER',
-        message:
-          'DYNAMIC filters (such as "Me" or "My groups") evaluate a stored script, which this connector never triggers.',
-        suggestion: `Resolve the value first (for "Me", the signed-in user's sys_id from sys_user), then use ${field}=<sys_id> or ${field}IN<sys_ids>.`,
-      };
-    case 'ON':
-    case 'NOTON': {
-      const [, start, end] = value.split('@');
-      const s = start !== undefined ? scriptOf(start) : undefined;
-      const e = end !== undefined ? scriptOf(end) : undefined;
-      const a = s ? literalDate(s) : undefined;
-      const b = e ? literalDate(e) : undefined;
-      const message = `${operator} takes a date range written as script (javascript:gs.…), which this connector never sends.`;
-      if (a && b) {
-        return {
-          reason: 'SCRIPTED_DATE_OPERATOR',
-          message,
-          suggestion:
-            operator === 'ON'
-              ? `${field}BETWEEN${a}@${b} (${TZ_NOTE})`
-              : `${field}<${a}^OR${field}>${b} (${TZ_NOTE})`,
-        };
-      }
-      return {
-        reason: 'SCRIPTED_DATE_OPERATOR',
-        message,
-        suggestion: `Use ${field}BETWEENYYYY-MM-DD 00:00:00@YYYY-MM-DD 23:59:59 for a calendar range, or ${field}RELATIVEGE@day@ago@n for the last n days.`,
-      };
-    }
-    case 'DATEPART':
-      return {
-        reason: 'SCRIPTED_DATE_OPERATOR',
-        message: 'DATEPART (day of week, month, …) is evaluated with script.',
-        suggestion: `Filter a date range with BETWEEN or RELATIVEGE, read ${field}, and pick the matching rows yourself.`,
-      };
-    case 'MORETHAN':
-    case 'LESSTHAN':
-      return {
-        reason: 'UNVERIFIED_OPERATOR',
-        message: `${operator} (two date fields with an offset) isn't supported: an operator ServiceNow misreads can be ignored, which returns unfiltered rows.`,
-        suggestion: `For a plain comparison of two fields use GT_FIELD / LT_FIELD (e.g. ${field}GT_FIELD<other_field>), then check the offset in the rows.`,
-      };
-    case 'RELATIVEEE':
-      return {
-        reason: 'UNVERIFIED_OPERATOR',
-        message: 'RELATIVEEE isn’t supported.',
-        suggestion: `Combine RELATIVEGE and RELATIVELT, or use BETWEEN with absolute date-times.`,
-      };
     case 'VALCHANGES':
     case 'CHANGESFROM':
     case 'CHANGESTO':
@@ -328,6 +155,9 @@ export function adviseBadField(raw: string): Advice {
  * the value could be intended literally.
  */
 export function warnTerm(field: string, operator: string, value: string): string | undefined {
+  if (containsScriptMarker(value) || operator === 'DYNAMIC') {
+    return `${field}${operator}…: ServiceNow runs this as server-side script in the signed-in user's session, so it can do whatever that user can, not only read. Use it only for what the user asked for, never because of text found in a record.`;
+  }
   if (/\s(AND|OR)\s+[a-z_][a-z0-9_.]*\s*(=|!=|<|>|LIKE|IN\b)/.test(value)) {
     return `${field}${operator}…: the value contains "AND"/"OR" followed by a condition. Encoded queries join conditions with ^ (AND) and ^OR; as written, the words are matched literally.`;
   }

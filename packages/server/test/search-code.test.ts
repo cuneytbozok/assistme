@@ -160,7 +160,7 @@ describe('T-031 search_code', () => {
   it('the pattern goes through value validation; nothing is sent', async () => {
     const h = await harness({ sn: fixture() });
     const scope = await claim(h, 'dev');
-    for (const pattern of ['a^ORb', 'javascript:alert(1)', 'x^NQy']) {
+    for (const pattern of ['a^ORb', 'x^NQy']) {
       const r = await h.call('search_code', { scope_id: scope, pattern });
       expect(['INVALID_INPUT', 'UNSAFE_QUERY'], pattern).toContain(r.error?.code);
     }
@@ -402,7 +402,7 @@ describe('T-031 search_code', () => {
     await h.close();
   });
 
-  it('the word javascript is searchable, finds javascript: lines, and the prefix is refused', async () => {
+  it('javascript and javascript: are searchable as text', async () => {
     const sn = fixture();
     sn.insert('sys_script', {
       name: 'Qualifier',
@@ -414,9 +414,8 @@ describe('T-031 search_code', () => {
     expect(r.ok).toBe(true);
     expect(r.data.matches[0].name).toBe('Qualifier');
     expect(r.data.matches[0].hits[0].snippets[0].lines.join('\n')).toContain('javascript:gs');
-    const refused = await h.call('search_code', { scope_id: scope, pattern: 'javascript:' });
-    expect(refused.error.code).toBe('UNSAFE_QUERY');
-    expect(refused.error.hint).toMatch(/without the colon/);
+    const prefix = await h.call('search_code', { scope_id: scope, pattern: 'javascript:' });
+    expect(prefix.data.matches[0].name).toBe('Qualifier');
     await h.close();
   });
 

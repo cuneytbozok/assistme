@@ -610,8 +610,6 @@ export const SCENARIOS: {
         }),
         'search',
       );
-      const refused = await call('search_code', { scope_id: scope, pattern: 'javascript:' });
-      expectThat(refused?.error?.code === 'UNSAFE_QUERY', 'javascript: must stay refused');
       return { table_described: d?.ok === true, matches: found.data.matches.length };
     },
   },
@@ -697,10 +695,7 @@ export const SCENARIOS: {
           { table: 'incident', where: [{ field: 'zz_no_field_zz', op: '=', value: 1 }] },
           'INVALID_FIELD',
         ],
-        [
-          { table: 'incident', encoded_query: 'short_descriptionLIKEjavascript:gs.log(1)' },
-          'UNSAFE_QUERY',
-        ],
+        [{ table: 'incident', encoded_query: 'priority=1^RLQUERYsys_user' }, 'UNSAFE_QUERY'],
         [{ table: 'sys_user_token' }, 'TABLE_DENIED'],
         [{ table: 'sys_user', fields: ['user_password'] }, 'FORBIDDEN_OPERATION'],
       ];
@@ -778,23 +773,141 @@ export const SCENARIOS: {
         'text search in encoded_query',
       );
 
-      // A script date is refused with a native rewrite, and the rewrite runs.
-      const refused = await call('query_records', {
+      // Relative dates select the rows they say (T-049). A call that merely succeeds proves
+      // nothing: `@day@` also succeeded, and matched no rows. Expected counts come from the dates
+      // of the rows themselves, with a margin for rows near the boundary.
+      const created: number[] = [];
+      await walk(
+        call,
+        'query_records',
+        { table: 'incident', fields: ['sys_created_on'], limit: 10_000 },
+        scope,
+        (r) => {
+          for (const row of r.data.records) {
+            created.push(Date.parse(`${String(rawOf(row.sys_created_on)).replace(' ', 'T')}Z`));
+          }
+          return undefined;
+        },
+      );
+      const cutoff = (unit: string, n: number): number => {
+        const d = new Date();
+        if (unit === 'minute') d.setUTCMinutes(d.getUTCMinutes() - n);
+        if (unit === 'hour') d.setUTCHours(d.getUTCHours() - n);
+        if (unit === 'day') d.setUTCDate(d.getUTCDate() - n);
+        if (unit === 'week') d.setUTCDate(d.getUTCDate() - n * 7);
+        if (unit === 'month') d.setUTCMonth(d.getUTCMonth() - n);
+        if (unit === 'quarter') d.setUTCMonth(d.getUTCMonth() - n * 3);
+        if (unit === 'year') d.setUTCFullYear(d.getUTCFullYear() - n);
+        return d.getTime();
+      };
+      const MARGIN_MS = 2 * 24 * 3_600_000;
+      const relative: Record<string, { rows: number; lo: number; hi: number }> = {};
+      for (const [unit, n] of [
+        ['minute', 9000],
+        ['hour', 9000],
+        ['day', 60],
+        ['week', 20],
+        ['month', 2],
+        ['quarter', 1],
+        ['year', 1],
+      ] as const) {
+        const window = { amount: n, unit };
+        const field = 'sys_created_on';
+        const rows = await total(
+          { where: [{ field, op: 'within_last', value: window }] },
+          `within_last ${n} ${unit}`,
+        );
+        const older = await total(
+          { where: [{ field, op: 'older_than', value: window }] },
+          `older_than ${n} ${unit}`,
+        );
+        const at = cutoff(unit, n);
+        const lo = created.filter((t) => t >= at + MARGIN_MS).length;
+        const hi = created.filter((t) => t >= at - MARGIN_MS).length;
+        relative[`${n} ${unit}`] = { rows, lo, hi };
+        expectThat(
+          rows >= lo && rows <= hi,
+          `within_last ${n} ${unit}: ${rows} rows, the dates say ${lo}-${hi}`,
+        );
+        expectThat(
+          rows + older === created.length,
+          `${n} ${unit}: ${rows}+${older} of ${created.length}`,
+        );
+      }
+      // The date forms the UI and the SDK guide write (ADR-018), checked against the rows.
+      const scripted: Record<string, { rows: number; lo: number; hi: number }> = {};
+      const start = new Date();
+      start.setUTCHours(0, 0, 0, 0);
+      const DAY_MS = 86_400_000;
+      for (const [name, query, from, to] of [
+        [
+          'daysAgoStart(60)',
+          'sys_created_on>=javascript:gs.daysAgoStart(60)',
+          Date.now() - 60 * DAY_MS,
+          Infinity,
+        ],
+        [
+          'older than 1 day',
+          'sys_created_on<javascript:gs.daysAgoStart(1)',
+          0,
+          Date.now() - DAY_MS,
+        ],
+        [
+          'ON Today',
+          'sys_created_onONToday@javascript:gs.beginningOfToday()@javascript:gs.endOfToday()',
+          start.getTime(),
+          start.getTime() + DAY_MS,
+        ],
+        [
+          'ON Last 3 months',
+          'sys_created_onONLast 3 months@javascript:gs.beginningOfLast3Months()@javascript:gs.endOfLast3Months()',
+          Date.now() - 95 * DAY_MS,
+          Infinity,
+        ],
+      ] as const) {
+        const rows = await total({ encoded_query: query }, name);
+        const lo = created.filter((t) => t >= from + MARGIN_MS && t < to - MARGIN_MS).length;
+        const hi = created.filter((t) => t >= from - MARGIN_MS && t < to + MARGIN_MS).length;
+        scripted[name] = { rows, lo, hi };
+        expectThat(rows >= lo && rows <= hi, `${name}: ${rows} rows, the dates say ${lo}-${hi}`);
+      }
+      const atUser = await call('query_records', {
         scope_id: scope,
         table: 'incident',
-        encoded_query: 'sys_created_on>=javascript:gs.daysAgoStart(30)',
+        encoded_query: 'assigned_to=javascript:gs.getUserID()',
+        fields: ['sys_id'],
+        limit: 1,
       });
-      expectThat(refused?.error?.code === 'UNSAFE_QUERY', 'javascript: must stay refused');
-      const rewrite = /Try: (\S+)/.exec(refused.error.hint ?? '')?.[1];
-      expectThat(rewrite === 'sys_created_onRELATIVEGE@day@ago@30', `rewrite: ${rewrite}`);
-      ok(
+      expectThat(
+        (ok(atUser, 'script value').hints ?? []).some((h: string) => /server-side script/.test(h)),
+        'a script value gave no warning',
+      );
+
+      // ServiceNow's own `@quarter@`: sent as written, its meaning only reported.
+      const nativeQuarter = await total(
+        { encoded_query: 'sys_created_onRELATIVEGE@quarter@ago@1' },
+        'raw @quarter@',
+      );
+
+      // The spelling that failed silently is translated, and says so.
+      const rawDay = ok(
         await call('query_records', {
           scope_id: scope,
           table: 'incident',
-          encoded_query: rewrite,
+          encoded_query: 'sys_created_onRELATIVEGE@day@ago@60',
+          fields: ['sys_id'],
           limit: 1,
+          include_total: true,
         }),
-        'the suggested rewrite',
+        'raw @day@',
+      );
+      expectThat(
+        rawDay.page.total === relative['60 day']?.rows,
+        `raw @day@: ${rawDay.page.total}, structured ${relative['60 day']?.rows}`,
+      );
+      expectThat(
+        (rawDay.hints ?? []).some((h: string) => h.includes('@dayofweek@ago@60')),
+        'raw @day@: no hint about the rewrite',
       );
 
       // An empty result explains a choice label used instead of its value.
@@ -868,6 +981,9 @@ export const SCENARIOS: {
       return {
         totals,
         all_incidents: all,
+        relative,
+        scripted,
+        native_quarter_rows: nativeQuarter,
         label_hint: labelHint,
         long_in_accepted_items: accepted,
         long_in_accepted_query_chars: inQuery(accepted).length,

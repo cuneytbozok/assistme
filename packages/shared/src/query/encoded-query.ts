@@ -10,16 +10,16 @@ import {
   adviseKeyword,
   adviseMissingOperator,
   adviseRejectedOperator,
-  adviseScriptValue,
   type QueryRejectReason,
   warnTerm,
 } from './diagnostics.js';
-import { containsScriptMarker, hasControlChars } from './normalize.js';
+import { hasControlChars } from './normalize.js';
 import {
   ALLOWED_OPERATORS,
   END_MARKER,
   MAX_LIST_ITEMS,
   MAX_VALUE_LENGTH,
+  normalizeRelativeValue,
   OPERATOR_ALIASES,
   OPERATORS_LONGEST_FIRST,
   REJECTED_KEYWORDS,
@@ -153,11 +153,6 @@ export function validateValue(operator: string, value: string): QueryResult<stri
       suggestion: 'ServiceNow has no escape for "^"; match a part of the value without it (LIKE).',
     });
   }
-  if (containsScriptMarker(value)) {
-    return fail('UNSAFE_QUERY', 'script values (javascript:) are not allowed', {
-      reason: 'SCRIPT_VALUE',
-    });
-  }
   const bad = (message: string, suggestion?: string) =>
     fail('INVALID_INPUT', message, { reason: 'BAD_VALUE', suggestion });
   switch (spec.value) {
@@ -212,8 +207,8 @@ export function validateValue(operator: string, value: string): QueryResult<stri
       return RELATIVE_VALUE_RE.test(value)
         ? { ok: true, value: [] }
         : bad(
-            `${operator} needs "@unit@ago|ahead@n" (unit: minute…year, n 1–9999)`,
-            `e.g. ${operator}@day@ago@7`,
+            `${operator} needs "@unit@ago|ahead@n" (unit: minute, hour, dayofweek, month, quarter or year; n 1–9999)`,
+            `e.g. ${operator}@dayofweek@ago@7`,
           );
   }
 }
@@ -260,30 +255,34 @@ function parseTerm(raw: string, join: Join, position: number): QueryResult<Parse
     const a = adviseMissingOperator(field, rest);
     return fail('UNSAFE_QUERY', a.message, { ...at, ...a });
   }
-  const value = rest.slice(written.length);
+  const writtenValue = rest.slice(written.length);
   // SQL spellings: as written they would compare with the literal "=2" or ">2".
-  if ((written === '=' && value.startsWith('=')) || (written === '<' && value.startsWith('>'))) {
+  if (
+    (written === '=' && writtenValue.startsWith('=')) ||
+    (written === '<' && writtenValue.startsWith('>'))
+  ) {
     const a = adviseMissingOperator(field, rest);
     return fail('INVALID_INPUT', a.message, { ...at, ...a });
   }
   if (REJECTED_OPERATORS.includes(written)) {
-    const a = adviseRejectedOperator(field, written, value);
+    const a = adviseRejectedOperator(field, written);
     return fail('UNSAFE_QUERY', a.message, { ...at, ...a });
   }
   const operator = OPERATOR_ALIASES.get(written) ?? written;
+  const value =
+    ALLOWED_OPERATORS.get(operator)?.value === 'relative'
+      ? normalizeRelativeValue(writtenValue)
+      : writtenValue;
   const checked = validateValue(operator, value);
   if (!checked.ok) {
-    if (checked.error.reason === 'SCRIPT_VALUE') {
-      const a = adviseScriptValue(field, operator, value);
-      return fail(checked.error.code, a.message, { ...at, ...a });
-    }
     return { ok: false, error: { ...checked.error, ...at } };
   }
   const out: ParsedTerm = {
     term: { field, operator, value, join },
     fields: [field, ...checked.value],
   };
-  if (operator !== written) out.alias = `${written} → ${operator}`;
+  if (operator !== written) out.alias = `operator ${written} → ${operator}`;
+  else if (value !== writtenValue) out.alias = `${writtenValue} → ${value}`;
   const warning = warnTerm(field, operator, value);
   if (warning) out.warning = warning;
   return { ok: true, value: out };
@@ -448,7 +447,7 @@ export function parseEncodedQuery(
   if (nonEmpty.length !== groups.length && nonEmpty.length > 0) {
     return fail('INVALID_INPUT', 'empty query group', { reason: 'STRUCTURE' });
   }
-  for (const a of aliases) normalizations.push(`operator ${a}`);
+  for (const a of aliases) normalizations.push(a);
   const value: ParsedQuery = {
     groups: nonEmpty,
     orderBy,

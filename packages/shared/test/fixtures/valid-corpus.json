@@ -81,11 +81,11 @@
     "allowTextSearch": false
   },
   {
-    "query": "sys_created_onRELATIVELT@day@ago@30",
+    "query": "sys_created_onRELATIVELT@dayofweek@ago@30",
     "allowTextSearch": false
   },
   {
-    "query": "due_dateRELATIVELE@week@ahead@2",
+    "query": "due_dateRELATIVELE@quarter@ahead@2",
     "allowTextSearch": false
   },
   {

@@ -201,7 +201,7 @@ describe('raw queries vs internal conditions', () => {
       query: expect.stringMatching(/^short_descriptionLIKEgs\.getUser\(\)/),
     });
     await expect(
-      s.plan({ table: 'incident', encoded_query: 'short_descriptionLIKEjavascript:gs.getUser()' }),
+      s.plan({ table: 'incident', encoded_query: 'priority=1^RLQUERYsys_user' }),
     ).rejects.toMatchObject({ code: 'UNSAFE_QUERY' });
     await expect(
       s.plan({

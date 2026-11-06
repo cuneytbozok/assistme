@@ -324,7 +324,7 @@ describe('the builder is the only URL constructor', () => {
   });
 });
 
-describe('javascript in query values (ADR-005 addendum, T-034)', () => {
+describe('javascript in query values (ADR-018)', () => {
   const op = (query: string) => ({
     kind: 'table.list',
     table: 'incident',
@@ -341,14 +341,8 @@ describe('javascript in query values (ADR-005 addendum, T-034)', () => {
     }
   });
 
-  it('the prefix is refused here too, in any disguise', () => {
-    for (const q of [
-      'scriptLIKEjavascript:gs.x()',
-      'scriptLIKEjava script :gs.x()',
-      'scriptLIKEjavascript%3Ags.x()',
-      'scriptLIKEjavascript&colon;gs.x()',
-    ]) {
-      expect(() => buildPath(op(q)), q).toThrow();
-    }
+  it('a script value is built into the GET, as the user decided (ADR-018)', () => {
+    const path = buildPath(op('sys_created_on>=javascript:gs.daysAgoStart(7)'));
+    expect(path).toContain('javascript%3Ags.daysAgoStart');
   });
 });

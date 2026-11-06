@@ -123,13 +123,7 @@ describe('executor (path A)', () => {
       code: 'INVALID_INPUT',
     });
     expect(
-      await ex.run('h.service-now.com', { ...listOp, query: 'sys_id=javascript:gs.getUserID()' }),
-    ).toMatchObject({
-      ok: false,
-      code: 'UNSAFE_QUERY',
-    });
-    expect(
-      await ex.run('h.service-now.com', { ...listOp, query: 'ownerDYNAMICabc' }),
+      await ex.run('h.service-now.com', { ...listOp, query: 'priority=1^RLQUERYsys_user' }),
     ).toMatchObject({ ok: false, code: 'UNSAFE_QUERY' });
   });
 

@@ -51,6 +51,13 @@ export class FakeServiceNow {
     const raw = this.value(row, t.field);
     const v = raw == null ? '' : String(raw);
     const list = t.value.split(',');
+    // The one scripted value the mock evaluates; ServiceNow's handling needs a live run (rule 11).
+    const daysAgo = /^javascript:gs\.daysAgoStart\((\d+)\)$/.exec(t.value);
+    if (daysAgo) {
+      const at = Date.now() - Number(daysAgo[1]) * 864e5;
+      const newer = Date.parse(`${v.replace(' ', 'T')}Z`) >= at;
+      return t.operator === '>=' ? newer : !newer;
+    }
     switch (t.operator) {
       case '=':
         return v === t.value;
@@ -84,10 +91,25 @@ export class FakeServiceNow {
         return v > t.value;
       case '>=':
         return v >= t.value;
+      case 'ON':
+        return false; // scripted ranges aren't evaluated here: fixture rows are all older
       case 'RELATIVELT':
-        return true; // relative dates aren't evaluated: every fixture row counts as old enough
-      case 'RELATIVEGE':
-        return true;
+      case 'RELATIVEGE': {
+        // As live (T-049): a unit ServiceNow doesn't know raises no error and matches no rows.
+        const m = /^@(minute|hour|dayofweek|month|quarter|year)@ago@(\d+)$/.exec(t.value);
+        if (!m) return false;
+        const ms = {
+          minute: 6e4,
+          hour: 36e5,
+          dayofweek: 864e5,
+          month: 2592e6,
+          quarter: 7776e6,
+          year: 31536e6,
+        };
+        const at = Date.now() - Number(m[2]) * ms[m[1] as keyof typeof ms];
+        const newer = Date.parse(`${String(v).replace(' ', 'T')}Z`) >= at;
+        return t.operator === 'RELATIVEGE' ? newer : !newer;
+      }
       default:
         throw new Error(`fake SN: operator ${t.operator} not implemented`);
     }

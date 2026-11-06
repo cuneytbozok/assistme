@@ -382,3 +382,15 @@ Format: Status · Context · Decision · Alternatives considered · Consequences
   - `where` is published in a compact, faithful form: one condition shape with every operator, every value type and the relative-date units. The per-operator value rules are in `query_records`' description, which no client limits below 4,096 characters. `any_of` is published as lists shaped like `where`. Validation is still the strict per-operator schema, and a test checks that the published form accepts everything the strict one does, unchanged.
   - The result envelope publishes its shared fields (`data`, `complete`, `omitted`, `page`, `hints`, `error`), all optional except `ok`, so every result validates.
 - **Consequences:** `tools/list` is about 34 KB (was 12 KB), roughly 8,000 more tokens when a client loads every tool at once; Claude Code can load them on demand. A new tool needs no cut elsewhere. A filter's per-operator rules are prose, not types, because of Codex's limit. Codex and Vibe were checked with real binaries but not in the user's apps or with a real model; Claude Desktop and Claude Code weren't run with these schemas yet (T-048). Nothing about access, read-only enforcement or query validation changed.
+
+## ADR-018 — Script values in queries are allowed
+
+- **Status:** Accepted by the user on 2026-11-06. Replaces the `javascript:` refusal of ADR-005 and its addendum, and narrows `CLAUDE.md` rule 1. Live results are in T-049.
+- **Context:** the T-048 check showed that date filters failed in practice. ServiceNow's list filters and the official [encoded query guide](https://servicenow.github.io/sdk/guides/encoded-query-guide) write them with `javascript:` (`ONToday@javascript:gs.beginningOfToday()@…`), and `now-sdk query` sends a query unchecked. The connector refused them.
+- **Options offered:** keep refusing; translate known expressions to literal dates; allow a closed list of expressions (recommended by Claude); allow all. The risk was explained: ServiceNow runs these values as code.
+- **Decision:** the user chose to allow all, without a list ("gereksiz engele gerek yok"). `javascript:` values, `DYNAMIC`, `ON`, `NOTON`, `DATEPART`, `MORETHAN`, `LESSTHAN` and `RELATIVEEE` pass in the server and the extension. `RLQUERY`, `SUBQUERY` and `JOIN` stay refused: they were outside the question, and their fields escape dictionary validation.
+- **Consequences:**
+  - The connector can't claim that it never runs script, or that a query only reads. A script runs with the session's rights, including writes on an admin session, on any instance the user has granted, production included.
+  - Prompt injection reaches further: text in a record could try to talk the model into sending a script. The defenses left are the untrusted-content instructions, a warning hint on the result, and the user's per-instance scope approval.
+  - The row check can't verify a term with script, so it skips it.
+  - GET-only requests, operation descriptors, the table and field denylists and scope approval are unchanged.

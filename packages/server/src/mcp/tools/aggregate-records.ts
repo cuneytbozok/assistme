@@ -10,6 +10,7 @@ import {
   MAX_AGGREGATES,
   MAX_GROUP_BY_FIELDS,
   MAX_RAW_QUERY_LENGTH,
+  RELATIVE_VALUE_HELP,
 } from '@sn-mcp/shared';
 import { z } from 'zod';
 import { planQuery } from '../query-guard.js';
@@ -97,8 +98,7 @@ export function registerAggregateRecords(server: McpServer, ctx: ToolContext): v
   server.registerTool(
     'aggregate_records',
     {
-      description:
-        'Counts and summarizes without reading rows (Stats API): prefer it to query_records for "how many", distributions and averages. Filters as in query_records (`where`, `any_of` or `encoded_query`). Without `group_by`, returns `data.count` and the aggregates; with `group_by` (1–2 fields), `data.group_count` and `data.groups`, largest first, every group reachable by cursor. `aggregates`: up to 4 {fn: avg|min|max|sum, field}. Continue with `cursor`.',
+      description: `Counts and summarizes without reading rows (Stats API): prefer it to query_records for "how many", distributions and averages. Filters as in query_records (\`where\`, \`any_of\` or \`encoded_query\`); within_last / older_than take ${RELATIVE_VALUE_HELP}. Without \`group_by\`, returns \`data.count\` and the aggregates; with \`group_by\` (1–2 fields), \`data.group_count\` and \`data.groups\`, largest first, every group reachable by cursor. \`aggregates\`: up to 4 {fn: avg|min|max|sum, field}. Continue with \`cursor\`.`,
       inputSchema: z.strictObject({
         scope_id: ScopeIdInput,
         instance: InstanceInput,

@@ -5,7 +5,7 @@ https://github.com/user-attachments/assets/7fcee793-bfbb-4c07-93be-21e29cacea2c
 
 Ask Claude questions about your ServiceNow instance, such as "why did this incident change?" or "which scripts touch this field?". Claude reads the answer through your own browser session.
 
-- **Read-only.** It can't create, change or delete anything, or run scripts.
+- **Read-only tools, with one exception.** It has no tool or request that creates, changes or deletes anything. But a query may contain a `javascript:` value or a `DYNAMIC` filter, as ServiceNow's own list filters do, and ServiceNow runs those as server-side script in your session. A script can do whatever your account can, so a query isn't guaranteed to only read. Keep this in mind before using it on production.
 - **You stay in control.** Claude can't reach an instance until you approve a request in Chrome.
 - **Your password stays in Chrome.** Claude never sees your password, cookies or session tokens.
 - **What you can see is all it can see.** It reads as you, with your ServiceNow permissions.

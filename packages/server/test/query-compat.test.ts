@@ -89,15 +89,7 @@ describe('T-047: UI-copied and SDK-style queries are accepted and sent in canoni
 });
 
 describe('T-047: refusals say which condition, why, and the native rewrite', () => {
-  it.each([
-    [
-      'active=true^sys_created_on>=javascript:gs.daysAgoStart(7)',
-      /^Condition 2 \(`sys_created_on>=javascript:gs\.daysAgoStart\(7\)`\)/,
-      /Try: sys_created_onRELATIVEGE@day@ago@7/,
-    ],
-    ['assigned_toDYNAMIC90d1921e5f510100a9ad2572f2b477fe', /DYNAMIC/, /sys_id/],
-    ['priority = 1', /no spaces/, /Try: priority=1/],
-  ])('%s', async (q, message, hint) => {
+  it.each([['priority = 1', /no spaces/, /Try: priority=1/]])('%s', async (q, message, hint) => {
     const err = await setup()
       .plan({ table: 'incident', encoded_query: q })
       .catch((e) => e);
@@ -105,17 +97,13 @@ describe('T-047: refusals say which condition, why, and the native rewrite', () 
     expect(err.hint).toMatch(hint);
   });
 
-  it('javascript: stays refused in every new spelling', async () => {
-    for (const q of [
-      'short_descriptionCONTAINSjavascript:gs.getUserID()',
-      'short_descriptionNOTLIKEjava script:x',
-      'active=true^EQ^ORDERBYjavascript:x',
-    ]) {
-      const err = await setup()
-        .plan({ table: 'incident', encoded_query: q })
-        .catch((e) => e);
-      expect(err.code, q).toMatch(/UNSAFE_QUERY|INVALID_INPUT/);
-    }
+  it('a script value is sent, and the result warns that it runs as script (ADR-018)', async () => {
+    const p = await setup().plan({
+      table: 'incident',
+      encoded_query: 'assigned_to=javascript:gs.getUserID()',
+    });
+    expect(p.query).toContain('assigned_to=javascript:gs.getUserID()');
+    expect(p.hints.join(' ')).toMatch(/server-side script/);
   });
 });
 

@@ -85,7 +85,7 @@ Contracts: `docs/ARCHITECTURE.md` §8, finalized in `docs/TOOLS.md` (T-033).
 ### FR-5 Query safety
 
 - FR-5.1 Structured filters (`where`, `any_of`) are the primary query input.
-- FR-5.2 Raw `encoded_query` is accepted only after tokenization and validation. Allowlisted operators only. Rejected: `DYNAMIC`, `RLQUERY`, `SUBQUERY`, `JOIN`, `GOTO`, script-valued date operators, and `javascript:` values in any disguise after normalization. Native forms such as the `^EQ` marker and `NOTLIKE`/`CONTAINS` are accepted and sent in canonical form; refusals name the condition and suggest the native rewrite (T-047). Limits: ≤100 terms, ≤10 `^NQ` groups, ≤8,000 characters.
+- FR-5.2 Raw `encoded_query` is accepted only after tokenization and validation. Allowlisted operators only. Rejected: `RLQUERY`, `SUBQUERY`, `JOIN`, `GOTO`. `javascript:` values, `DYNAMIC` and the script-valued date operators are accepted and get a warning hint (ADR-018). Native forms such as the `^EQ` marker and `NOTLIKE`/`CONTAINS` are accepted and sent in canonical form; refusals name the condition and suggest the native rewrite (T-047). Limits: ≤100 terms, ≤10 `^NQ` groups, ≤8,000 characters.
 - FR-5.3 Every field referenced (filters, projections, ordering, dot-walks ≤3) is validated against `sys_dictionary` before execution. Unknown fields fail with `INVALID_FIELD`.
 - FR-5.4 Tool-internal conditions can't be combined with raw queries.
 - FR-5.5 Queries are never rejected for being broad, unconditioned or about old records. On configured high-volume tables, the connector defaults to newest-first ordering on an indexed field and adds hints (time ranges, key conditions, aggregates). It never refuses (ADR-011).
@@ -124,7 +124,7 @@ Principle: optimize *how* Claude retrieves information, not *how much* it may in
 - S-1 Only `GET` to `https://{grantedHost}/api/now/table/{table}[/{sys_id}]` and `https://{grantedHost}/api/now/stats/{table}`.
 - S-2 Allow-listed `sysparm_*` params only; fixed headers; `redirect: 'manual'`; 30 s timeout.
 - S-3 Excluded: `*.do` processors, `JSONv2`/`CSV`/`XML` exports, scripted REST APIs, UI APIs, attachment download.
-- S-4 No generic HTTP tool, no script execution, no URL input from the LLM.
+- S-4 No generic HTTP tool, no script tool, no URL input from the LLM. A query's `javascript:` or `DYNAMIC` value does run as script on ServiceNow (ADR-018).
 - S-5 Credential-table denylist. Password-type fields are stripped.
 - S-6 Retrieved content is untrusted data and never changes behavior.
 - S-7 Broker:

@@ -59,7 +59,6 @@ describe('AC1: all T-018 validation and defaults apply through the tool', () => 
     const h = await harness({ sn: withIncidents(10) });
     const scope = await claim(h, 'dev');
     const bad = [
-      [{ encoded_query: 'short_descriptionLIKEjavascript:gs.getUser()' }, 'UNSAFE_QUERY'],
       [{ encoded_query: 'priority=1^RLQUERYsys_user' }, 'UNSAFE_QUERY'],
       [
         { encoded_query: 'priority=1', where: [{ field: 'priority', op: '=', value: 1 }] },

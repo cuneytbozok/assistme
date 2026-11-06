@@ -1,11 +1,11 @@
 {
   "note": "Live run against a real instance. Shapes, counts and sizes only; no record content.",
-  "started": "2026-11-06T08:56:22.886Z",
-  "finished": "2026-11-06T09:06:53.559Z",
+  "started": "2026-11-06T09:37:41.096Z",
+  "finished": "2026-11-06T09:48:11.063Z",
   "instance": "dev469966",
   "env": "dev",
   "tools": 14,
-  "tools_list_bytes": 33841,
+  "tools_list_bytes": 34264,
   "released": true,
   "counts": {
     "pass": 19,
@@ -43,14 +43,14 @@
       "name": "query syslog with no time window, past offset 2,000, by cursor (AC-12)",
       "status": "pass",
       "metrics": {
-        "rows": 2508,
+        "rows": 2509,
         "pages": 22,
-        "rows_added_during_walk": 2,
-        "rows_moved_and_skipped": 2
+        "rows_added_during_walk": 1,
+        "rows_moved_and_skipped": 1
       },
       "measure": {
         "calls": 24,
-        "max_result_chars": 24347,
+        "max_result_chars": 24383,
         "requests_used": 47
       }
     },
@@ -89,7 +89,7 @@
         "pages": 3,
         "tables_total_narrow": 2,
         "tables_total_instance": 611,
-        "first_batch_seconds": 23
+        "first_batch_seconds": 21
       },
       "measure": {
         "calls": 4,
@@ -137,7 +137,7 @@
         ],
         "pages": 25,
         "most_requests_in_one_call": 112,
-        "seconds": 489
+        "seconds": 484
       },
       "measure": {
         "calls": 25,
@@ -300,7 +300,7 @@
         "matches": 5
       },
       "measure": {
-        "calls": 3,
+        "calls": 2,
         "max_result_chars": 5392,
         "requests_used": 1
       }
@@ -326,7 +326,7 @@
       },
       "measure": {
         "calls": 4,
-        "max_result_chars": 313,
+        "max_result_chars": 348,
         "requests_used": 0
       }
     },
@@ -357,6 +357,66 @@
           ]
         },
         "all_incidents": 67,
+        "relative": {
+          "9000 minute": {
+            "rows": 0,
+            "lo": 0,
+            "hi": 0
+          },
+          "9000 hour": {
+            "rows": 40,
+            "lo": 40,
+            "hi": 40
+          },
+          "60 day": {
+            "rows": 9,
+            "lo": 9,
+            "hi": 9
+          },
+          "20 week": {
+            "rows": 40,
+            "lo": 40,
+            "hi": 40
+          },
+          "2 month": {
+            "rows": 9,
+            "lo": 9,
+            "hi": 9
+          },
+          "1 quarter": {
+            "rows": 9,
+            "lo": 9,
+            "hi": 9
+          },
+          "1 year": {
+            "rows": 40,
+            "lo": 40,
+            "hi": 40
+          }
+        },
+        "scripted": {
+          "daysAgoStart(60)": {
+            "rows": 9,
+            "lo": 9,
+            "hi": 9
+          },
+          "older than 1 day": {
+            "rows": 67,
+            "lo": 67,
+            "hi": 67
+          },
+          "ON Today": {
+            "rows": 0,
+            "lo": 0,
+            "hi": 0
+          },
+          "ON Last 3 months": {
+            "rows": 9,
+            "lo": 9,
+            "hi": 9
+          }
+        },
+        "native_quarter_rows": 40,
         "label_hint": true,
         "long_in_accepted_items": 226,
         "long_in_accepted_query_chars": 7465,
@@ -366,9 +426,9 @@
         "downcast_rows": 11
       },
       "measure": {
-        "calls": 25,
-        "max_result_chars": 2712,
-        "requests_used": 28
+        "calls": 45,
+        "max_result_chars": 15394,
+        "requests_used": 50
       }
     },
     {

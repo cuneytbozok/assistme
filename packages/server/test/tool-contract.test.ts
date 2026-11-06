@@ -4,7 +4,7 @@
  */
 import { readFileSync } from 'node:fs';
 import { Client, InMemoryTransport } from '@modelcontextprotocol/client';
-import { ERROR_CODES } from '@sn-mcp/shared';
+import { ERROR_CODES, RELATIVE_UNITS, RELATIVE_VALUE_HELP } from '@sn-mcp/shared';
 import { describe, expect, it } from 'vitest';
 import type { BridgeClient } from '../src/bridge/client.js';
 import { loadConfig } from '../src/config.js';
@@ -263,6 +263,15 @@ describe('compact published schemas validate as strictly as before', () => {
     await expect(h.call(tool, scoped)).rejects.toThrow(/Input vali/);
     expect(h.dataRequests).toEqual([]);
     await h.close();
+  });
+
+  it('filter tools name the relative-date units in prose, for clients that hide the types', async () => {
+    const tools = await listTools();
+    for (const name of ['query_records', 'aggregate_records']) {
+      const description = tools.find((t) => t.name === name)?.description ?? '';
+      expect(description, name).toContain(RELATIVE_VALUE_HELP);
+      for (const unit of RELATIVE_UNITS) expect(description, name).toContain(unit);
+    }
   });
 
   it('published schemas stay closed objects with no forbidden inputs', async () => {

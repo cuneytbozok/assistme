@@ -11,7 +11,7 @@
  * ACL can blank them), and every operator not listed below. Comparisons ignore case, as
  * ServiceNow's normally do. So a pass doesn't prove a filter was applied; a failure shows it wasn't.
  */
-import { parseEncodedQuery, type Term } from '@sn-mcp/shared';
+import { containsScriptMarker, parseEncodedQuery, type Term } from '@sn-mcp/shared';
 import { compactValue } from './compact.js';
 import type { FieldInfo } from './metadata.js';
 import type { Row } from './paginate.js';
@@ -68,6 +68,8 @@ function judge(t: Term, f: FieldInfo | undefined, value: string | undefined): bo
     }
     return undefined;
   };
+  // A script's result isn't in the query, so the rows can't be checked against it.
+  if (containsScriptMarker(want)) return undefined;
   switch (t.operator) {
     case '=':
       return equals(want);
