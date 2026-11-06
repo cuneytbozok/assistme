@@ -1,42 +1,50 @@
-
 # sn-mcp: let Claude read your ServiceNow
 
 https://github.com/user-attachments/assets/7fcee793-bfbb-4c07-93be-21e29cacea2c
 
-Ask Claude questions about your ServiceNow instance, such as "why did this incident change?" or "which scripts touch this field?". Claude reads the answer through your own browser session.
+Ask Claude questions about your ServiceNow instance, such as "why did this incident change?" or "which scripts touch this field?". Claude finds the answer through your own browser session.
 
-- **Optional documentation research.** Off by default. One setting adds search and reading of ServiceNow's published documentation through GitMCP and GitHub, with no key or download. It's one more source for the AI, never a required step. See [INSTALL](docs/INSTALL.md#settings).
-- **Read-only tools, with one exception.** It has no tool or request that creates, changes or deletes anything. But a query may contain a `javascript:` value or a `DYNAMIC` filter, as ServiceNow's own list filters do, and ServiceNow runs those as server-side script in your session. A script can do whatever your account can, so a query isn't guaranteed to only read. Keep this in mind before using it on production.
 - **You stay in control.** Claude can't reach an instance until you approve a request in Chrome.
 - **Your password stays in Chrome.** Claude never sees your password, cookies or session tokens.
 - **What you can see is all it can see.** It reads as you, with your ServiceNow permissions.
+- **Read-only tools, with one exception.** It has no tool that creates, changes or deletes anything. But a query may contain a `javascript:` value or a `DYNAMIC` filter, as ServiceNow's own list filters do, and ServiceNow runs those as server-side script in your session. A script can do whatever your account can, so a query isn't guaranteed to only read. Keep this in mind before using it on production.
 
 sn-mcp is an independent project, not affiliated with or endorsed by ServiceNow.
 
 ## What you need
 
-- A Mac with Google Chrome (Windows passes automated tests, but hasn't been tried on a real PC yet)
-- [Node.js](https://nodejs.org) 22.18 or newer (run `node --version` to check)
-- A ServiceNow instance you can sign in to
-- [Claude Desktop](https://claude.ai/download), Claude Code, ChatGPT Desktop in its Codex chats only ([how to connect it](docs/INSTALL.md#chatgpt-desktop)), or [Mistral Vibe](docs/INSTALL.md#mistral-vibe)
+- A Mac with Google Chrome. Windows passes automated tests, but hasn't been tried on a real PC yet.
+- [Node.js](https://nodejs.org) 22.18 or newer. Run `node --version` to check.
+- A ServiceNow instance you can sign in to. If you don't have one to test with, you can request a free developer instance at [developer.servicenow.com](https://developer.servicenow.com).
+- [Claude Desktop](https://claude.ai/download). Claude Code, ChatGPT Desktop (Codex chats only) and Mistral Vibe also work.
 
-You don't need an API key or Docker. Your ServiceNow account needs to be able to read table definitions (`sys_db_object` and `sys_dictionary`). So far the connector has only been tested with an admin account.
+You don't need an API key or Docker. Your ServiceNow account has to be able to read table definitions (`sys_db_object` and `sys_dictionary`). So far the connector has only been tested with an admin account.
 
 ## Set it up
 
-It takes about 10 minutes, and has four parts.
+It takes about 10 minutes, and has four parts. Here it is on video:
 
 https://github.com/user-attachments/assets/c9b03ae5-326e-464f-9f9d-b0b40fcf1e20
 
-### 1. Install
+There are two things called an "extension" below: one you add to **Chrome**, and one you add to **Claude Desktop**. You need both.
 
-Open Terminal, go to this project's folder, and run:
+### 1. Download and install
 
+Open Terminal and run these one at a time:
 
 ```bash
+cd ~
+```
 
+```bash
+git clone https://github.com/cuneytbozok/assistme.git AssistMe
+```
 
+```bash
+cd AssistMe
+```
 
+```bash
 npm install
 ```
 
@@ -44,16 +52,19 @@ npm install
 npm run setup
 ```
 
-The setup prints the exact paths for your Mac. Keep that window open for the next steps.
+The setup builds everything and prints the exact paths for your Mac. Keep that window open for the next steps.
+
+- **Keep this folder where it is.** Chrome and the connector run from it, so moving or deleting it stops them working. Setup refuses folders other users can write to, such as `/tmp`, so your home folder is a good place.
+- **`npm install` may warn about `fsevents` install scripts.** You can ignore that.
 
 ### 2. Add the extension to Chrome
 
-The extension isn't in the Chrome Web Store, so you load it from this folder.
+The extension isn't in the Chrome Web Store, so you load it from the folder you just downloaded.
 
 1. In Chrome, go to `chrome://extensions`.
 2. Turn on **Developer mode**, at the top right.
 3. Click **Load unpacked**.
-4. Choose the folder `packages/extension/dist` in this project.
+4. Choose the folder `packages/extension/dist` inside `AssistMe`. The setup printed its full path.
 5. Check the card: the ID should be `clipfeocpiljpcngmjpdbegciimchbol`, with no red **Errors** button.
 6. Click the puzzle-piece icon in the toolbar and pin **sn-mcp Session Bridge**. Its icon is a magnifying glass.
 
@@ -61,14 +72,12 @@ The extension isn't in the Chrome Web Store, so you load it from this folder.
 
 1. Sign in to your instance in a Chrome tab.
 2. Click the magnifying glass icon.
-3. Add the instance: paste its web address, choose a short name (an alias), and pick its environment.
+3. Paste the instance's web address, choose a short name (an alias, such as `dev`), pick its environment, and click **Register**.
 4. Chrome asks for access to that one site. Allow it.
 
 If an instance isn't clearly development or test, choose **Other**. It gets the same strict rules as production: shorter access, and you type the host name to approve.
 
-### 4. Connect Claude
-
-**Claude Desktop:**
+### 4. Connect Claude Desktop
 
 1. In Terminal, run:
 
@@ -77,13 +86,18 @@ If an instance isn't clearly development or test, choose **Other**. It gets the 
    ```
 
 2. In Claude Desktop, go to **Settings → Extensions → Advanced → Install Extension**.
-3. Choose `packages/server/sn-mcp.mcpb` in this project.
+3. Choose `packages/server/sn-mcp.mcpb` inside `AssistMe`.
+4. Quit Claude Desktop completely with **Cmd+Q**, then open it again. Closing the window isn't enough.
 
-**Claude Code:** run the `claude mcp add` command that the setup printed, then start a new session.
+**Using something else?**
+
+- **Claude Code:** run the `claude mcp add` command that the setup printed, then start a new session.
+- **ChatGPT Desktop:** see [how to connect it](docs/INSTALL.md#chatgpt-desktop). It only works in Codex chats.
+- **Mistral Vibe:** see [how to connect it](docs/INSTALL.md#mistral-vibe).
 
 ## Your first question
 
-Ask Claude:
+Start a new chat and ask:
 
 > List my ServiceNow instances, then show me the five most recent incidents.
 
@@ -94,6 +108,36 @@ Ask Claude:
 
 Keep the instance open in a Chrome tab while you work. That's how the connector uses your session.
 
+## Optional extras
+
+Everything above works without these.
+
+### Skills
+
+Skills teach Claude how to investigate and build on ServiceNow. They add no access. To add them to Claude Desktop, run the command below, then upload the zip files from `dist-skill` in the skills section of Claude Desktop's settings:
+
+```bash
+npm run pack:skill
+```
+
+[docs/SKILLS.md](docs/SKILLS.md) explains each one, and how to use them in other clients.
+
+### Documentation research
+
+Off by default. This lets Claude search and read ServiceNow's published documentation, with no key or download. It's one more source for Claude, alongside anything else it can use.
+
+1. In Claude Desktop, go to **Settings → Extensions → ServiceNow (read-only)** and open its settings.
+2. Turn on **Documentation research**.
+3. Quit with **Cmd+Q** and open it again. Saving the setting isn't enough.
+
+Good to know:
+
+- Search terms are sent to gitmcp.io and GitHub, so leave customer data out of them.
+- Claude may choose web search on its own. To ask for documentation, say so, for example: "Check the ServiceNow documentation with `docs_search`. If it isn't there, search the web."
+- A search usually takes 10 to 25 seconds. It depends on a free community service, so it can sometimes be slow or unavailable. Nothing else depends on it.
+
+More in [docs/INSTALL.md](docs/INSTALL.md#documentation-research).
+
 ## Good to know
 
 - **Follow-up questions:** access stays open for the time you chose when approving, so follow-ups in the same chat don't need a new code. A new chat asks again.
@@ -103,21 +147,47 @@ Keep the instance open in a Chrome tab while you work. That's how the connector 
 - **Tables Claude can't read:** Claude tells you, so you know an answer may be partial. Tables that hold credentials are always blocked.
 - **Treat answers like any other research:** Claude reads what's in your records, and records can contain anything. The connector tells it to treat that content as data, not instructions, but check anything important.
 
-## Optional: skills
-
-Skills teach Claude how to investigate and build on ServiceNow. They add no access. See [docs/SKILLS.md](docs/SKILLS.md).
-
 ## If something goes wrong
 
 | What you see | What to do |
 | ------------ | ---------- |
+| An error mentioning `.ts` when you run `npm run setup` | Your Node.js is too old. Install 22.18 or newer, then run it again |
+| "Refusing to install" during setup | Keep the project somewhere only you can write to, such as your home folder |
 | `BRIDGE_UNAVAILABLE`, or "host not found" in the popup | Run `npm run setup`, then press the reload icon on the extension's card at `chrome://extensions` |
 | `NO_INSTANCE_TAB` | Open your instance in Chrome and sign in |
 | `SESSION_EXPIRED` | Sign in to ServiceNow again. Your approval still works |
 | `SCOPE_UNKNOWN` or `SCOPE_EXPIRED` | Ask Claude to request access again, then approve the new code |
-| Tools are missing or out of date | Fully quit Claude Desktop (Cmd+Q) and reopen it |
+| Tools are missing or out of date, including the documentation tools | Quit Claude Desktop with Cmd+Q, reopen it, and start a new chat |
+| `DOCS_UNAVAILABLE` | Documentation search is slow or down. Claude can use other sources, and you can try again later |
 
-There's more in [docs/INSTALL.md](docs/INSTALL.md).
+There's more in [docs/INSTALL.md](docs/INSTALL.md#troubleshooting).
+
+## Help test it
+
+So far this has been tested on one Mac, with one developer instance and an admin account. Other setups are exactly what's useful to try: a different Mac, a non-admin account, or Windows.
+
+- **Start with a development instance.** Check answers you can verify yourself before relying on it, and read the script exception at the top of this page before trying production.
+- **Report problems** in [GitHub Issues](https://github.com/cuneytbozok/assistme/issues). Say what you did, what you expected, and the exact error. Include your macOS, Chrome, Node.js and AI client versions.
+- **Issues are public, so leave out** instance names, record contents, passwords and tokens. `~/Library/Application Support/sn-mcp/broker.log` holds metadata only, but check it before sharing.
+- **Report security problems privately,** as described in [docs/SECURITY.md](docs/SECURITY.md#7-reporting-a-vulnerability).
+
+## Updating
+
+Run these in the `AssistMe` folder:
+
+```bash
+git pull
+```
+
+```bash
+npm install
+```
+
+```bash
+npm run setup
+```
+
+Then reload the extension at `chrome://extensions`, and follow [the remaining steps](docs/INSTALL.md#updating) for your AI client.
 
 ## Removing it
 
@@ -125,7 +195,7 @@ There's more in [docs/INSTALL.md](docs/INSTALL.md).
 npm run uninstall
 ```
 
-Then remove the extension at `chrome://extensions`, and remove sn-mcp from Claude. The command lists what's left.
+Then remove the extension at `chrome://extensions`, and remove sn-mcp from Claude. The command lists what's left. After that you can delete the `AssistMe` folder.
 
 ## More
 

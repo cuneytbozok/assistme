@@ -11,7 +11,7 @@ Skills give your AI client expertise. They work in Claude, in Mistral Vibe, and 
 
 ## `servicenow-readonly-troubleshooting` (ours)
 
-A method for investigating ServiceNow problems, with references Claude loads only when needed: logs and transactions, business rules, Discovery and the ECC queue, CMDB identification, Flow Designer, and ACLs. It's guidance only: it never tells Claude to write anything.
+A method for investigating ServiceNow problems, with references Claude loads only when needed: logs and transactions, business rules, Discovery and the ECC queue, CMDB identification, Flow Designer, and ACLs. It's guidance only: it never tells Claude to write anything. It also says that any source your client can reach is fair to use, in any order. With [documentation research](INSTALL.md#documentation-research) on, `docs_search` and `docs_read` are one more.
 
 **Claude Code in a terminal:** this also installs the `servicenow-development-guide` skill below. Code sessions inside the Claude Desktop app already see the skills uploaded to Desktop, so they don't need it.
 
@@ -23,13 +23,13 @@ A method for investigating ServiceNow problems, with references Claude loads onl
 /plugin install sn-mcp-skills@sn-mcp
 ```
 
-**Claude Desktop:** build the zips, then upload `dist-skill/servicenow-readonly-troubleshooting.zip` in the skills section of Claude Desktop's settings.
+**Claude Desktop:** build the zips:
 
 ```bash
 npm run pack:skill
 ```
 
-It also says that any source your client can reach is fair to use, in any order. With documentation research on (`docs/INSTALL.md`), `docs_search` and `docs_read` are one more.
+Then upload `dist-skill/servicenow-readonly-troubleshooting.zip` in the skills section of Claude Desktop's settings. After updating the project, build and upload them again.
 
 ## `servicenow-development-guide` (third-party)
 
@@ -65,6 +65,6 @@ Vibe reads the same folder, so `npm run codex-skills` adds them to both. Start a
 
 ## The official ServiceNow SDK skill: not used
 
-The user decided on 2026-11-05 to skip it (T-039). It isn't part of this project.
+This project doesn't include it.
 
 If an SDK plugin such as `fluent@servicenow` is installed anyway, know that the SDK can sign in to instances and deploy to them, outside the connector and its approvals. Don't run `now-sdk auth`. `.claude/settings.example.json` has deny rules for the SDK's commands that can change things. Those rules match command text, so they're a guardrail and not a security boundary. They haven't been tested against Claude Code.

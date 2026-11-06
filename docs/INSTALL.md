@@ -1,23 +1,23 @@
 # Installing sn-mcp
 
-sn-mcp lets Claude, ChatGPT Desktop or Mistral Vibe read your ServiceNow instances through your own Chrome session. It has three parts: a Chrome extension, a small native host that Chrome starts, and an MCP server that your AI client runs. It only reads, and it reaches an instance only after you approve a request in the extension.
+sn-mcp lets Claude, ChatGPT Desktop or Mistral Vibe read your ServiceNow instances through your own Chrome session. It has three parts: a Chrome extension, a small native host that Chrome starts, and an MCP server that your AI client runs. It has no tool that creates, changes or deletes anything, and it reaches an instance only after you approve a request in the Chrome extension. One exception: ServiceNow runs a `javascript:` value or `DYNAMIC` filter in a query as server-side script in your session, so a query isn't guaranteed to only read.
 
 ## Requirements
 
 - macOS, or Windows, which passes automated tests but **hasn't been tried on a real PC yet**: see [Windows](#windows)
 - Google Chrome
 - Node.js 22.18 or newer (`node --version`)
-- A ServiceNow instance you can sign in to
+- A ServiceNow instance you can sign in to. A free developer instance from [developer.servicenow.com](https://developer.servicenow.com) works
 - Claude Desktop, Claude Code, ChatGPT Desktop or Mistral Vibe
 
 You don't need any API key, corporate credential or Docker.
 
 ## 1. Run the setup
 
-If you already have the project folder, skip the clone. Keep it somewhere private to you, such as your home folder: setup refuses folders other users can write to, such as `/tmp`.
+Keep the project somewhere private to you, such as your home folder: setup refuses folders other users can write to, such as `/tmp`. Keep it there afterwards too: Chrome and the connector run from this folder, so moving or deleting it stops them working.
 
 ```bash
-git clone <this repository> AssistMe
+git clone https://github.com/cuneytbozok/assistme.git AssistMe
 ```
 
 ```bash
@@ -34,6 +34,8 @@ npm run setup
 
 Setup checks your Node version, builds everything, and installs the native host for Chrome. You can run it again at any time. When it finishes, it prints the exact paths and commands for your machine.
 
+`npm install` may warn about `fsevents` install scripts. You can ignore that.
+
 ## 2. Load the Chrome extension
 
 1. Open `chrome://extensions` and turn on **Developer mode**.
@@ -44,7 +46,7 @@ Setup checks your Node version, builds everything, and installs the native host 
 ## 3. Register an instance
 
 1. Sign in to your instance in a Chrome tab.
-2. Open the extension popup and add the instance: paste its URL, choose an alias, and pick an environment. Chrome asks for access to that one host.
+2. Open the extension popup. Paste the instance's URL, choose an alias (a short name, such as `dev`), pick an environment, and click **Register**. Chrome asks for access to that one host: allow it.
 
 Use **Other** for anything that isn't clearly development or test. It always gets production rules: shorter access, and you type the host name to approve.
 
@@ -60,11 +62,11 @@ Build the bundle:
 npm run pack:mcpb
 ```
 
-In Claude Desktop, open **Settings → Extensions → Advanced → Install Extension** and choose `packages/server/sn-mcp.mcpb`.
+In Claude Desktop, open **Settings → Extensions → Advanced → Install Extension** and choose `packages/server/sn-mcp.mcpb`. Then quit Claude Desktop with Cmd+Q and open it again: closing the window isn't enough.
 
 If you registered sn-mcp by hand in `claude_desktop_config.json` during development, remove that entry so the tools don't appear twice.
 
-To change result sizes, open the extension's settings in Claude Desktop. The defaults suit most uses.
+To change result sizes, or to turn on [documentation research](#documentation-research), open the settings for **ServiceNow (read-only)** in **Settings → Extensions**. The defaults suit most uses.
 
 ### Claude Code
 
@@ -140,9 +142,9 @@ To add the optional skills to Vibe, run `npm run codex-skills`: see [SKILLS.md](
 
 Ask your AI client:
 
-> List my ServiceNow instances, then show me the five most recent incidents on dev.
+> List my ServiceNow instances, then show me the five most recent incidents.
 
-It requests access and gives you a code. Open the extension popup, check that the code matches, and approve it. Access ends when it expires, when you revoke it in the popup, or when Chrome restarts.
+It requests access and gives you a code. Open the Chrome extension's popup, check that the code matches, and approve it. Access ends when it expires, when you revoke it in the popup, or when Chrome restarts.
 
 ## Optional: the troubleshooting skill
 
@@ -152,9 +154,24 @@ The skill gives your AI client a method for investigating ServiceNow problems. I
 
 **In the extension popup** (only you can change these): request timeout (30 s), maximum response per request (10 MB), and concurrent requests per instance (4).
 
-**Server environment variables** (or the Claude Desktop extension settings): `SN_MCP_RESPONSE_CHARS`, `SN_MCP_MAX_RESPONSE_CHARS`, `SN_MCP_PAGE_SIZE`, `SN_MCP_FIELD_PREVIEW_CHARS`, `SN_MCP_DOCS`, `SN_MCP_DOCS_TIMEOUT_S`, `SN_MCP_FIELD_CACHE_MB`, `SN_MCP_FIELD_CACHE_TTL_S`, `SN_MCP_HIGH_VOLUME_TABLES`, `SN_MCP_DENIED_TABLES`. See [TOOLS.md](TOOLS.md#limits). They shape responses or block more tables. None can widen access.
+**In your AI client:** in Claude Desktop, these are in the settings for **ServiceNow (read-only)**, under **Settings → Extensions**. Elsewhere, they're server environment variables: `SN_MCP_RESPONSE_CHARS`, `SN_MCP_MAX_RESPONSE_CHARS`, `SN_MCP_PAGE_SIZE`, `SN_MCP_FIELD_PREVIEW_CHARS`, `SN_MCP_DOCS`, `SN_MCP_DOCS_TIMEOUT_S`, `SN_MCP_FIELD_CACHE_MB`, `SN_MCP_FIELD_CACHE_TTL_S`, `SN_MCP_HIGH_VOLUME_TABLES`, `SN_MCP_DENIED_TABLES`. See [TOOLS.md](TOOLS.md#limits). They shape responses, block more tables, or add the optional documentation tools. None can widen access to an instance.
 
-**Documentation research (optional, off by default):** adds `docs_search` and `docs_read` for ServiceNow's published documentation. In Claude Desktop, turn on **Documentation research** in Claude Desktop's settings for this extension (not the Chrome popup), then quit with Cmd+Q and reopen. Saving the setting alone isn't enough: chats keep seeing the old tools. Elsewhere, set `SN_MCP_DOCS` = `1` in the server's environment. There's no key or download. Search terms are sent to gitmcp.io and GitHub. It's a free community service with no guarantee, so search can be slow or unavailable; nothing else depends on it. **Documentation time limit** (`SN_MCP_DOCS_TIMEOUT_S`, 55 seconds by default, 5 to 600) sets how long one call may take before the AI is told it's unavailable and carries on. Clients have their own limits: above 60 seconds, a client may stop the call first.
+### Documentation research
+
+Off by default. It adds `docs_search` and `docs_read`, so your AI client can search and read ServiceNow's published documentation. There's no key or download.
+
+**To turn it on:**
+
+- **Claude Desktop:** turn on **Documentation research** in the settings for **ServiceNow (read-only)**, not in the Chrome popup. Then quit with Cmd+Q and open it again. Saving the setting alone isn't enough: chats keep seeing the old tools.
+- **Other clients:** set `SN_MCP_DOCS` to `1` in the server's environment, then start a new session.
+
+**What to expect:**
+
+- It's a supplementary source. Your AI client may use web search or anything else instead, and it can use the documentation tools whenever it helps. To ask for documentation, name `docs_search`.
+- Search covers the latest release, and each result names its release. `docs_read` can read a page from another release when you ask for one.
+- Search terms are sent to gitmcp.io and GitHub, so leave customer data out of them.
+- A search usually takes 10 to 25 seconds. It uses GitMCP, a free community service with no guarantee, so it can be slow or unavailable. Reading a page uses GitHub directly. Nothing else depends on either.
+- **Documentation time limit** (`SN_MCP_DOCS_TIMEOUT_S`, 55 seconds by default, 5 to 600) sets how long one call may take before the AI client is told it's unavailable and carries on. Clients have their own limits, so above 60 seconds a client may stop the call first.
 
 ## Updating
 
@@ -170,7 +187,11 @@ npm install
 npm run setup
 ```
 
-Then reload the extension on `chrome://extensions`, and restart Claude. For Claude Desktop, also run `npm run pack:mcpb` and install the new bundle.
+Then reload the extension on `chrome://extensions`, and update your AI client:
+
+- **Claude Desktop:** run `npm run pack:mcpb`, install the new bundle, then quit with Cmd+Q and reopen. If you use the skills, run `npm run pack:skill` and upload the zips again.
+- **Claude Code, Mistral Vibe:** start a new session. For Vibe, also replace the old `sn-mcp` block with the one setup prints.
+- **ChatGPT Desktop:** restart it.
 
 After upgrading Node, run `npm run setup` again: the native host records which Node to use.
 
@@ -197,6 +218,7 @@ Logs are in `~/Library/Application Support/sn-mcp/broker.log` (on Windows, `%USE
 
 | What you see | What it means | What to do |
 | ------------ | ------------- | ---------- |
+| An error mentioning `.ts` when you run `npm run setup` | Your Node.js is older than 22.18 | Install a newer version, then run it again |
 | The popup says the host is not found, or `BRIDGE_UNAVAILABLE` | Chrome can't start the native host | Run `npm run setup`, then reload the extension. Check that Chrome is open and the extension is on |
 | `BROKER_CONFLICT` | The connector is active in another Chrome profile | Use one Chrome profile at a time. Close the other one, or turn the extension off there |
 | "Refusing to install" during setup | A folder on the path can be written by another user | Fix that folder's permissions, or keep the repository somewhere else, such as your home folder |
@@ -212,6 +234,8 @@ Logs are in `~/Library/Application Support/sn-mcp/broker.log` (on Windows, `%USE
 | Vibe's model says it has no ServiceNow tools | The session started before you added the block, or `sn-mcp` failed to start | Start a new session. Check `~/.vibe/logs/vibe.log` |
 | ChatGPT Desktop can't start `sn-mcp` | Usually the Command is plain `node`, or Node was upgraded and the path changed | Run `npm run setup` again and copy the printed Command |
 | Tools are missing or out of date in Claude | Claude is running an old build | Fully quit and reopen Claude Desktop (Cmd+Q), or start a new Claude Code session |
+| The documentation tools are missing in Claude Desktop | The setting is off, or Claude Desktop hasn't fully restarted since you changed it | Turn it on, quit with Cmd+Q, reopen, and start a new chat |
+| `DOCS_UNAVAILABLE` | GitMCP or GitHub is slow or unavailable | Other tools and sources still work. Try again later |
 | You moved the project, and the extension still uses the old folder | Reloading doesn't change the folder | Remove the extension and use **Load unpacked** on the new folder, then add your instance again |
 | The extension shows a different ID | It was loaded from another folder or build | Remove it, and load `packages/extension/dist` again |
 | Chrome shows a sign-in dialog for ServiceNow | Not expected | Please report it with the instance type (`docs/DECISIONS.md`, ADR-002 addendum, has the fallback) |

@@ -11,10 +11,6 @@ Version 0.1.16 is installed and on, and it worked in your chat. Nothing is requi
 
 **After changing this setting, quit with Cmd+Q and reopen.** Saving it isn't enough: chats keep seeing the old tools.
 
-## 1. Check the query and tool changes live (before merging `claude/query-compat`)
-
-Version 0.1.9 accepts ServiceNow's native encoded-query forms and gives better errors (T-047), and publishes typed, described tools (T-048). Both are tested on mocks and with Linux builds of Codex and Vibe, not yet against your instance or in your apps. The steps are in [HANDOFF.md](HANDOFF.md#t-047-and-t-048-code-done-live-checks-pending): about 15 minutes and one approval. Installing the 0.1.9 bundle also brings in 0.1.7's compare features.
-
 ## ChatGPT Desktop
 
 Run `npm run setup`, and copy the printed values into **Settings → MCP servers**: see [INSTALL.md](INSTALL.md#chatgpt-desktop). Then ask it to list your instances, in a Codex chat: normal chats don't use local servers.
