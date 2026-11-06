@@ -1,6 +1,9 @@
 /**
  * MCP server: scope tools here; data tools in tools/.
  *
+ * The optional docs tools (ADR-019) are the one exception to what follows: they read public
+ * documentation from fixed destinations, off unless SN_MCP_DOCS is set, and never reach ServiceNow.
+ *
  * No tool accepts a URL, HTTP method or header; requests to ServiceNow are operation
  * descriptors that the extension turns into fixed GET requests (ADR-004). All tools are
  * read-only with respect to ServiceNow. Access needs a scope the user approved in the extension.
@@ -38,6 +41,7 @@ import { registerCompareRecords } from './tools/compare-records.js';
 import type { CallOutcome, ToolContext } from './tools/context.js';
 import { registerDescribeTable } from './tools/describe-table.js';
 import { registerDiscoverTables } from './tools/discover-tables.js';
+import { DOCS_INSTRUCTIONS, type DocsTesting, registerDocsTools } from './tools/docs.js';
 import { registerGetFieldContent } from './tools/get-field-content.js';
 import { registerGetRecord } from './tools/get-record.js';
 import { registerGetRecordHistory } from './tools/get-record-history.js';
@@ -48,7 +52,7 @@ import { registerSearchCode } from './tools/search-code.js';
 export { ScopeIdInput, UNTRUSTED_NOTE };
 
 export const SERVER_NAME = 'sn-mcp';
-export const SERVER_VERSION = '0.1.14';
+export const SERVER_VERSION = '0.1.15';
 
 export const INSTRUCTIONS = `Read-only access to ServiceNow instances through the user's own browser session.
 
@@ -70,6 +74,7 @@ export function createMcpServer(
     metadata?: MetadataService;
     cursors?: CursorCodec;
     fieldCache?: FieldCache;
+    docs?: DocsTesting;
   } = {},
 ): McpServer {
   const scopes = new ScopeStore();
@@ -140,7 +145,9 @@ export function createMcpServer(
   }
   const server = new McpServer(
     { name: SERVER_NAME, version: SERVER_VERSION },
-    { instructions: INSTRUCTIONS },
+    {
+      instructions: config.docsEnabled ? `${INSTRUCTIONS}\n\n${DOCS_INSTRUCTIONS}` : INSTRUCTIONS,
+    },
   );
 
   async function call<T extends string>(
@@ -412,6 +419,7 @@ export function createMcpServer(
   registerGetRecordHistory(server, tools);
   registerSearchCode(server, tools);
   registerCompareRecords(server, tools);
+  if (config.docsEnabled) registerDocsTools(server, tools, opts.docs);
 
   return server;
 }

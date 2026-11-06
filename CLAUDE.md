@@ -4,7 +4,7 @@
 
 A general-purpose, **read-only** connector that lets native Claude (Claude Desktop first, Claude Code also) investigate ServiceNow instances using the user's existing, authenticated Chrome session. ChatGPT Desktop (ADR-014) and Mistral Vibe (ADR-016) can use the same server as local STDIO clients.
 
-**Product scope:** Native Claude + Local ServiceNow MCP Server + Chrome Session Bridge + Optional ServiceNow Skills.
+**Product scope:** Native Claude + Local ServiceNow MCP Server + Chrome Session Bridge + Optional ServiceNow Skills + Optional documentation research (ADR-019).
 
 We are not building another AI assistant. Claude provides the reasoning, MCP provides the tools, the Chrome extension provides authenticated ServiceNow access, and skills provide optional expertise.
 
@@ -16,6 +16,7 @@ We are not building another AI assistant. Claude provides the reasoning, MCP pro
    - **Exception, the user's decision of 2026-11-06 (ADR-018):** `javascript:` values and `DYNAMIC` in a query are sent. ServiceNow runs them as server-side script in the signed-in session, so a query can do more than read. Don't describe the connector as unable to run scripts.
 2. **No generic HTTP.**
    - The MCP server sends _operation descriptors_ (closed union), never URLs, methods, or headers.
+   - **Exception (ADR-019):** with `SN_MCP_DOCS` on, `docs_search` and `docs_read` reach one fixed public repository through GitMCP and GitHub. They never touch ServiceNow, the broker or the extension.
    - Only the extension's request builder constructs URLs.
 3. **Credentials never leave Chrome.**
    - No `cookies` permission.
@@ -62,6 +63,7 @@ We are not building another AI assistant. Claude provides the reasoning, MCP pro
 - `npm run lint` — Biome lint + format check
 - `npm run e2e:live -- --instance <alias>` — opt-in live tests against a real instance (T-034)
 - `npm run e2e:chatgpt -- --instance <alias>` (or `--discovery-only`) — live run through the engine inside ChatGPT Desktop (T-043)
+- `npm run e2e:docs` — live run of the optional docs tools through an MCP client over STDIO; needs no instance or Chrome (T-050)
 - `npm run e2e:vibe -- --instance <alias>` (or `--discovery-only`) — live run through real Mistral Vibe, with a local scripted model (T-046)
 - `npm run setup` / `npm run uninstall` — local install of native host manifest etc. (T-037)
 - `npm run pack:mcpb` / `npm run pack:skill` — build the Claude Desktop bundle and the skill zip

@@ -394,3 +394,27 @@ Format: Status · Context · Decision · Alternatives considered · Consequences
   - Prompt injection reaches further: text in a record could try to talk the model into sending a script. The defenses left are the untrusted-content instructions, a warning hint on the result, and the user's per-instance scope approval.
   - The row check can't verify a term with script, so it skips it.
   - GET-only requests, operation descriptors, the table and field denylists and scope approval are unchanged.
+
+## ADR-019 — Optional documentation research
+
+- **Status:** Accepted by the user on 2026-11-06, for GitMCP search and GitHub reads (T-050). Narrows `CLAUDE.md`'s product scope and rule 2, as described below.
+- **Context:** the user wants AI clients to reach ServiceNow's official documentation ([ServiceNow/ServiceNowDocs](https://github.com/ServiceNow/ServiceNowDocs)) from AssistMe: nothing extra to install, no API key, no local index, no large download. Their main concern: documentation is a supplementary source. It must never discourage research elsewhere, or become a required step.
+- **Facts checked on 2026-11-06:**
+  - The repository has one branch per release, about 52,000 pages and 305 MB on `brazil`, its default and latest branch.
+  - Its Markdown escapes underscores outside code (`sysparm\_display\_value`), so an exact search for a technical term has to try both spellings.
+  - GitHub's code search API needs a token (HTTP 401 without one). GitMCP offers it with none. Its `search_ServiceNowDocs_code` searches the default branch only; its semantic `search_ServiceNowDocs_docs` searched only `llms.txt` here. A GitMCP call takes about 11 seconds, a direct raw read about 0.3.
+  - Context7 was tested too. It indexes this library from `australia` only, and without a key it reported a limit of 200 calls a month.
+- **Options considered:** our own in-memory index (every release, but no body text, and more to maintain); Context7 (no release choice, and a key in practice); a separate MCP server (a second install); GitMCP code search with GitHub reads (chosen by the user).
+- **Decision:**
+  - Two tools in the existing server. `docs_search` calls only GitMCP's code search. `docs_read` reads a page directly from GitHub, in chunks.
+  - **Release handling is deliberately simple:** search covers the latest release, and every result states its release, taken from the page. `docs_read` can read a page from a named release when that's relevant. There is no cross-release search or comparison.
+  - **Off by default.** One setting (`SN_MCP_DOCS`) turns it on. With it off, the tools aren't listed and the server makes no internet request. No key, no disk cache (ADR-010), no documents in the bundle.
+  - **Fixed destinations:** this repository on GitMCP and on `raw.githubusercontent.com`. Page paths are validated. It isn't generic HTTP, and it never touches the broker, the extension or a ServiceNow credential.
+  - **Research stays free:** no required order, no tool that needs a docs call, and no wording that ranks documentation above other sources. An empty or failed search says it limits nothing. A contract test keeps that wording out. The server can't provide web search: that belongs to each client.
+  - Documentation is untrusted data, like records (rule 7).
+- **Consequences:**
+  - The connector gains its first path to the internet when the setting is on, and search terms reach GitMCP and GitHub. The setting and the tool description say so. Prompt injection could try to put instance data in a query; a client with web search already has a similar path.
+  - Search depends on a free community service with no service guarantee. If it's slow or down, `docs_search` returns `DOCS_UNAVAILABLE` within 45 seconds, other tools are unaffected, and `docs_read` keeps working. The backend can change behind the same tool.
+  - Search is keyword-based: every word has to match. Natural-language questions work less well, so a search with no results retries once with simpler terms. Only once: under bursts GitMCP slows down, then fails (12 parallel requests took 61 seconds, and 2 failed, on 2026-11-06), which also fits a shared GitHub rate limit, though that is an inference.
+  - Pages that exist only in an older release can't be found by search. They can be read by path, or found through other sources.
+  - `CLAUDE.md` rule 2 applies to ServiceNow traffic. This is its one fixed exception.

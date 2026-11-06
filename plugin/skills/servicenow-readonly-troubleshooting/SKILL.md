@@ -14,6 +14,10 @@ A method for finding out why something happened on a ServiceNow instance, using 
 - **Evidence over assumption.** Name the records and script lines behind each conclusion. Say what you didn't check. If a result has `complete: false`, you haven't seen everything yet.
 - **Names vary.** Table and field names differ between releases and plugins. The ones in these references are starting points: confirm them with `discover_tables` and `describe_table`.
 
+## Other sources
+
+Use whatever helps, in any order: web search, ServiceNow Community, GitHub, and, when they're available, `docs_search` and `docs_read` for ServiceNow's published documentation. Documentation can say how a feature should behave; the instance shows what happened. An empty or failed documentation search limits nothing.
+
 ## Get access first
 
 1. `list_instances` shows what the user registered.

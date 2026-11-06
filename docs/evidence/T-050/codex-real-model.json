@@ -1,0 +1,121 @@
+{
+  "client": "Codex engine in ChatGPT.app, codex-cli 0.166.0-alpha.6, the user's login, default model",
+  "date": "2026-11-06",
+  "runs": [
+    {
+      "run": "neutral",
+      "question": "A ServiceNow GlideRecord script using addEncodedQuery returned every record when the encoded query had a typo in a field name. Why does that happen, and is there a system property that changes it? Answer briefly and cite your sources with URLs.",
+      "steps": [
+        {
+          "skill_file_read": "servicenow-development-guide/SKILL.md"
+        },
+        {
+          "skill_file_read": "servicenow-development-guide/references/glide-api.md"
+        },
+        {
+          "web_search": "site.servicenow.com docs GlideRecord addEncodedQuery glide.invalid_query.returns_no_rows"
+        }
+      ],
+      "final_answer": "ServiceNow **drops the invalid query condition** and executes the remaining valid conditions. If the misspelled field was your only filter, this effectively becomes an unfiltered query and can return every record. [GlideRecord documentation](https://www.servicenow.com/docs/r/api-reference/server-api-reference/c_GlideRecordScopedAPI.html)\n\nSet **`glide.invalid_query.returns_no_rows` to `true`** to make invalid encoded queries return no records. It isn\u2019t an absolute safeguard: ServiceNow documents exceptions involving invalid terms with a `WHERE` operator, where the remaining query can still return results. [Property behavior and caveat](https://www.servicenow.com/docs/r/xanadu/api-reference/server-api-reference/c_GlideRecordAPI.html)"
+    },
+    {
+      "run": "codex-q2",
+      "question": "Our ServiceNow users get logged out after being idle. Which system property controls the idle session timeout and what is its default? Answer briefly and cite your sources with URLs.",
+      "steps": [
+        {
+          "skill_file_read": "servicenow-development-guide/SKILL.md"
+        },
+        {
+          "web_search": "site.servicenow.com docs glide.ui.session_timeout default 30"
+        }
+      ],
+      "final_answer": "The property is **`glide.ui.session_timeout`**, measured in **minutes**. The default idle timeout is **30 minutes**. [ServiceNow documentation](https://www.servicenow.com/docs/r/platform-administration/user-administration/c_ManageUserSessions.html)\n\nTechnically, if the property is unset, **30 minutes is the fallback**. [Property reference](https://www.servicenow.com/docs/r/platform-security/instance-security-hardening-settings/sc-session-activity-timeout.html)"
+    },
+    {
+      "run": "explicit",
+      "question": "Use the docs_search and docs_read tools from the sn MCP server. A ServiceNow REST client is slow because the Table API builds Link pagination headers. Is there a Table API parameter to skip them? Say which ServiceNow release your source is from, and cite it with URLs.",
+      "steps": [
+        {
+          "skill_file_read": "servicenow-development-guide/SKILL.md"
+        },
+        {
+          "skill_file_read": "servicenow-development-guide/references/rest-api.md"
+        },
+        {
+          "tool": "docs_search",
+          "arguments": {
+            "query": "sysparm_suppress_pagination_header"
+          },
+          "status": "completed",
+          "release": "brazil"
+        },
+        {
+          "tool": "docs_read",
+          "arguments": {
+            "page_path": "markdown/api-reference/rest-apis/c_TableAPI.md",
+            "release": "brazil",
+            "max_chars": 60000,
+            "max_lines": 2000
+          },
+          "status": "completed",
+          "release": "brazil"
+        },
+        {
+          "tool": "docs_read",
+          "arguments": {
+            "page_path": "markdown/api-reference/rest-apis/c_TableAPI.md",
+            "release": "brazil",
+            "start_line": 666,
+            "max_lines": 2000,
+            "max_chars": 60000
+          },
+          "status": "completed",
+          "release": "brazil"
+        },
+        {
+          "tool": "docs_read",
+          "arguments": {
+            "page_path": "markdown/api-reference/rest-apis/c_TableAPI.md",
+            "release": "brazil",
+            "start_line": 1341,
+            "max_lines": 2000,
+            "max_chars": 60000
+          },
+          "status": "completed",
+          "release": "brazil"
+        }
+      ],
+      "final_answer": "Yes\u2014add **`sysparm_suppress_pagination_header=true`** to your Table API GET request:\n\n```http\nGET /api/now/table/incident?sysparm_limit=100&sysparm_suppress_pagination_header=true\n```\n\nIt suppresses the response\u2019s `Link` pagination header; the default is `false`. Your client can still paginate using `sysparm_limit` and `sysparm_offset`.\n\nI verified this using sn MCP\u2019s `docs_search` and `docs_read`. The source is **ServiceNow Brazil**, updated **September 10, 2026**: [Table API documentation](https://www.servicenow.com/docs/r/api-reference/rest-apis/c_TableAPI.html) and [release-specific source, lines 378\u2013391](https://github.com/ServiceNow/ServiceNowDocs/blob/brazil/markdown/api-reference/rest-apis/c_TableAPI.md#L378-L391).\n\nThe documentation confirms header suppression, but does not promise a particular performance improvement."
+    },
+    {
+      "run": "outage",
+      "question": "Try the docs_search tool from the sn MCP server, plus whatever else is useful. Why might a ServiceNow business rule not run after an update made through GlideRecord? Answer briefly and cite your sources with URLs. (GitMCP blocked by a local preload, to simulate an outage.)",
+      "steps": [
+        {
+          "skill_file_read": "servicenow-readonly-troubleshooting/SKILL.md"
+        },
+        {
+          "skill_file_read": "servicenow-development-guide/SKILL.md"
+        },
+        {
+          "tool": "docs_search",
+          "arguments": {
+            "query": "setWorkflow"
+          },
+          "status": "failed",
+          "error_code": "DOCS_UNAVAILABLE"
+        },
+        {
+          "skill_file_read": "servicenow-readonly-troubleshooting/references/business-rule-execution.md"
+        },
+        {
+          "web_search": "site.servicenow.com business rules GlideRecord setWorkflow false conditions async"
+        },
+        {
+          "web_search": ""
+        }
+      ],
+      "final_answer": "GlideRecord updates normally trigger business rules. Check these likely causes:\n\n- **`gr.setWorkflow(false)`** was called before `gr.update()`, suppressing business rules. [ServiceNow documentation](https://www.servicenow.com/docs/r/api-reference/business-rules-classic/c_BusinessRules.html)\n- **The rule doesn\u2019t qualify:** verify Active, the target table, Update selected, and filter/script conditions\u2014including whether a field actually changed when using `changes()`. [Business rule configuration](https://developer.servicenow.com/print_page.do?category=learning-module&identifier=SSS_About_zurich%2Cnew_to_servicenow&module=learning+plan&release=zurich)\n- **It\u2019s async:** execution may be delayed; its script cannot rely on `previous` or change-detection methods. Condition fields do support change detection. [Async rule behavior](https://www.servicenow.com/docs/r/api-reference/business-rules-classic/c_BusinessRules.html)\n- **Recursive execution was stopped:** calling `current.update()` inside a business rule can trigger recursion detection. Check system logs. [Business rule best practices](https://developer.servicenow.com/print_page.do?category=now-platform&identifier=business_rules_technical_best_practices&module=guide&release=zurich)\n\nI tried sn MCP\u2019s `docs_search`; it returned `DOCS_UNAVAILABLE`, so I used ServiceNow\u2019s web documentation."
+    }
+  ]
+}

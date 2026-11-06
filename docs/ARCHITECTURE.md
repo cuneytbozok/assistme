@@ -366,7 +366,11 @@ Optimize *how* Claude retrieves information, not *how much* it may investigate. 
 
 Errors: `isError: true`, `{"ok":false,"error":{"code","message","hint","candidates?"}}`.
 
-**Error codes:** `SCOPE_REQUIRED, SCOPE_UNKNOWN, SCOPE_EXPIRED, SCOPE_NOT_APPROVED, REQUEST_DENIED, INSTANCE_NOT_REGISTERED, INSTANCE_NOT_IN_SCOPE, BRIDGE_UNAVAILABLE, BROKER_CONFLICT, NO_INSTANCE_TAB, SESSION_EXPIRED, ACL_DENIED, NOT_FOUND, AMBIGUOUS_MATCH, INVALID_INPUT, INVALID_FIELD, UNSAFE_QUERY, FORBIDDEN_OPERATION, TABLE_DENIED, RATE_LIMITED, RESPONSE_TOO_LARGE, FILTER_NOT_APPLIED, TIMEOUT, SN_API_ERROR`.
+**Error codes:** `SCOPE_REQUIRED, SCOPE_UNKNOWN, SCOPE_EXPIRED, SCOPE_NOT_APPROVED, REQUEST_DENIED, INSTANCE_NOT_REGISTERED, INSTANCE_NOT_IN_SCOPE, BRIDGE_UNAVAILABLE, DOCS_UNAVAILABLE, BROKER_CONFLICT, NO_INSTANCE_TAB, SESSION_EXPIRED, ACL_DENIED, NOT_FOUND, AMBIGUOUS_MATCH, INVALID_INPUT, INVALID_FIELD, UNSAFE_QUERY, FORBIDDEN_OPERATION, TABLE_DENIED, RATE_LIMITED, RESPONSE_TOO_LARGE, FILTER_NOT_APPLIED, TIMEOUT, SN_API_ERROR`.
+
+### Optional documentation research (ADR-019)
+
+`docs_search` and `docs_read` (`server/src/mcp/tools/docs.ts`, `docs-client.ts`) run only in the server, and only with `SN_MCP_DOCS` on. Search: MCP over HTTPS to GitMCP's code search, with one session per process. Reading: HTTPS to GitHub raw files. Nothing is stored beyond the in-process field cache. They are separate from the broker and extension path, and no tool depends on them.
 
 ## 9. Read-only enforcement (defense in depth)
 

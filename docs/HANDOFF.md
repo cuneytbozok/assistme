@@ -6,10 +6,16 @@ _Current state only, rewritten on 2026-11-05, updated 2026-11-06 for T-047. Hist
 
 The connector is built, installed and working on the user's Mac, in Claude Desktop, against one developer instance.
 
-- **Tasks:** 46 DONE, 2 BLOCKED (T-015, T-044), 1 DROPPED (T-039).
+- **Tasks:** 47 DONE, 2 BLOCKED (T-015, T-044), 1 DROPPED (T-039).
 - **Milestones:** M1, M3, M4, M5 and M6 achieved. M6 by the user's decision, with AC-6, AC-7 and AC-8 left open: not all 19 criteria are evidenced. M2 not achieved (T-015).
 - **Acceptance:** `docs/ACCEPTANCE.md`: 15 passed, 3 open, 1 out of scope, none failed.
 - **Next:** no task is eligible. T-044 waits for someone with a Windows PC. Anything else that remains needs the user: see `docs/NEXT_STEPS.md`.
+
+## T-050 (done, on branch `t-050-docs-research`, not merged or pushed)
+
+Optional documentation research, server 0.1.15, ADR-019. `docs_search` uses GitMCP's code search and `docs_read` uses GitHub. Off by default (`SN_MCP_DOCS`, or **Documentation research** in the Desktop extension's settings). Live with a real model through the Codex engine; not yet with a Claude model. To try it in Desktop: merge, install the 0.1.15 bundle, turn the setting on, Cmd+Q and reopen. The troubleshooting skill changed, so re-upload that zip. The extension needs no reload: the only shared change is a new error code that only the server sends.
+
+GitMCP slows down and then fails under bursts, so `docs_search` makes few requests. Don't add parallel or repeated searches to it without measuring.
 
 ## T-047, T-048 and T-049 (done)
 
@@ -74,6 +80,7 @@ Done by the user's decision. Live on `dev469966` (`docs/evidence/T-042/`): two r
 
 - **Vibe live run:** `npm run e2e:vibe -- --instance dev469966`, about three minutes including the wait, one approval. `--discovery-only` needs none. Re-run it after upgrading Vibe.
 - **ChatGPT live run:** `npm run e2e:chatgpt -- --instance dev469966`, about a minute, one approval. `--discovery-only` needs none.
+- **Docs live run:** `npm run e2e:docs`, about 4 minutes, no approval or instance. It pauses between searches, because GitMCP slows down under bursts.
 - **Live runs:** `npm run e2e:live -- --instance dev469966`, about 10 minutes, needs one approval from the user. `--only "a,b"` runs matching scenarios and saves to `results-partial.json`. `--dry-run` reads only the registry.
 - **Read the numbers, not just the pass count.** A live run passed while a bug dropped 3,225 rows; only the metrics showed it.
 - **Only the user approves scopes.** Don't click the approval, even if a browser tool could reach it (rule 4). Keep prompts few: each `e2e:live` asks once and releases at the end, and a Desktop restart loses the connector's scope, so batch them.

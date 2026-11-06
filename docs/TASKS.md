@@ -59,6 +59,7 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 | T-047 | Native encoded-query compatibility + diagnostics | 018, 034 | DONE        |
 | T-048 | Tool definitions within real client limits      | 033, 043, 046 | DONE    |
 | T-049 | Relative dates and script values as ServiceNow writes them | 047 | DONE |
+| T-050 | Optional documentation research                 | 033, 048 | DONE        |
 
 ---
 
@@ -1699,3 +1700,27 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
   - Live with bundle 0.1.14: `SAMEAS…@day` returned the one row with the same day of the month (12 Sep 2006 and 12 Oct 2026), and week, month, quarter and year returned none, so `SAMEAS@unit` compares only that part of the date, which isn't "the same calendar day". `assigned_to SAMEAS owned_by` + `NSAMEAS` = 0 is right: no row has both fields. `MORETHAN…@before or after@2` 10; `IN_HIERARCHY_DYNAMIC` 2 with the script hint; `SAMEASzz_no_such_field@day` gets `INVALID_FIELD`.
   - `@quarter@ago@1`: 40 rows on `sys_created_on`, 13 on `RELATIVELT` `sys_updated_on`, consistent with the start of the previous calendar quarter (1 July), but not proven.
   - **Not verified:** `DYNAMIC` beyond "Me", and `MORETHAN` / `LESSTHAN` units `minute`, `month`, `quarter`. Whether a script with side effects runs in a Table API query wasn't tried on purpose. One instance, one time zone.
+
+### T-050 — Optional documentation research
+
+- **Status:** DONE
+- **Purpose:** Let AI clients search and read ServiceNow's official documentation from the existing server, as a supplementary source they can combine freely with instance data, the web, ServiceNow Community, GitHub or anything else. Requested by the user on 2026-11-06 (ADR-019).
+- **Dependencies:** T-033, T-048
+- **Deliverables:** `server/src/mcp/docs-client.ts`, `tools/docs.ts`; the `SN_MCP_DOCS` setting in `config.ts` and `mcpb/manifest.json`; tests; `test/e2e/docs-client.ts`; `DOCS_UNAVAILABLE`; one line in the troubleshooting skill; `docs/TOOLS.md`, `docs/SECURITY.md`, `docs/ARCHITECTURE.md`, `docs/INSTALL.md`, `docs/SKILLS.md`; `CLAUDE.md`.
+- **Acceptance criteria:**
+  1. Off by default: the tools aren't listed, instructions are unchanged and no internet request is made. Nothing is needed beyond the setting: no key, install, index or download.
+  2. `docs_search` finds terms that appear only in page bodies, in both Markdown spellings, and returns path, title, release, last update, citation URLs and matching lines. Larger result sets say how to continue.
+  3. A multi-word search with no results retries with simpler terms and says what it searched for.
+  4. `docs_read` reads a full page in chunks from the latest release, or a named one. A page missing there is reported, never replaced by another release's.
+  5. A slow, failing or unavailable GitMCP gives a clear result within the time limit and blocks nothing: `docs_read` and instance tools still work.
+  6. A contract test keeps ordering or exclusivity wording out of the docs tools' descriptions, instructions and hints. No tool requires a docs call.
+  7. Requests go only to the fixed destinations, and invalid page paths are refused.
+  8. Live, through a real MCP client with a real model: a troubleshooting question uses the docs tools with citations, and the client's other sources stay usable.
+- **Verification:** `npm run build`, `npm test`, `npm run lint`; `npx tsx test/e2e/docs-client.ts`; a real client run. Mocks prove none of the live criteria.
+- **Evidence (2026-11-06, live, GitMCP and GitHub, server 0.1.15, the user's Mac):**
+  - `npm test`: shared 550 passed; server 544 passed, 3 skipped, including 37 in `docs.test.ts`; extension 269 passed. `npm run build`, `npm run pack:mcpb`: bundle 0.1.15.
+  - AC1–AC5, AC7, `npm run e2e:docs` through an MCP client over STDIO (`docs/evidence/T-050/live.json`): 15 of 15. Off: 14 tools; on: 16. Four body-only terms each found their known page, with the cited page checked on GitHub, in about 11 to 23 seconds. `why is my business rule not firing setWorkflow` became `setWorkflow`, 18 matches, 22 seconds. A 212,421-character page read in 24 chunks equals the page. `zurich` read as `zurich`.
+  - AC6: contract test in `docs.test.ts`.
+  - AC8, real model through the Codex engine in `ChatGPT.app` (codex-cli 0.166.0-alpha.6) with the user's login and web search available (`docs/evidence/T-050/codex-real-model.json`). Two neutral questions: it used a skill and web search and didn't call the docs tools, which is allowed. Asked to use the docs tools: it searched `sysparm_suppress_pagination_header`, read the page in chunks, gave the parameter, named Brazil and cited it. GitMCP blocked by a local preload: `docs_search` returned `DOCS_UNAVAILABLE`, then it used a skill and web search, answered and told the user.
+  - **Found by the live runs, fixed:** three sequential searches overran the 45-second limit, so a question with an answer came back empty. Measured directly: 8 sequential requests took 11 to 37 seconds each; 12 parallel took 61 seconds and 2 failed with `GitHub API request failed`. So: one retry only, no retry on upstream failure, and the session is reset only when it expired.
+  - **Not verified:** a Claude model. Claude Code 2.1.317 connected and offered both tools with `WebSearch`, but its command-line login had expired, so no model turn ran. Claude Desktop with bundle 0.1.15 and the setting on isn't tested, so neither is how it passes the checkbox value. Mistral Vibe not run. GitMCP over more than one afternoon. A burst from real use. Whether GitMCP stores queries.

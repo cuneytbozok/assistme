@@ -19,6 +19,7 @@ export const ERROR_CODES = [
   'SESSION_EXPIRED',
   'ACL_DENIED',
   'NOT_FOUND',
+  'DOCS_UNAVAILABLE',
   'AMBIGUOUS_MATCH',
   'INVALID_INPUT',
   'INVALID_FIELD',
@@ -58,6 +59,8 @@ export const DEFAULT_HINTS: Readonly<Record<ErrorCode, string>> = {
     'The ServiceNow session expired. Ask the user to log in to that instance in Chrome.',
   ACL_DENIED:
     "The signed-in ServiceNow user's roles or ACLs don't allow reading this. Tell the user; they can ask a ServiceNow admin for access or sign in with an account that has it. Don't retry with other tables to get around it.",
+  DOCS_UNAVAILABLE:
+    "Documentation search or reading isn't available right now. Other tools and sources are unaffected.",
   NOT_FOUND: 'Nothing matched. Check the table name or identifiers (see suggestions if provided).',
   AMBIGUOUS_MATCH:
     'More than one record matched. Choose one of the candidates explicitly (e.g. by sys_id).',

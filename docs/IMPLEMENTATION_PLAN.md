@@ -21,6 +21,7 @@ Rev. 2 (approved 2026-11-04). Detailed task definitions are in `TASKS.md`. Archi
 | 5 Packaging                   | T-035 – T-037 | **M5 (T-037)** | Claude Code registration, `.mcpb` for Desktop, setup/uninstall, INSTALL.md                                                             |
 | 6 Skills                      | T-038 – T-039 | —              | Custom skill shipped; official skill dropped by the user (T-039)                                                                         |
 | 7 Acceptance                  | T-040 – T-041 | **M6 (T-041)** | All 19 acceptance criteria evidenced; recovery drill; install from scratch                                                             |
+| Optional documentation research | T-050       | —              | ADR-019: GitMCP search, GitHub reads. Off by default; a source the AI combines freely with others, with no required order |
 
 ## Dependency graph
 

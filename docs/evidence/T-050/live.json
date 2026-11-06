@@ -1,0 +1,232 @@
+{
+  "date": "2026-11-06T14:08:36.161Z",
+  "node": "v24.21.0",
+  "checks": [
+    {
+      "name": "off by default: 14 tools, none for docs",
+      "pass": true,
+      "detail": {
+        "tools": 14
+      }
+    },
+    {
+      "name": "on: 16 tools",
+      "pass": true,
+      "detail": {
+        "tools": 16
+      }
+    },
+    {
+      "name": "body term: sysparm_suppress_pagination_header",
+      "pass": true,
+      "detail": {
+        "ms": 22731,
+        "total": 1,
+        "top": "markdown/api-reference/rest-apis/c_TableAPI.md",
+        "release": "brazil",
+        "known_page_found": true,
+        "cited_page_has_term": true,
+        "match": "sysparm_suppress_pagination_header"
+      }
+    },
+    {
+      "name": "body term: glide.invalid_query.returns_no_rows",
+      "pass": true,
+      "detail": {
+        "ms": 11647,
+        "total": 13,
+        "top": "markdown/api-reference/rest-apis/account-api.md",
+        "release": "brazil",
+        "known_page_found": true,
+        "cited_page_has_term": true,
+        "match": "… valid portion of the query. You can control this behavior using the property **glide.invalid_query.returns_no_rows**. Set this property to true to return no rows on an invalid query.…"
+      }
+    },
+    {
+      "name": "body term: glide.ui.session_timeout",
+      "pass": true,
+      "detail": {
+        "ms": 11742,
+        "total": 17,
+        "top": "markdown/platform-administration/user-administration/c_ManageUserSessions.md",
+        "release": "brazil",
+        "known_page_found": true,
+        "cited_page_has_term": true,
+        "match": "…an the value of the corresponding properties for an inactive session timeout: **glide.ui.session_timeout** for authenticated users or **glide.guest.session_timeout** for guest users. By default, the inactive session timeout for both authenticated and guest users is 30 minutes.…"
+      }
+    },
+    {
+      "name": "body term: sysparm_display_value",
+      "pass": true,
+      "detail": {
+        "ms": 11284,
+        "total": 8,
+        "top": "markdown/api-reference/rest-apis/c_TableAPI.md",
+        "release": "brazil",
+        "known_page_found": true,
+        "cited_page_has_term": true,
+        "match": "sysparm_display_value"
+      }
+    },
+    {
+      "name": "a question with no full match retries with simpler terms",
+      "pass": true,
+      "detail": {
+        "query": "why is my business rule not firing setWorkflow",
+        "ms": 23624,
+        "is_error": false,
+        "searched_as": "setWorkflow",
+        "total": 18,
+        "top": [
+          "markdown/integrate-applications/easy-import/easy-import-properties.md",
+          "markdown/platform-administration/deleting-records.md",
+          "markdown/api-reference/business-rules-classic/c_BusinessRules.md"
+        ],
+        "hints": [
+          "Nothing matched every word, so this shows results for: setWorkflow"
+        ]
+      }
+    },
+    {
+      "name": "nothing found is a normal result that points to other sources",
+      "pass": true,
+      "detail": [
+        "This search found nothing in the documentation. That says nothing about the question itself: it may be documented in other words, and other sources may cover it."
+      ]
+    },
+    {
+      "name": "reads the latest release, with citations",
+      "pass": true,
+      "detail": {
+        "ms": 257,
+        "release": "brazil",
+        "title": "Table API",
+        "last_updated": "2026-09-10",
+        "canonical_url": "https://www.servicenow.com/docs/r/api-reference/rest-apis/c_TableAPI.html",
+        "source_url": "https://github.com/ServiceNow/ServiceNowDocs/blob/brazil/markdown/api-reference/rest-apis/c_TableAPI.md",
+        "complete": false
+      }
+    },
+    {
+      "name": "reads a named release",
+      "pass": true,
+      "detail": {
+        "ms": 231,
+        "release": "zurich"
+      }
+    },
+    {
+      "name": "a long page read in chunks is exact",
+      "pass": true,
+      "detail": {
+        "calls": 24,
+        "chars": 212421
+      }
+    },
+    {
+      "name": "a missing page is reported, with the releases",
+      "pass": true,
+      "detail": {
+        "code": "NOT_FOUND",
+        "message": "No page markdown/no/such-page.md in release \"zurich\".",
+        "hint": "The page may not exist there, or may have another path. Listed releases: brazil, australia, zurich, yokohama."
+      }
+    },
+    {
+      "name": "an invalid path is refused",
+      "pass": true,
+      "detail": "INVALID_INPUT"
+    },
+    {
+      "name": "source_url opens on GitHub",
+      "pass": true,
+      "detail": 200
+    },
+    {
+      "name": "instance tools still ask for their own scope, with no docs call",
+      "pass": true,
+      "detail": "SCOPE_REQUIRED"
+    }
+  ],
+  "phrases": [
+    {
+      "query": "ACL evaluation order",
+      "ms": 11626,
+      "is_error": false,
+      "total": 67,
+      "top": [
+        "markdown/platform-security/access-control/acl-rule-types.md",
+        "markdown/platform-security/access-control/acl-denial-behavior.md",
+        "markdown/application-development/upgrading-your-app.md"
+      ]
+    },
+    {
+      "query": "why is my business rule not firing setWorkflow",
+      "ms": 23624,
+      "is_error": false,
+      "searched_as": "setWorkflow",
+      "total": 18,
+      "top": [
+        "markdown/integrate-applications/easy-import/easy-import-properties.md",
+        "markdown/platform-administration/deleting-records.md",
+        "markdown/api-reference/business-rules-classic/c_BusinessRules.md"
+      ],
+      "hints": [
+        "Nothing matched every word, so this shows results for: setWorkflow"
+      ]
+    },
+    {
+      "query": "MID Server down not connecting",
+      "ms": 11581,
+      "is_error": false,
+      "total": 115,
+      "top": [
+        "markdown/platform-security/les-guided-setup-mid-server.md",
+        "markdown/servicenow-platform/mid-server/mid-server-connectivity-issues.md",
+        "markdown/it-operations-management/discovery/mid-server-parameter-powershell.md"
+      ]
+    },
+    {
+      "query": "flow stuck waiting error handling",
+      "ms": 11712,
+      "is_error": false,
+      "total": 2,
+      "top": [
+        "markdown/release-notes/brazil-security-notables.md",
+        "markdown/release-notes/brazil-patch-1.md"
+      ]
+    },
+    {
+      "query": "duplicate CI identification rule",
+      "ms": 11758,
+      "is_error": false,
+      "total": 134,
+      "top": [
+        "markdown/servicenow-platform/configuration-management-database-cmdb/id-detect-dup-ci.md",
+        "markdown/servicenow-platform/configuration-management-database-cmdb/create-health-inclusion-rule.md",
+        "markdown/servicenow-platform/configuration-management-database-cmdb/create-non-cmdb-id-rule.md"
+      ]
+    },
+    {
+      "query": "scheduled job sys_trigger not running",
+      "ms": 11611,
+      "is_error": false,
+      "total": 9,
+      "top": [
+        "markdown/platform-administration/scheduled-jobs-dashboard.md",
+        "markdown/release-notes/upgrades-phase-3.md",
+        "markdown/release-notes/brazil-security-notables.md"
+      ]
+    },
+    {
+      "query": "zzqqxx_no_such_term_anywhere",
+      "ms": 11303,
+      "is_error": false,
+      "total": 0,
+      "top": [],
+      "hints": [
+        "This search found nothing in the documentation. That says nothing about the question itself: it may be documented in other words, and other sources may cover it."
+      ]
+    }
+  ]
+}

@@ -29,6 +29,8 @@ A method for investigating ServiceNow problems, with references Claude loads onl
 npm run pack:skill
 ```
 
+It also says that any source your client can reach is fair to use, in any order. With documentation research on (`docs/INSTALL.md`), `docs_search` and `docs_read` are one more.
+
 ## `servicenow-development-guide` (third-party)
 
 General ServiceNow development and product knowledge: scripting, business rules, flows, portals, ITSM, ITOM, HRSD, CSM, SecOps and more, in 28 references. It helps when you build things, and when Claude needs to know how a feature is meant to work.

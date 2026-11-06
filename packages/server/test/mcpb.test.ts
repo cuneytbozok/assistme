@@ -35,15 +35,16 @@ describe('manifest', () => {
     expect(text).toMatch(/valid/i);
   });
 
-  it('asks for no secrets, and its settings can only shape responses', () => {
+  it('asks for no secrets, and its settings shape responses or add the optional docs tools', () => {
     const config = Object.values(manifest.user_config) as { sensitive?: boolean; type: string }[];
     for (const c of config) {
       expect(c.sensitive).toBeUndefined();
-      expect(c.type).toBe('number');
+      expect(['number', 'boolean']).toContain(c.type);
     }
     const env = Object.keys(manifest.server.mcp_config.env).sort();
     expect(env).toEqual([
       'SN_MCP_CLIENT_NAME',
+      'SN_MCP_DOCS',
       'SN_MCP_FIELD_PREVIEW_CHARS',
       'SN_MCP_MAX_RESPONSE_CHARS',
       'SN_MCP_PAGE_SIZE',
@@ -57,6 +58,7 @@ describe('manifest', () => {
     expect(u.response_chars.default).toBe(d.responseChars);
     expect(u.max_response_chars.default).toBe(d.maxResponseChars);
     expect(u.page_size.default).toBe(d.pageSize);
+    expect(u.docs_research.default).toBe(d.docsEnabled);
     expect(u.field_preview_chars.default).toBe(d.fieldPreviewChars);
     // A host that leaves a placeholder unfilled can't change anything.
     const unfilled = loadConfig({

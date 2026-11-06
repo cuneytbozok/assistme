@@ -242,6 +242,28 @@ On a single-instance scope, with two versions:
 { "scope_id": "$SCOPE", "table": "sys_update_version", "match_a": { "sys_id": "$OLDER" }, "match_b": { "sys_id": "$NEWER" } }
 ```
 
+## Optional documentation tools
+
+Listed only when `SN_MCP_DOCS` is on (ADR-019): with it off there are 14 tools and no internet request. They need no scope, and no other tool needs them. Documentation is a supplementary source: any order, alongside anything else a client can reach.
+
+### `docs_search`
+
+Keyword search through the full text of ServiceNow's published documentation, latest release, through GitMCP's code search. Every word has to match.
+
+- **Input:** `query` (keywords or an exact term), `page` (30 hits each).
+- **Result:** `data.results` with `path`, `source_url` (pinned to the searched commit) and, for the top 5 hits, `title`, `release`, `last_updated`, `canonical_url` and `matches`. `data.total_matches`, `data.release`, and `data.searched_as` when a simpler search gave the results.
+- **Behavior:** a term with an underscore is searched in both spellings, because the Markdown escapes it as `\_`. A search with no results is retried once with simpler terms. No results is a normal result. Slow or unavailable gives `DOCS_UNAVAILABLE` within 45 seconds.
+- **Timing:** about 11 seconds a request, plus 11 for the process's first. GitMCP slows down and then fails under bursts: 12 parallel requests took 61 seconds, and 2 failed.
+- **Search terms go to gitmcp.io and GitHub.**
+
+### `docs_read`
+
+Reads a page in full directly from GitHub, in numbered line chunks like `get_field_content`.
+
+- **Input:** `page_path` (from `docs_search`), `release` (default: the latest), `start_line`, `start_char`, `max_lines`, `max_chars`.
+- **Result:** `data.lines`, `release`, `title`, `last_updated`, `canonical_url`, `source_url`, `total_lines`, `total_chars`. Follow `next` while `complete` is false. Escaped underscores are shown plainly.
+- **Behavior:** a page missing from a release is `NOT_FOUND`, with the listed releases, and is never replaced by another release's. It doesn't use GitMCP, so it works when search doesn't.
+
 ## Known platform behaviour
 
 Seen on a live instance (T-034):
@@ -264,6 +286,7 @@ Seen on a live instance (T-034):
 | `INSTANCE_NOT_REGISTERED` | No such alias, or its host permission was removed | Call `list_instances`; only the user registers instances |
 | `INSTANCE_NOT_IN_SCOPE` | The scope doesn't cover that instance | Request a scope for it |
 | `BRIDGE_UNAVAILABLE` | The Chrome extension can't be reached | Ask the user to open Chrome with the extension on |
+| `DOCS_UNAVAILABLE` | GitMCP or GitHub was slow or unavailable (`docs_search`, `docs_read`) | Other tools and sources are unaffected; try again later if useful |
 | `BROKER_CONFLICT` | The connector is active in another Chrome profile | Use one profile at a time |
 | `NO_INSTANCE_TAB` | No open tab of the instance | Ask the user to open and sign in to it |
 | `SESSION_EXPIRED` | The ServiceNow session ended | Ask the user to sign in again; the scope stays valid |

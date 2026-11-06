@@ -106,12 +106,21 @@ On Windows, a named pipe and an ACL replace the socket file and modes. See ADR-0
 - No database, no memory subsystem, no persisted ServiceNow data (ADR-010). Metadata and field caches are in-process only.
 - No secrets are committed to git.
 
+### Optional documentation research (ADR-019)
+
+Off by default. With `SN_MCP_DOCS` on, the server itself makes HTTPS requests: to `gitmcp.io/ServiceNow/ServiceNowDocs`, and to this repository on `raw.githubusercontent.com`. Destinations are constants; `page_path` and `release` are validated before a request is made.
+
+- **What leaves the machine:** search terms, to GitMCP and GitHub, and page paths, to GitHub. GitMCP's README says it stores no queries; that hasn't been verified. No ServiceNow credential, scope or broker message is involved.
+- **Prompt injection:** text in a record could try to get instance data into a search term. A client with web search already has a similar path. The defenses are the setting being off by default, disclosure in the setting and the tool description, and the untrusted-content rules.
+- **Retrieved documentation is untrusted data** (rule 7), and is labelled so in each result.
+- **Availability:** GitMCP is a free community service. Its failure affects only `docs_search`.
+
 ## 4. Error codes
 
 Every code reaches Claude with a message and a hint (tested for every code):
 
 `SCOPE_REQUIRED`, `SCOPE_UNKNOWN`, `SCOPE_EXPIRED`, `SCOPE_NOT_APPROVED`, `REQUEST_DENIED`,
-`INSTANCE_NOT_REGISTERED`, `INSTANCE_NOT_IN_SCOPE`, `BRIDGE_UNAVAILABLE`, `BROKER_CONFLICT`,
+`INSTANCE_NOT_REGISTERED`, `INSTANCE_NOT_IN_SCOPE`, `BRIDGE_UNAVAILABLE`, `DOCS_UNAVAILABLE`, `BROKER_CONFLICT`,
 `NO_INSTANCE_TAB`, `SESSION_EXPIRED`, `ACL_DENIED`, `NOT_FOUND`, `AMBIGUOUS_MATCH`,
 `INVALID_INPUT`, `INVALID_FIELD`, `UNSAFE_QUERY`, `FORBIDDEN_OPERATION`, `TABLE_DENIED`,
 `RATE_LIMITED`, `RESPONSE_TOO_LARGE`, `FILTER_NOT_APPLIED`, `TIMEOUT`, `SN_API_ERROR`.

@@ -154,6 +154,8 @@ The skill gives your AI client a method for investigating ServiceNow problems. I
 
 **Server environment variables** (or the Claude Desktop extension settings): `SN_MCP_RESPONSE_CHARS`, `SN_MCP_MAX_RESPONSE_CHARS`, `SN_MCP_PAGE_SIZE`, `SN_MCP_FIELD_PREVIEW_CHARS`, `SN_MCP_FIELD_CACHE_MB`, `SN_MCP_FIELD_CACHE_TTL_S`, `SN_MCP_HIGH_VOLUME_TABLES`, `SN_MCP_DENIED_TABLES`. See [TOOLS.md](TOOLS.md#limits). They shape responses or block more tables. None can widen access.
 
+**Documentation research (optional, off by default):** adds `docs_search` and `docs_read` for ServiceNow's published documentation. In Claude Desktop, turn on **Documentation research** in the extension's settings. Elsewhere, set `SN_MCP_DOCS` = `1` in the server's environment. There's no key or download. Search terms are sent to gitmcp.io and GitHub. It's a free community service with no guarantee, so search can be slow or unavailable; nothing else depends on it.
+
 ## Updating
 
 ```bash

@@ -31,6 +31,8 @@ export interface ServerConfig {
   highVolumeTables: readonly string[];
   /** Extra denied table patterns (SN_MCP_DENIED_TABLES); added to the shared defaults. */
   extraDeniedTables: readonly string[];
+  /** docs_search and docs_read (SN_MCP_DOCS, ADR-019). Off unless turned on. */
+  docsEnabled: boolean;
 }
 
 function int(raw: string | undefined, fallback: number, min: number, max: number): number {
@@ -78,6 +80,7 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
       int(env.SN_MCP_FIELD_CACHE_TTL_S, SERVER_DEFAULTS.fieldCacheTtlMs / 1000, 1, 86_400) * 1000,
     highVolumeTables: patterns,
     extraDeniedTables: parseTablePatterns(env.SN_MCP_DENIED_TABLES),
+    docsEnabled: ['1', 'true'].includes(env.SN_MCP_DOCS?.trim().toLowerCase() ?? ''),
   };
 }
 
