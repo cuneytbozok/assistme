@@ -1,14 +1,14 @@
 {
   "note": "Live run against a real instance. Shapes, counts and sizes only; no record content.",
-  "started": "2026-11-05T10:57:06.778Z",
-  "finished": "2026-11-05T11:07:01.764Z",
+  "started": "2026-11-06T08:56:22.886Z",
+  "finished": "2026-11-06T09:06:53.559Z",
   "instance": "dev469966",
   "env": "dev",
   "tools": 14,
-  "tools_list_bytes": 11825,
+  "tools_list_bytes": 33841,
   "released": true,
   "counts": {
-    "pass": 16,
+    "pass": 19,
     "fail": 0,
     "skip": 0
   },
@@ -43,14 +43,14 @@
       "name": "query syslog with no time window, past offset 2,000, by cursor (AC-12)",
       "status": "pass",
       "metrics": {
-        "rows": 2510,
+        "rows": 2508,
         "pages": 22,
-        "rows_added_during_walk": 0,
-        "rows_moved_and_skipped": 0
+        "rows_added_during_walk": 2,
+        "rows_moved_and_skipped": 2
       },
       "measure": {
         "calls": 24,
-        "max_result_chars": 24281,
+        "max_result_chars": 24347,
         "requests_used": 47
       }
     },
@@ -89,11 +89,11 @@
         "pages": 3,
         "tables_total_narrow": 2,
         "tables_total_instance": 611,
-        "first_batch_seconds": 21
+        "first_batch_seconds": 23
       },
       "measure": {
         "calls": 4,
-        "max_result_chars": 16074,
+        "max_result_chars": 16223,
         "requests_used": 106
       }
     },
@@ -137,7 +137,7 @@
         ],
         "pages": 25,
         "most_requests_in_one_call": 112,
-        "seconds": 471
+        "seconds": 489
       },
       "measure": {
         "calls": 25,
@@ -157,16 +157,16 @@
           "error:SN_API_ERROR": 8
         },
         "details": [
-          "var__m_sys_hub_action_input_0a9376f1c344f110c7f9f92f050131b0.configuration_item: Aggregate Query Failed",
-          "var__m_sys_hub_action_input_0d352d01538b2300568fddeeff7b1205.ah_configuration_item: Aggregate Query Failed",
-          "var__m_sys_hub_action_input_4c532dc953872300568fddeeff7b126a.ah_configuration_item: Aggregate Query Failed",
-          "var__m_sys_hub_action_input_d1bc0f0fc30031107db578f9d0013138.configuration_item: Aggregate Query Failed",
-          "var__m_sys_hub_flow_output_38e2a63177783110dd32591e6b5a99e3.ci: Aggregate Query Failed",
-          "var__m_sys_hub_flow_output_40d4455177c47110dd32591e6b5a995d.ci: Aggregate Query Failed",
-          "var__m_sys_hub_flow_output_b2aa867977f43110dd32591e6b5a9933.ci: Aggregate Query Failed",
-          "var__m_sys_hub_flow_output_f5e209dd77847110dd32591e6b5a995d.ci: Aggregate Query Failed"
+          "var__m_sys_hub_action_input_0a9376f1c344f110c7f9f92f050131b0.configuration_item: Aggregate Query Failed (Verify request query and ACLs)",
+          "var__m_sys_hub_action_input_0d352d01538b2300568fddeeff7b1205.ah_configuration_item: Aggregate Query Failed (Verify request query and ACLs)",
+          "var__m_sys_hub_action_input_4c532dc953872300568fddeeff7b126a.ah_configuration_item: Aggregate Query Failed (Verify request query and ACLs)",
+          "var__m_sys_hub_action_input_d1bc0f0fc30031107db578f9d0013138.configuration_item: Aggregate Query Failed (Verify request query and ACLs)",
+          "var__m_sys_hub_flow_output_38e2a63177783110dd32591e6b5a99e3.ci: Aggregate Query Failed (Verify request query and ACLs)",
+          "var__m_sys_hub_flow_output_40d4455177c47110dd32591e6b5a995d.ci: Aggregate Query Failed (Verify request query and ACLs)",
+          "var__m_sys_hub_flow_output_b2aa867977f43110dd32591e6b5a9933.ci: Aggregate Query Failed (Verify request query and ACLs)",
+          "var__m_sys_hub_flow_output_f5e209dd77847110dd32591e6b5a995d.ci: Aggregate Query Failed (Verify request query and ACLs)"
         ],
-        "seconds": 49
+        "seconds": 50
       },
       "measure": {
         "calls": 17,
@@ -195,13 +195,13 @@
       "status": "pass",
       "metrics": {
         "count": 67,
-        "groups": 4,
+        "groups": 5,
         "group_value_shape": "value+display",
         "aggregate_shape": "number"
       },
       "measure": {
         "calls": 2,
-        "max_result_chars": 797,
+        "max_result_chars": 873,
         "requests_used": 2
       }
     },
@@ -310,7 +310,7 @@
       "status": "pass",
       "metrics": {
         "queries": 19,
-        "rows_checked": 663
+        "rows_checked": 666
       },
       "measure": {
         "calls": 20,
@@ -328,6 +328,111 @@
         "calls": 4,
         "max_result_chars": 313,
         "requests_used": 0
+      }
+    },
+    {
+      "name": "native encoded queries: UI and SDK forms, diagnostics (T-047)",
+      "status": "pass",
+      "metrics": {
+        "totals": {
+          "^EQ": [
+            40,
+            40
+          ],
+          "NOTLIKE": [
+            59,
+            59
+          ],
+          "CONTAINS": [
+            8,
+            8
+          ],
+          "empty =": [
+            28,
+            28
+          ],
+          "empty !=": [
+            39,
+            39
+          ]
+        },
+        "all_incidents": 67,
+        "label_hint": true,
+        "long_in_accepted_items": 226,
+        "long_in_accepted_query_chars": 7465,
+        "long_in_accepted_encoded_chars": 7929,
+        "long_in_refused_items": 227,
+        "downcast_available": true,
+        "downcast_rows": 11
+      },
+      "measure": {
+        "calls": 25,
+        "max_result_chars": 2712,
+        "requests_used": 28
+      }
+    },
+    {
+      "name": "compare_records: two records on one instance (T-042)",
+      "status": "pass",
+      "metrics": {
+        "pages": 4,
+        "script_diff_lines": 850,
+        "script_diff_applied": true,
+        "inline_fields": 1,
+        "lines_cut": 0
+      },
+      "measure": {
+        "calls": 14,
+        "max_result_chars": 15017,
+        "requests_used": 5
+      }
+    },
+    {
+      "name": "compare_records: two versions from sys_update_version (T-042)",
+      "status": "pass",
+      "metrics": {
+        "mode": "elements",
+        "versions_of_record": 4,
+        "record_table": "sys_script",
+        "assumed_fields_missing": [],
+        "payload_type": "compressed",
+        "payload_chars": [
+          2654,
+          2310
+        ],
+        "payload_lines": [
+          12,
+          5
+        ],
+        "payload_root": "record_update",
+        "payload_has_cdata": true,
+        "payload_elements": 48,
+        "pages": 1,
+        "diff_fields": 1,
+        "diffs_applied": 1,
+        "script_diff_lines": 15,
+        "inline_fields": 8,
+        "inline_field_names": [
+          "payload.name",
+          "payload.sys_name",
+          "payload_hash",
+          "record_name",
+          "state",
+          "sys_recorded_at",
+          "update_guid",
+          "update_guid_history"
+        ],
+        "only_on_one_side": 0,
+        "ignored_fields": 13,
+        "lines_cut": 0,
+        "pairs_checked": 2,
+        "pairs_raw": 0,
+        "raw_shapes": []
+      },
+      "measure": {
+        "calls": 11,
+        "max_result_chars": 13949,
+        "requests_used": 15
       }
     }
   ]

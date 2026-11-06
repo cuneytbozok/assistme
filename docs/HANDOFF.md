@@ -15,7 +15,7 @@ The connector is built, installed and working on the user's Mac, in Claude Deskt
 
 Both are on branch `claude/query-compat`, not merged, server 0.1.9. The user has reloaded the extension on this build.
 
-- **T-047 (DONE):** native encoded forms verified live. On `dev469966`, `IN` lists work up to 226 sys_ids (7,465 characters), and longer ones get HTTP 414 with an explanation. `table.list` now always sends `sysparm_suppress_pagination_header=true`, found live. That parameter hasn't been run on a multi-page live read yet: a full `npm run e2e:live` covers it.
+- **T-047 (DONE):** native encoded forms verified live. On `dev469966`, `IN` lists work up to 226 sys_ids (7,465 characters), and longer ones get HTTP 414 with an explanation. `table.list` now always sends `sysparm_suppress_pagination_header=true`, found live. The full live run with it passes, 19 of 19, with multi-page reads.
 - **T-048:** no `tools/list` budget any more (ADR-017). Discovery passes on the Mac in ChatGPT Desktop's engine and Vibe (AC4, AC5, `docs/evidence/T-048/*-mac-discovery.json`). AC6 remains.
 
 **To finish T-048:** install `packages/server/sn-mcp.mcpb` (0.1.9, from `npm run pack:mcpb`) in Claude Desktop, Cmd+Q and reopen. Ask for one filtered read, e.g. active incidents created in the last 30 days, and check the tool call succeeds. Code sessions in the Desktop app use the same connector. Record the result and mark it DONE only if it passes.
