@@ -9,11 +9,13 @@ The connector is built, installed and working on the user's Mac, in Claude Deskt
 - **Tasks:** 47 DONE, 2 BLOCKED (T-015, T-044), 1 DROPPED (T-039).
 - **Milestones:** M1, M3, M4, M5 and M6 achieved. M6 by the user's decision, with AC-6, AC-7 and AC-8 left open: not all 19 criteria are evidenced. M2 not achieved (T-015).
 - **Acceptance:** `docs/ACCEPTANCE.md`: 15 passed, 3 open, 1 out of scope, none failed.
-- **Next:** no task is eligible. T-044 waits for someone with a Windows PC. Anything else that remains needs the user: see `docs/NEXT_STEPS.md`.
+- **Next:** no task is eligible. The user validates T-050 in Claude Desktop. T-044 waits for someone with a Windows PC. Anything else that remains needs the user: see `docs/NEXT_STEPS.md`.
 
-## T-050 (done, on branch `t-050-docs-research`, not merged or pushed)
+## T-050 (done, merged into `main`, not pushed)
 
-Optional documentation research, server 0.1.15, ADR-019. `docs_search` uses GitMCP's code search and `docs_read` uses GitHub. Off by default (`SN_MCP_DOCS`, or **Documentation research** in the Desktop extension's settings). Live with a real model through the Codex engine; not yet with a Claude model. To try it in Desktop: merge, install the 0.1.15 bundle, turn the setting on, Cmd+Q and reopen. The troubleshooting skill changed, so re-upload that zip. The extension needs no reload: the only shared change is a new error code that only the server sends.
+Optional documentation research, server 0.1.15, ADR-019. `docs_search` uses GitMCP's code search and `docs_read` uses GitHub. Off by default, which the user confirmed: **Documentation research** in Claude Desktop's settings for this extension, or `SN_MCP_DOCS` elsewhere. Live with a real model through the Codex engine; not yet with a Claude model.
+
+**Next, by the user:** install the 0.1.15 bundle, turn the setting on, re-upload the troubleshooting skill, and validate in Claude Desktop with a real ServiceNow troubleshooting scenario: see `docs/NEXT_STEPS.md`. The user decided on no further optimization or architecture changes for now. The extension needs no reload: the only shared change is a new error code that only the server sends.
 
 GitMCP slows down and then fails under bursts, so `docs_search` makes few requests. Don't add parallel or repeated searches to it without measuring.
 
@@ -63,7 +65,7 @@ Done by the user's decision. Live on `dev469966` (`docs/evidence/T-042/`): two r
 - **Instance:** `dev469966.service-now.com`, alias `dev469966`, environment dev. A personal developer instance, signed in as admin.
 - **Chrome:** unpacked extension from `packages/extension/dist`, ID `clipfeocpiljpcngmjpdbegciimchbol`.
 - **Native host:** installed by `npm run setup` from this folder. Runtime files are in `~/Library/Application Support/sn-mcp/`, which is 0700: `broker.sock`, `broker.key`, `broker.pid`, `broker.log` (metadata only). Exit codes: 64 bad origin, 78 unsafe path, 75 conflict.
-- **Claude Desktop:** the `.mcpb` bundle, named "ServiceNow (read-only)", plus both skills uploaded. The installed bundle is 0.1.14. `mcpServers` in `claude_desktop_config.json` is empty; the old entry's backup is `claude_desktop_config.json.before-sn-mcp-bundle`.
+- **Claude Desktop:** the `.mcpb` bundle, named "ServiceNow (read-only)", plus both skills uploaded. The installed bundle is 0.1.14; 0.1.15 is built and waiting for the user to install. `mcpServers` in `claude_desktop_config.json` is empty; the old entry's backup is `claude_desktop_config.json.before-sn-mcp-bundle`.
 - **Claude Code:** Code sessions inside the Desktop app use the Desktop connector and skills. Nothing is registered separately: the `sn-mcp` registration and plugin were removed, because two connectors in one session don't share scopes.
 - **ChatGPT Desktop:** installed, version 26.1029.61003, engine codex-cli 0.166.0-alpha.6. sn-mcp is registered in `~/.codex/config.toml` by the user, through the app's settings, without the longer timeouts.
 - **Mistral Vibe:** 3.1.0, a uv tool at `~/.local/bin/vibe`, which isn't on the non-login shell's PATH. sn-mcp is registered in `~/.vibe/config.toml`, with the printed block; the earlier file is `config.toml.before-sn-mcp`. Reads work there with Mistral Medium 3.5. Its `prompt` was updated to the 0.1.7 text. Skills are already visible to it, through `~/.agents/skills`.

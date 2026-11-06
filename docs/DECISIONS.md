@@ -408,7 +408,7 @@ Format: Status · Context · Decision · Alternatives considered · Consequences
 - **Decision:**
   - Two tools in the existing server. `docs_search` calls only GitMCP's code search. `docs_read` reads a page directly from GitHub, in chunks.
   - **Release handling is deliberately simple:** search covers the latest release, and every result states its release, taken from the page. `docs_read` can read a page from a named release when that's relevant. There is no cross-release search or comparison.
-  - **Off by default.** One setting (`SN_MCP_DOCS`) turns it on. With it off, the tools aren't listed and the server makes no internet request. No key, no disk cache (ADR-010), no documents in the bundle.
+  - **Off by default**, confirmed by the user after T-050. One setting (`SN_MCP_DOCS`, shown as **Documentation research** in Claude Desktop) turns it on. With it off, the tools aren't listed and the server makes no internet request. No key, no disk cache (ADR-010), no documents in the bundle.
   - **Fixed destinations:** this repository on GitMCP and on `raw.githubusercontent.com`. Page paths are validated. It isn't generic HTTP, and it never touches the broker, the extension or a ServiceNow credential.
   - **Research stays free:** no required order, no tool that needs a docs call, and no wording that ranks documentation above other sources. An empty or failed search says it limits nothing. A contract test keeps that wording out. The server can't provide web search: that belongs to each client.
   - Documentation is untrusted data, like records (rule 7).

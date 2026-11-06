@@ -1717,6 +1717,7 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
   7. Requests go only to the fixed destinations, and invalid page paths are refused.
   8. Live, through a real MCP client with a real model: a troubleshooting question uses the docs tools with citations, and the client's other sources stay usable.
 - **Verification:** `npm run build`, `npm test`, `npm run lint`; `npx tsx test/e2e/docs-client.ts`; a real client run. Mocks prove none of the live criteria.
+- **Note (2026-11-06):** merged into `main`. The user kept it off by default and will validate it in Claude Desktop with a real troubleshooting scenario.
 - **Evidence (2026-11-06, live, GitMCP and GitHub, server 0.1.15, the user's Mac):**
   - `npm test`: shared 550 passed; server 544 passed, 3 skipped, including 37 in `docs.test.ts`; extension 269 passed. `npm run build`, `npm run pack:mcpb`: bundle 0.1.15.
   - AC1–AC5, AC7, `npm run e2e:docs` through an MCP client over STDIO (`docs/evidence/T-050/live.json`): 15 of 15. Off: 14 tools; on: 16. Four body-only terms each found their known page, with the cited page checked on GitHub, in about 11 to 23 seconds. `why is my business rule not firing setWorkflow` became `setWorkflow`, 18 matches, 22 seconds. A 212,421-character page read in 24 chunks equals the page. `zurich` read as `zurich`.

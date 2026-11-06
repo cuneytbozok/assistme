@@ -2,6 +2,22 @@
 
 The connector is installed and working in Claude Desktop, and every required step is done. All of these are optional.
 
+## Try documentation research in Claude Desktop
+
+Version 0.1.15 adds optional documentation research (T-050). It's off until you turn it on, and hasn't been tried with Claude yet.
+
+1. Build the files, if they aren't already there: `npm run pack:mcpb` and `npm run pack:skill`.
+2. Install `packages/server/sn-mcp.mcpb` in Claude Desktop, replacing the current version.
+3. In Claude Desktop's settings for the **ServiceNow (read-only)** extension, turn on **Documentation research**. This isn't in the Chrome extension's popup.
+4. Upload `dist-skill/servicenow-readonly-troubleshooting.zip` again: the skill changed.
+5. Press Cmd+Q and reopen Claude Desktop.
+6. Ask about a real ServiceNow problem, as you normally would, and check:
+   - the answer can combine instance data, documentation and other sources, in any order;
+   - documentation citations name a release and open correctly;
+   - a slow or failed search doesn't stop the investigation.
+
+If the tools don't appear, tell me: how Claude Desktop passes this setting to the server is the one part not tested. The Chrome extension doesn't need a reload.
+
 ## 1. Check the query and tool changes live (before merging `claude/query-compat`)
 
 Version 0.1.9 accepts ServiceNow's native encoded-query forms and gives better errors (T-047), and publishes typed, described tools (T-048). Both are tested on mocks and with Linux builds of Codex and Vibe, not yet against your instance or in your apps. The steps are in [HANDOFF.md](HANDOFF.md#t-047-and-t-048-code-done-live-checks-pending): about 15 minutes and one approval. Installing the 0.1.9 bundle also brings in 0.1.7's compare features.
