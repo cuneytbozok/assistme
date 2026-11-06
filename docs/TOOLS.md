@@ -77,7 +77,7 @@ A query copied from a list ("Copy query") or written as in ServiceNow's docs nor
 - `ref_<table>` downcasts in a dot-walk: `cmdb_ci.ref_cmdb_ci_server.os=Linux`.
 - Code text in a value (`scriptLIKEgs.addErrorMessage`, `short_descriptionLIKEnew laptop`) is fine. Only `javascript:` is refused, because ServiceNow would run it.
 
-Sent as written, with a warning hint when they run as script (ADR-018): `javascript:` values (`sys_created_onONToday@javascript:gs.beginningOfToday()@javascript:gs.endOfToday()`, `>=javascript:gs.daysAgoStart(7)`), `DYNAMIC`, `ON`, `NOTON`, `DATEPART`, and `MORETHAN` / `LESSTHAN` (`sys_updated_onMORETHANsys_created_on@hour@after@1`; the other field is checked against the dictionary).
+Sent as written, with a warning hint when they run as script (ADR-018): `javascript:` values (`sys_created_onONToday@javascript:gs.beginningOfToday()@javascript:gs.endOfToday()`, `>=javascript:gs.daysAgoStart(7)`), `DYNAMIC`, `ON`, `NOTON`, `DATEPART`, and `MORETHAN` / `LESSTHAN` (`sys_updated_onMORETHANsys_created_on@hour@after@1`; the other field is checked against the dictionary). `SAMEAS` / `NSAMEAS` take `other_field@unit` on dates, and compare only that part: `@day` is the day of the month, so 12 Sep 2006 matches 12 Oct 2026 (seen live). `IN_HIERARCHY` and `IN_HIERARCHY_DYNAMIC` are sent as written.
 
 Not supported, with the alternative the error suggests:
 
