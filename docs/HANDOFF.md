@@ -9,11 +9,11 @@ The connector is built, installed and working on the user's Mac, in Claude Deskt
 - **Tasks:** 46 DONE, 2 BLOCKED (T-015, T-044), 1 DROPPED (T-039).
 - **Milestones:** M1, M3, M4, M5 and M6 achieved. M6 by the user's decision, with AC-6, AC-7 and AC-8 left open: not all 19 criteria are evidenced. M2 not achieved (T-015).
 - **Acceptance:** `docs/ACCEPTANCE.md`: 15 passed, 3 open, 1 out of scope, none failed.
-- **Next:** merge `claude/query-compat` into `main`, with the user's approval. No other task is eligible. T-044 waits for someone with a Windows PC. Anything else that remains needs the user: see `docs/NEXT_STEPS.md`.
+- **Next:** no task is eligible. T-044 waits for someone with a Windows PC. Anything else that remains needs the user: see `docs/NEXT_STEPS.md`.
 
-## T-047, T-048 and T-049 (done, not merged)
+## T-047, T-048 and T-049 (done)
 
-All on branch `claude/query-compat`, not merged, server 0.1.11, with T-049. The user has reloaded the extension on this build.
+Merged into `main`, server 0.1.11. The user has reloaded the extension on this build.
 
 - **T-049 (DONE):** relative dates now use ServiceNow's units, and **a query can run script (ADR-018, the user's decision):** `javascript:` values and `DYNAMIC` are sent, with a warning hint. Don't describe the connector as unable to run scripts. Full live run: 19 of 19. `DYNAMIC`, `DATEPART`, `NOTON`, `RELATIVEEE`, `MORETHAN` and `LESSTHAN` pass validation but weren't run live.
 
