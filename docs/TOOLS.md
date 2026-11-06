@@ -252,7 +252,7 @@ Keyword search through the full text of ServiceNow's published documentation, la
 
 - **Input:** `query` (keywords or an exact term), `page` (30 hits each).
 - **Result:** `data.results` with `path`, `source_url` (pinned to the searched commit) and, for the top 5 hits, `title`, `release`, `last_updated`, `canonical_url` and `matches`. `data.total_matches`, `data.release`, and `data.searched_as` when a simpler search gave the results.
-- **Behavior:** a term with an underscore is searched in both spellings, because the Markdown escapes it as `\_`. A search with no results is retried once with simpler terms. No results is a normal result. Slow or unavailable gives `DOCS_UNAVAILABLE` within 45 seconds.
+- **Behavior:** a term with an underscore is searched in both spellings, because the Markdown escapes it as `\_`. A search with no results is retried once with simpler terms. No results is a normal result. Slow or unavailable gives `DOCS_UNAVAILABLE` at the time limit: `SN_MCP_DOCS_TIMEOUT_S`, or **Documentation time limit** in Claude Desktop, 55 seconds by default (5 to 600).
 - **Timing:** about 11 seconds a request, plus 11 for the process's first. GitMCP slows down and then fails under bursts: 12 parallel requests took 61 seconds, and 2 failed.
 - **Search terms go to gitmcp.io and GitHub.**
 
@@ -318,5 +318,6 @@ These shape one request or result. None caps how much can be read in total.
 | Named fields per call | 49 | Wire format |
 | One query | 100 terms, 10 `any_of` / `^NQ` groups, 8,000 characters (7,900 raw), 1,000 `IN` items | Query validator |
 | Relations, tables per call | 60, 25 (then a cursor) | Fixed, to stay within client tool timeouts |
+| Time for one docs call | 55 seconds (5 to 600), then `DOCS_UNAVAILABLE` | `SN_MCP_DOCS_TIMEOUT_S`, or **Documentation time limit**. A client's own limit can end a call sooner |
 
 `tools/list` has no size budget (ADR-017). It is kept within the limits supported clients really apply, which a test checks: each description and the server instructions within 4,096 characters (Claude Code's cut-off), and each tool's input schema within 4,500 bytes, because the Codex engine in ChatGPT Desktop strips the descriptions and nested types of a larger one. Inputs are published as the schemas that validate them, with descriptions. `where` is published in a compact form (one condition shape with every operator and value type), and `any_of` as lists shaped like `where`; the server validates both against the strict per-operator rules above. The output schema published for every tool is the shared envelope (`ok`, `data`, `complete`, `omitted`, `page`, `hints`, `error`); this file has each tool's full result contract.

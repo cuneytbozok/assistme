@@ -18,6 +18,13 @@ export const DEFAULT_HIGH_VOLUME_TABLES = [
   '*_log',
 ] as const;
 
+/**
+ * Long enough for GitMCP's measured slow case (open a session, 11 s, plus a 37 s search), and under
+ * the 60-second default of the MCP SDK and of clients that keep it, so the model gets our clear
+ * answer rather than a client timeout. Claude Code's default is far longer, and a user can raise it.
+ */
+export const DEFAULT_DOCS_TIMEOUT_S = 55;
+
 export interface ServerConfig {
   responseChars: number;
   maxResponseChars: number;
@@ -33,6 +40,8 @@ export interface ServerConfig {
   extraDeniedTables: readonly string[];
   /** docs_search and docs_read (SN_MCP_DOCS, ADR-019). Off unless turned on. */
   docsEnabled: boolean;
+  /** Time limit for one docs_search or docs_read call (SN_MCP_DOCS_TIMEOUT_S). */
+  docsTimeoutMs: number;
 }
 
 function int(raw: string | undefined, fallback: number, min: number, max: number): number {
@@ -81,6 +90,7 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
     highVolumeTables: patterns,
     extraDeniedTables: parseTablePatterns(env.SN_MCP_DENIED_TABLES),
     docsEnabled: ['1', 'true'].includes(env.SN_MCP_DOCS?.trim().toLowerCase() ?? ''),
+    docsTimeoutMs: int(env.SN_MCP_DOCS_TIMEOUT_S, DEFAULT_DOCS_TIMEOUT_S, 5, 600) * 1000,
   };
 }
 

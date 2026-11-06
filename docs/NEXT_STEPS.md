@@ -4,7 +4,7 @@ The connector is installed and working in Claude Desktop, and every required ste
 
 ## Try documentation research in Claude Desktop
 
-Version 0.1.15 adds optional documentation research (T-050). It's off until you turn it on, and hasn't been tried with Claude yet.
+Version 0.1.15 adds optional documentation research (T-050), and 0.1.16 a setting for its time limit. It's off until you turn it on, and hasn't been tried with Claude yet.
 
 1. Build the files, if they aren't already there: `npm run pack:mcpb` and `npm run pack:skill`.
 2. Install `packages/server/sn-mcp.mcpb` in Claude Desktop, replacing the current version.
@@ -15,6 +15,7 @@ Version 0.1.15 adds optional documentation research (T-050). It's off until you 
    - the answer can combine instance data, documentation and other sources, in any order;
    - documentation citations name a release and open correctly;
    - a slow or failed search doesn't stop the investigation.
+   - if a search is ever cut off with a client error, not `DOCS_UNAVAILABLE`, tell me how long it ran: Claude Desktop's own limit is the one not determined.
 
 If the tools don't appear, tell me: how Claude Desktop passes this setting to the server is the one part not tested. The Chrome extension doesn't need a reload.
 

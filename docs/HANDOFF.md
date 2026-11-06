@@ -13,9 +13,9 @@ The connector is built, installed and working on the user's Mac, in Claude Deskt
 
 ## T-050 (done, merged into `main`, not pushed)
 
-Optional documentation research, server 0.1.15, ADR-019. `docs_search` uses GitMCP's code search and `docs_read` uses GitHub. Off by default, which the user confirmed: **Documentation research** in Claude Desktop's settings for this extension, or `SN_MCP_DOCS` elsewhere. Live with a real model through the Codex engine; not yet with a Claude model.
+Optional documentation research, ADR-019. Server 0.1.16 adds **Documentation time limit** (`SN_MCP_DOCS_TIMEOUT_S`, default 55 seconds, 5 to 600). The user kept that default and wants no more timeout investigation for now: adjust it only if real use in Claude Desktop calls for it. Claude Desktop's own tool limit wasn't determined. `docs_search` uses GitMCP's code search and `docs_read` uses GitHub. Off by default, which the user confirmed: **Documentation research** in Claude Desktop's settings for this extension, or `SN_MCP_DOCS` elsewhere. Live with a real model through the Codex engine; not yet with a Claude model.
 
-**Next, by the user:** install the 0.1.15 bundle, turn the setting on, re-upload the troubleshooting skill, and validate in Claude Desktop with a real ServiceNow troubleshooting scenario: see `docs/NEXT_STEPS.md`. The user decided on no further optimization or architecture changes for now. The extension needs no reload: the only shared change is a new error code that only the server sends.
+**Next, by the user:** install the latest bundle, turn the setting on, re-upload the troubleshooting skill, and validate in Claude Desktop with a real ServiceNow troubleshooting scenario: see `docs/NEXT_STEPS.md`. The user decided on no further optimization or architecture changes for now. The extension needs no reload: the only shared change is a new error code that only the server sends.
 
 GitMCP slows down and then fails under bursts, so `docs_search` makes few requests. Don't add parallel or repeated searches to it without measuring.
 
@@ -65,7 +65,7 @@ Done by the user's decision. Live on `dev469966` (`docs/evidence/T-042/`): two r
 - **Instance:** `dev469966.service-now.com`, alias `dev469966`, environment dev. A personal developer instance, signed in as admin.
 - **Chrome:** unpacked extension from `packages/extension/dist`, ID `clipfeocpiljpcngmjpdbegciimchbol`.
 - **Native host:** installed by `npm run setup` from this folder. Runtime files are in `~/Library/Application Support/sn-mcp/`, which is 0700: `broker.sock`, `broker.key`, `broker.pid`, `broker.log` (metadata only). Exit codes: 64 bad origin, 78 unsafe path, 75 conflict.
-- **Claude Desktop:** the `.mcpb` bundle, named "ServiceNow (read-only)", plus both skills uploaded. The installed bundle is 0.1.14; 0.1.15 is built and waiting for the user to install. `mcpServers` in `claude_desktop_config.json` is empty; the old entry's backup is `claude_desktop_config.json.before-sn-mcp-bundle`.
+- **Claude Desktop:** the `.mcpb` bundle, named "ServiceNow (read-only)", plus both skills uploaded. The installed bundle is 0.1.14; 0.1.16 is built and waiting for the user to install. `mcpServers` in `claude_desktop_config.json` is empty; the old entry's backup is `claude_desktop_config.json.before-sn-mcp-bundle`.
 - **Claude Code:** Code sessions inside the Desktop app use the Desktop connector and skills. Nothing is registered separately: the `sn-mcp` registration and plugin were removed, because two connectors in one session don't share scopes.
 - **ChatGPT Desktop:** installed, version 26.1029.61003, engine codex-cli 0.166.0-alpha.6. sn-mcp is registered in `~/.codex/config.toml` by the user, through the app's settings, without the longer timeouts.
 - **Mistral Vibe:** 3.1.0, a uv tool at `~/.local/bin/vibe`, which isn't on the non-login shell's PATH. sn-mcp is registered in `~/.vibe/config.toml`, with the printed block; the earlier file is `config.toml.before-sn-mcp`. Reads work there with Mistral Medium 3.5. Its `prompt` was updated to the 0.1.7 text. Skills are already visible to it, through `~/.agents/skills`.

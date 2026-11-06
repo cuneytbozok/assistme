@@ -26,9 +26,6 @@ import type { ToolContext } from './context.js';
 import { readWindow } from './get-field-content.js';
 import { maxCharsInput, RESPONSE_OVERHEAD_CHARS, resolveMaxChars } from './support.js';
 
-/** Below the usual 60-second tool timeout of MCP clients, so the model gets an answer. */
-const SEARCH_DEADLINE_MS = 45_000;
-const READ_DEADLINE_MS = 20_000;
 /** How many hits get a title and matching lines. The rest are listed with their path and URL. */
 const DETAILED_HITS = 5;
 
@@ -52,7 +49,8 @@ export function registerDocsTools(
 ): void {
   const { config } = ctx;
   const client = new DocsClient(testing.fetch ?? fetch);
-  const deadline = testing.searchDeadlineMs ?? SEARCH_DEADLINE_MS;
+  const deadline = testing.searchDeadlineMs ?? config.docsTimeoutMs;
+  const limitNote = `The limit is ${Math.round(config.docsTimeoutMs / 1000)} seconds (Documentation time limit in the settings, or SN_MCP_DOCS_TIMEOUT_S).`;
 
   /** Searches each Markdown spelling; one spelling failing still gives the other's results. */
   async function searchSpellings(query: string, page: number, signal: AbortSignal) {
@@ -102,8 +100,12 @@ export function registerDocsTools(
       } catch (e) {
         return toolError(
           'DOCS_UNAVAILABLE',
-          e instanceof DocsUnavailable ? e.message : 'Documentation search failed.',
-          "Documentation search isn't available right now. This doesn't affect any other tool or source. docs_read still works for a known page.",
+          signal.aborted
+            ? 'GitMCP did not answer within the time limit.'
+            : e instanceof DocsUnavailable
+              ? e.message
+              : 'Documentation search failed.',
+          `Documentation search isn't available right now. This doesn't affect any other tool or source. docs_read still works for a known page. ${limitNote}`,
         );
       }
       const simpler = found.hits.length === 0 && page === 1 ? simplerQuery(query) : undefined;
@@ -218,7 +220,7 @@ export function registerDocsTools(
           'Use a `path` from docs_search: a relative path to a .md file.',
         );
       }
-      const signal = AbortSignal.timeout(READ_DEADLINE_MS);
+      const signal = AbortSignal.timeout(deadline);
       const key = `docs|${args.release ?? 'latest'}|${path}`;
       let page: CachedField | undefined = ctx.fieldCache.get(key);
       if (!page) {
@@ -228,8 +230,12 @@ export function registerDocsTools(
         } catch (e) {
           return toolError(
             'DOCS_UNAVAILABLE',
-            e instanceof DocsUnavailable ? e.message : 'The page could not be read.',
-            "This page couldn't be read right now. This doesn't affect any other tool or source.",
+            signal.aborted
+              ? 'GitHub did not answer within the time limit.'
+              : e instanceof DocsUnavailable
+                ? e.message
+                : 'The page could not be read.',
+            `This page couldn't be read right now. This doesn't affect any other tool or source. ${limitNote}`,
           );
         }
         if (text === undefined) {

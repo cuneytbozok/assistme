@@ -18,7 +18,7 @@ export interface StdioClientConfig {
   args: string[];
   env: Record<string, string>;
   cwd: string;
-  /** The engine's defaults are 10 s and 60 s; one paged read can take longer than a minute. */
+  /** Documented defaults are 10 s and 60 s; one paged read can take longer than a minute. */
   startupTimeoutSec: number;
   toolTimeoutSec: number;
 }

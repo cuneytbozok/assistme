@@ -45,6 +45,7 @@ describe('manifest', () => {
     expect(env).toEqual([
       'SN_MCP_CLIENT_NAME',
       'SN_MCP_DOCS',
+      'SN_MCP_DOCS_TIMEOUT_S',
       'SN_MCP_FIELD_PREVIEW_CHARS',
       'SN_MCP_MAX_RESPONSE_CHARS',
       'SN_MCP_PAGE_SIZE',
@@ -59,6 +60,7 @@ describe('manifest', () => {
     expect(u.max_response_chars.default).toBe(d.maxResponseChars);
     expect(u.page_size.default).toBe(d.pageSize);
     expect(u.docs_research.default).toBe(d.docsEnabled);
+    expect(u.docs_timeout_s.default * 1000).toBe(d.docsTimeoutMs);
     expect(u.field_preview_chars.default).toBe(d.fieldPreviewChars);
     // A host that leaves a placeholder unfilled can't change anything.
     const unfilled = loadConfig({

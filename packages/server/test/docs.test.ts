@@ -121,6 +121,34 @@ describe('setting', () => {
   });
 });
 
+describe('time limit', () => {
+  it('defaults to 55 seconds, can be changed, and ignores invalid values', () => {
+    expect(loadConfig({}).docsTimeoutMs).toBe(55_000);
+    expect(loadConfig({ SN_MCP_DOCS_TIMEOUT_S: '120' }).docsTimeoutMs).toBe(120_000);
+    // biome-ignore lint/suspicious/noTemplateCurlyInString: an unfilled placeholder is the test
+    for (const bad of ['1', '601', 'soon', '', '${user_config.docs_timeout_s}']) {
+      expect(loadConfig({ SN_MCP_DOCS_TIMEOUT_S: bad }).docsTimeoutMs).toBe(55_000);
+    }
+  });
+
+  it('the setting decides when a slow search ends, and the result names it', async () => {
+    const server = createMcpServer({ cachedRegistry: undefined } as unknown as BridgeClient, {
+      config: { ...loadConfig({ SN_MCP_DOCS: '1' }), docsTimeoutMs: 200 },
+      docs: { fetch: fakeNet(() => 'hang').fetch },
+    });
+    const [ct, st] = InMemoryTransport.createLinkedPair();
+    await server.connect(st);
+    const c = new Client({ name: 't', version: '0' });
+    await c.connect(ct);
+    const started = Date.now();
+    const r = await call(c, 'docs_search', { query: 'x' });
+    expect(r.body.error.code).toBe('DOCS_UNAVAILABLE');
+    expect(r.body.error.hint).toMatch(/SN_MCP_DOCS_TIMEOUT_S/);
+    expect(Date.now() - started).toBeLessThan(3000);
+    await c.close();
+  });
+});
+
 describe('research stays free', () => {
   // Wording that would rank documentation above other sources, or impose an order.
   const STEERING =
@@ -258,7 +286,7 @@ describe('docs_search', () => {
     const started = Date.now();
     const r = await call(c, 'docs_search', { query: 'x' });
     expect(r.body.error.code).toBe('DOCS_UNAVAILABLE');
-    expect(r.body.error.message).toMatch(/in time/);
+    expect(r.body.error.message).toMatch(/time limit/);
     expect(Date.now() - started).toBeLessThan(3000);
     await c.close();
   });

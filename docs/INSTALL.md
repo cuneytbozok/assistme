@@ -99,7 +99,7 @@ Save, then restart ChatGPT Desktop.
 
 **Use a Codex chat.** The tools work in the app's Codex chats, not in its normal chats: a normal chat doesn't start local servers, and it will say it can't find your instances.
 
-If you'd rather edit `~/.codex/config.toml`, setup prints a block for that too. It also sets longer timeouts: the 60-second default for one tool call can be too short for a long read of many pages.
+If you'd rather edit `~/.codex/config.toml`, setup prints a block for that too. It also sets longer timeouts, so a long read of many pages isn't cut off.
 
 Each client has its own access: what you approve for ChatGPT doesn't work in Claude, and the other way round. Each ChatGPT conversation also has its own, so a new conversation asks for a new approval. The popup shows which client is asking. To add the optional skills to Codex chats, run `npm run codex-skills`: see [SKILLS.md](SKILLS.md#in-codex).
 
@@ -152,9 +152,9 @@ The skill gives your AI client a method for investigating ServiceNow problems. I
 
 **In the extension popup** (only you can change these): request timeout (30 s), maximum response per request (10 MB), and concurrent requests per instance (4).
 
-**Server environment variables** (or the Claude Desktop extension settings): `SN_MCP_RESPONSE_CHARS`, `SN_MCP_MAX_RESPONSE_CHARS`, `SN_MCP_PAGE_SIZE`, `SN_MCP_FIELD_PREVIEW_CHARS`, `SN_MCP_FIELD_CACHE_MB`, `SN_MCP_FIELD_CACHE_TTL_S`, `SN_MCP_HIGH_VOLUME_TABLES`, `SN_MCP_DENIED_TABLES`. See [TOOLS.md](TOOLS.md#limits). They shape responses or block more tables. None can widen access.
+**Server environment variables** (or the Claude Desktop extension settings): `SN_MCP_RESPONSE_CHARS`, `SN_MCP_MAX_RESPONSE_CHARS`, `SN_MCP_PAGE_SIZE`, `SN_MCP_FIELD_PREVIEW_CHARS`, `SN_MCP_DOCS`, `SN_MCP_DOCS_TIMEOUT_S`, `SN_MCP_FIELD_CACHE_MB`, `SN_MCP_FIELD_CACHE_TTL_S`, `SN_MCP_HIGH_VOLUME_TABLES`, `SN_MCP_DENIED_TABLES`. See [TOOLS.md](TOOLS.md#limits). They shape responses or block more tables. None can widen access.
 
-**Documentation research (optional, off by default):** adds `docs_search` and `docs_read` for ServiceNow's published documentation. In Claude Desktop, turn on **Documentation research** in Claude Desktop's settings for this extension (not the Chrome popup), then restart it. Elsewhere, set `SN_MCP_DOCS` = `1` in the server's environment. There's no key or download. Search terms are sent to gitmcp.io and GitHub. It's a free community service with no guarantee, so search can be slow or unavailable; nothing else depends on it.
+**Documentation research (optional, off by default):** adds `docs_search` and `docs_read` for ServiceNow's published documentation. In Claude Desktop, turn on **Documentation research** in Claude Desktop's settings for this extension (not the Chrome popup), then restart it. Elsewhere, set `SN_MCP_DOCS` = `1` in the server's environment. There's no key or download. Search terms are sent to gitmcp.io and GitHub. It's a free community service with no guarantee, so search can be slow or unavailable; nothing else depends on it. **Documentation time limit** (`SN_MCP_DOCS_TIMEOUT_S`, 55 seconds by default, 5 to 600) sets how long one call may take before the AI is told it's unavailable and carries on. Clients have their own limits: above 60 seconds, a client may stop the call first.
 
 ## Updating
 
