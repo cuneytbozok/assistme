@@ -67,4 +67,4 @@ Vibe reads the same folder, so `npm run codex-skills` adds them to both. Start a
 
 This project doesn't include it.
 
-If an SDK plugin such as `fluent@servicenow` is installed anyway, know that the SDK can sign in to instances and deploy to them, outside the connector and its approvals. Don't run `now-sdk auth`. `.claude/settings.example.json` has deny rules for the SDK's commands that can change things. Those rules match command text, so they're a guardrail and not a security boundary. They haven't been tested against Claude Code.
+If an SDK plugin such as `fluent@servicenow` is installed anyway, know that the SDK can sign in to instances and deploy to them, outside the connector and its approvals. If you want an AI session limited to this connector, don't run `now-sdk auth` there. `.claude/settings.example.json` has deny rules for the SDK's commands that can change things. Those rules match command text, so they're a guardrail and not a security boundary. They haven't been tested against Claude Code.

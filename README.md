@@ -11,6 +11,28 @@ Ask Claude questions about your ServiceNow instance, such as "why did this incid
 
 sn-mcp is an independent project, not affiliated with or endorsed by ServiceNow.
 
+## How is this different from the ServiceNow SDK?
+
+They solve different problems. The [ServiceNow SDK](https://servicenow.github.io/sdk/) (`now-sdk`) is for **building applications as source code** and deploying them. sn-mcp is for **asking an AI client what's on an instance and why**, using the access you already have in your browser.
+
+| | sn-mcp | ServiceNow SDK |
+| --- | ------ | -------------- |
+| **Made for** | Investigating and understanding an instance | Developing and deploying applications |
+| **How you use it** | Ask questions in plain language in a chat | Work in a code project with TypeScript and command-line tools |
+| **Signing in** | Uses your existing Chrome session, with no separate sign-in | Needs its own sign-in with `now-sdk auth` (basic or OAuth), saved on your computer in encrypted form |
+| **Access** | You approve each request in Chrome, for a limited time | Comes from the saved sign-in |
+| **Reading data** | Records, history, scripts, related records, counts and comparisons, on tables your account can read, except those holding credentials | `now-sdk query` for read-only table queries |
+| **Global scope** | Reads global and scoped records alike | Built around application projects. Its config accepts `global`, with a specific setting required |
+| **Changing the instance** | No tool for it, apart from the script exception above | Yes: installing and updating applications is its purpose |
+
+**What sn-mcp is for:** letting people who work with ServiceNow get answers from an instance without writing code or learning its tables first, while they keep control of what the AI can reach. That includes people who don't build applications, such as business analysts.
+
+**Two honest limits:** setup still takes one Terminal session and Chrome's developer mode, so someone less technical may want help with it. It has also only been tested with an admin account so far, and it needs read access to table definitions, which not every account has.
+
+**You can use both.** If you build applications, the SDK is the right tool for that, and sn-mcp can help you find out what's on the instance. The SDK's sign-in and deployments are separate from sn-mcp's approvals.
+
+The SDK details are from its documentation for version 4.14.
+
 ## What you need
 
 - A Mac with Google Chrome. Windows passes automated tests, but hasn't been tried on a real PC yet.
