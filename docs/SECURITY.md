@@ -38,7 +38,7 @@ Threat: prompt-injected or erroneous tool calls.
 - **Strict input schemas** (zod `strictObject`); invalid input gets `INVALID_INPUT`.
 - **No default scope**: every data tool needs a `scope_id`. Missing, blank or malformed → `SCOPE_REQUIRED` or `SCOPE_UNKNOWN`; never defaulted (T-012).
 - **Scope ids appear only in the `claim_scope` result.** No tool lists them; `list_instances` shows only per-process booleans (T-012, AC1 test captures every output).
-- **Query validation**: structured filters are compiled; raw `encoded_query` is parsed with the strict profile (no `javascript:`, `gs.`, `${`, `eval(`, `new X`, `RLQUERY`, `SUBQUERY`, …). There is an attack corpus of 90 cases (T-003).
+- **Query validation**: structured filters are compiled; raw `encoded_query` is parsed with the same rules as the extension: an operator allowlist, `javascript:` refused in any disguise, no `DYNAMIC`, `RLQUERY`, `SUBQUERY`, …. Code text without the `javascript:` prefix (`gs.`, `${`, `new X`) is inert and allowed since T-047. Operator aliases (`NOTLIKE`, `CONTAINS`) and the `^EQ` marker are rewritten to canonical form before sending, and the extension re-checks the canonical query. There is an attack corpus of over 100 cases (T-003, T-047).
 - **Anti-broadening**: every referenced field and dot-walk hop is checked against `sys_dictionary` before any data request, because ServiceNow ignores unknown fields and could return every row (T-018). This **fails closed** when the user can't read the dictionary.
 - **Untrusted-content instructions** in the server `instructions`, in tool descriptions, and in an `untrusted_content` note on every result that carries ServiceNow data (T-021).
 

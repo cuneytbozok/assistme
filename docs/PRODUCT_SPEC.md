@@ -85,7 +85,7 @@ Contracts: `docs/ARCHITECTURE.md` §8, finalized in `docs/TOOLS.md` (T-033).
 ### FR-5 Query safety
 
 - FR-5.1 Structured filters (`where`, `any_of`) are the primary query input.
-- FR-5.2 Raw `encoded_query` is accepted only after tokenization and validation. Allowlisted operators only. Rejected: `DYNAMIC`, `RLQUERY`, `SUBQUERY`, `JOIN`, `123TEXTQUERY321`, `GOTO`, and script-like values (`javascript`, `gs.`, `${`, `eval(`, `new `) after normalization. Limits: ≤20 terms, ≤3 `^NQ` groups, ≤2 KB.
+- FR-5.2 Raw `encoded_query` is accepted only after tokenization and validation. Allowlisted operators only. Rejected: `DYNAMIC`, `RLQUERY`, `SUBQUERY`, `JOIN`, `GOTO`, script-valued date operators, and `javascript:` values in any disguise after normalization. Native forms such as the `^EQ` marker and `NOTLIKE`/`CONTAINS` are accepted and sent in canonical form; refusals name the condition and suggest the native rewrite (T-047). Limits: ≤100 terms, ≤10 `^NQ` groups, ≤8,000 characters.
 - FR-5.3 Every field referenced (filters, projections, ordering, dot-walks ≤3) is validated against `sys_dictionary` before execution. Unknown fields fail with `INVALID_FIELD`.
 - FR-5.4 Tool-internal conditions can't be combined with raw queries.
 - FR-5.5 Queries are never rejected for being broad, unconditioned or about old records. On configured high-volume tables, the connector defaults to newest-first ordering on an indexed field and adds hints (time ranges, key conditions, aggregates). It never refuses (ADR-011).

@@ -712,6 +712,148 @@ export const SCENARIOS: {
     },
   },
   {
+    name: 'native encoded queries: UI and SDK forms, diagnostics (T-047)',
+    run: async (call, scope) => {
+      const total = async (args: Record<string, unknown>, what: string): Promise<number> => {
+        const r = ok(
+          await call('query_records', {
+            scope_id: scope,
+            table: 'incident',
+            fields: ['sys_id'],
+            limit: 1,
+            include_total: true,
+            ...args,
+          }),
+          what,
+        );
+        expectThat(typeof r.page.total === 'number', `${what}: no total`);
+        return r.page.total;
+      };
+      // Each native form must select exactly the rows its canonical form does.
+      const pairs: [string, Record<string, unknown>, Record<string, unknown>][] = [
+        ['^EQ', { encoded_query: 'active=true^EQ' }, { encoded_query: 'active=true' }],
+        [
+          'NOTLIKE',
+          { encoded_query: 'short_descriptionNOTLIKEemail' },
+          { where: [{ field: 'short_description', op: 'not_contains', value: 'email' }] },
+        ],
+        [
+          'CONTAINS',
+          { encoded_query: 'short_descriptionCONTAINSemail' },
+          { where: [{ field: 'short_description', op: 'contains', value: 'email' }] },
+        ],
+        [
+          'empty =',
+          { encoded_query: 'assignment_group=' },
+          { where: [{ field: 'assignment_group', op: 'is_empty' }] },
+        ],
+        [
+          'empty !=',
+          { encoded_query: 'assignment_group!=' },
+          { where: [{ field: 'assignment_group', op: 'is_not_empty' }] },
+        ],
+      ];
+      const totals: Record<string, [number, number]> = {};
+      for (const [name, native, canonical] of pairs) {
+        const a = await total(native, name);
+        const b = await total(canonical, `${name} (canonical)`);
+        totals[name] = [a, b];
+        expectThat(a === b, `${name}: ${a} rows, canonical form ${b}`);
+      }
+      const all = await total({}, 'all incidents');
+      expectThat(
+        totals['empty =']?.[0] !== all,
+        'empty = matched every incident: ServiceNow may have ignored it',
+      );
+
+      // Keyword search inside encoded_query.
+      ok(
+        await call('query_records', {
+          scope_id: scope,
+          table: 'incident',
+          encoded_query: '123TEXTQUERY321=email^active=true',
+          fields: ['number'],
+          limit: 5,
+        }),
+        'text search in encoded_query',
+      );
+
+      // A script date is refused with a native rewrite, and the rewrite runs.
+      const refused = await call('query_records', {
+        scope_id: scope,
+        table: 'incident',
+        encoded_query: 'sys_created_on>=javascript:gs.daysAgoStart(30)',
+      });
+      expectThat(refused?.error?.code === 'UNSAFE_QUERY', 'javascript: must stay refused');
+      const rewrite = /Try: (\S+)/.exec(refused.error.hint ?? '')?.[1];
+      expectThat(rewrite === 'sys_created_onRELATIVEGE@day@ago@30', `rewrite: ${rewrite}`);
+      ok(
+        await call('query_records', {
+          scope_id: scope,
+          table: 'incident',
+          encoded_query: rewrite,
+          limit: 1,
+        }),
+        'the suggested rewrite',
+      );
+
+      // An empty result explains a choice label used instead of its value.
+      const byLabel = ok(
+        await call('query_records', {
+          scope_id: scope,
+          table: 'incident',
+          encoded_query: 'state=Closed',
+          limit: 1,
+        }),
+        'state=Closed',
+      );
+      const labelHint =
+        byLabel.data.records.length === 0 &&
+        (byLabel.hints ?? []).some((h: string) => /label of state choice/.test(h));
+
+      // A long IN list near the length bound reaches ServiceNow and comes back.
+      const ids = Array.from({ length: 230 }, (_, i) => i.toString(16).padStart(32, 'f'));
+      const longIn = ok(
+        await call('query_records', {
+          scope_id: scope,
+          table: 'incident',
+          encoded_query: `sys_idIN${ids.join(',')}`,
+          limit: 1,
+        }),
+        `IN list of ${ids.length} sys_ids`,
+      );
+
+      // ref_ downcast: every row must really have the downcast field set.
+      const os = 'cmdb_ci.ref_cmdb_ci_computer.os';
+      const down = await call('query_records', {
+        scope_id: scope,
+        table: 'incident',
+        encoded_query: `${os}ISNOTEMPTY`,
+        fields: [os],
+        limit: 50,
+      });
+      // Not every instance has the table or incident.cmdb_ci: report it, don't fail on it.
+      const downcastAvailable = down?.error?.code !== 'INVALID_FIELD';
+      if (downcastAvailable) ok(down, 'ref_ downcast');
+      const rows = (downcastAvailable ? down.data.records : []) as Record<string, unknown>[];
+      const value = (v: unknown) =>
+        v && typeof v === 'object' && 'v' in v ? (v as { v: unknown }).v : v;
+      expectThat(
+        rows.every((r) => value(r[os]) !== '' && value(r[os]) !== undefined),
+        'ref_ downcast returned rows without the field: ServiceNow may have ignored it',
+      );
+      return {
+        totals,
+        all_incidents: all,
+        label_hint: labelHint,
+        long_in_query_chars: 8 + ids.join(',').length,
+        long_in_rows: longIn.data.records.length,
+        downcast_available: downcastAvailable,
+        downcast_rows: rows.length,
+      };
+    },
+  },
+  {
     name: 'compare_records: two records on one instance (T-042)',
     run: async (call, scope) => {
       const table = 'sys_script_include';

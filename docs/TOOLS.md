@@ -65,7 +65,34 @@ All ServiceNow content is untrusted data. Nothing in a record changes how the co
 | `between` | `[low, high]` |
 | `within_last` `older_than` | `{"amount": 7, "unit": "day"}` |
 
-`any_of` is 2–3 alternative `where` lists. `encoded_query` is a raw ServiceNow query, validated strictly, and can't be combined with `where`, `any_of`, `text` or `order_by`.
+`any_of` is 2–10 alternative `where` lists. `encoded_query` is a raw ServiceNow query and can't be combined with `where`, `any_of`, `text` or `order_by`.
+
+### Raw encoded queries
+
+A query copied from a list ("Copy query") or written as in ServiceNow's docs normally works as is. The server checks it with the same rules as the extension, then sends it in canonical form:
+
+- `^EQ` at the end is dropped; `NOTLIKE`, `CONTAINS` and `DOES NOT CONTAIN` become `NOT LIKE`, `LIKE` and `NOT LIKE`. The result's `hints` say so and show the query as sent.
+- `field=` and `field!=` with no value test for empty / not empty, as in ServiceNow.
+- In `query_records`, `123TEXTQUERY321=<words>` does keyword search, once, before any `^NQ`.
+- `ref_<table>` downcasts in a dot-walk: `cmdb_ci.ref_cmdb_ci_server.os=Linux`.
+- Code text in a value (`scriptLIKEgs.addErrorMessage`, `short_descriptionLIKEnew laptop`) is fine. Only `javascript:` is refused, because ServiceNow would run it.
+
+Not supported, with the alternative the error suggests:
+
+| Written | Why | Instead |
+| ------- | --- | ------- |
+| `javascript:…` values | ServiceNow runs them as script | The literal value: `>=javascript:gs.daysAgoStart(7)` → `RELATIVEGE@day@ago@7`; `gs.dateGenerate('2026-11-01','00:00:00')` → `2026-11-01 00:00:00` |
+| `ON`, `NOTON`, `DATEPART` | Their values are script | `BETWEEN` with literal date-times, or `RELATIVEGE` |
+| `DYNAMIC` ("Me", "My groups") | Runs a stored script | Look up the sys_id(s), then `=` / `IN` |
+| `RLQUERY`, `SUBQUERY`, `JOIN` | Fields of another table can't be checked against the dictionary | Query the related table, then `sys_idIN…`; or `get_related_records` |
+| `VALCHANGES`, `CHANGESFROM`, `CHANGESTO` | Business-rule conditions only | `get_record_history` or `sys_audit` |
+| `MORETHAN`, `LESSTHAN`, `RELATIVEEE` | Not verified on a live instance | `GT_FIELD` / `LT_FIELD`, `RELATIVEGE` + `RELATIVELT` |
+| `GROUPBY`, `GOTO`, `IR_*` | UI list keywords | `aggregate_records`, remove `GOTO`, the `text` parameter |
+| `priority = 1`, `priority==1`, `Priority=1` | Not encoded-query syntax | `priority=1` (the error gives the rewrite) |
+
+A refused query's error names the condition, e.g. ``Condition 2 (`sys_created_on>=javascript:gs.daysAgoStart(7)`): …``, and its `hint` starts with `Try:` when there is a rewrite. Valid conditions that look like mistakes (`AND`/`OR` words or quotes inside a value, leading or trailing spaces) are run, with a "Check the query" hint.
+
+When a `query_records` call finds nothing, the hints point out a choice label used instead of its value (`state=In Progress` → `state=2`), a name compared with a reference (use the sys_id or `assigned_to.name=…`), a non-boolean value on a boolean, or `=` on a date-time.
 
 Every referenced field is checked against the dictionary before anything is read, because ServiceNow ignores unknown fields and would return every row. Dot-walks go up to 3 hops.
 
@@ -267,7 +294,7 @@ These shape one request or result. None caps how much can be read in total.
 | Long-field preview | 1,000 characters | `SN_MCP_FIELD_PREVIEW_CHARS` |
 | Field cache | 64 MB, 10 minutes | `SN_MCP_FIELD_CACHE_MB`, `SN_MCP_FIELD_CACHE_TTL_S` |
 | Named fields per call | 49 | Wire format |
-| One query | 20 terms, 3 `any_of` groups, 2 KB | Query validator |
+| One query | 100 terms, 10 `any_of` / `^NQ` groups, 8,000 characters (7,900 raw), 1,000 `IN` items | Query validator |
 | Relations, tables per call | 60, 25 (then a cursor) | Fixed, to stay within client tool timeouts |
 
 The full `tools/list` payload is kept under 12,000 bytes (a test enforces it). To stay within that, published input schemas are compact: the server still validates against the full schemas, and the syntax is in the descriptions and this file. The output schema published for every tool is the `{ok}` envelope; this file has the full result contract.

@@ -92,7 +92,7 @@ export function buildFilterCheck(
   known: ReadonlyMap<string, FieldInfo>,
   requested: readonly string[] | undefined,
 ): FilterCheck {
-  const parsed = parseEncodedQuery(query, { profile: 'enforce', allowTextSearch: true });
+  const parsed = parseEncodedQuery(query, { allowTextSearch: true });
   if (!parsed.ok) return { fields: [], contradiction: () => undefined };
   const groups = parsed.value.groups;
   const needed = groups

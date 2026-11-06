@@ -97,7 +97,7 @@ export class FakeServiceNow {
   private select(table: string, query?: string): Row[] {
     let rows = [...(this.tables.get(table) ?? [])];
     if (query) {
-      const p = parseEncodedQuery(query, { profile: 'enforce', allowTextSearch: true });
+      const p = parseEncodedQuery(query, { allowTextSearch: true });
       if (!p.ok) throw new Error(`fake SN: bad query ${query}`);
       const text = p.value.textSearch?.toLowerCase();
       if (text) {

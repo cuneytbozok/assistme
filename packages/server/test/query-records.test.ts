@@ -132,7 +132,7 @@ describe('AC1: all T-018 validation and defaults apply through the tool', () => 
     await h.close();
   });
 
-  it('text search is added by the server only (as 123TEXTQUERY321)', async () => {
+  it('text search: the `text` parameter, or 123TEXTQUERY321 in encoded_query (T-047)', async () => {
     const h = await harness({ sn: withSyslog(dictionaryFixture(), 40) });
     const scope = await claim(h, 'dev');
     const r = await h.call('query_records', {
@@ -149,7 +149,23 @@ describe('AC1: all T-018 validation and defaults apply through the tool', () => 
       table: 'syslog',
       encoded_query: '123TEXTQUERY321=timeout',
     });
-    expect(raw.error.code).toMatch(/UNSAFE_QUERY|INVALID_INPUT/);
+    expect(raw.ok).toBe(true);
+    expect(raw.data.records.length).toBe(4);
+    const both = await h.call('query_records', {
+      scope_id: scope,
+      table: 'syslog',
+      text: 'timeout',
+      encoded_query: 'level=2',
+    });
+    expect(both.error.code).toBe('INVALID_INPUT');
+    expect(both.error.hint).toMatch(/123TEXTQUERY321=<words>\^/);
+    // aggregate_records has no text search, also not through encoded_query.
+    const agg = await h.call('aggregate_records', {
+      scope_id: scope,
+      table: 'syslog',
+      encoded_query: '123TEXTQUERY321=timeout',
+    });
+    expect(agg.error.code).toBe('UNSAFE_QUERY');
     await h.close();
   });
 });

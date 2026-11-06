@@ -5,8 +5,10 @@
  * - every referenced field (filters, raw query terms, `fields`, `order_by`, each dot-walk hop)
  *   must exist in the dictionary, because ServiceNow ignores unknown fields and would return
  *   all rows (anti-broadening, confirmed live in T-005);
- * - raw `encoded_query` is validated with the strict profile and can never be combined with a
- *   tool's internal conditions (internal conditions are structured only).
+ * - raw `encoded_query` is parsed with the shared rules (the extension's) and sent in canonical
+ *   form; it can never be combined with a tool's internal conditions (structured only). Each
+ *   rewrite to canonical form, and each likely mistake, becomes a hint; each refusal says which
+ *   condition and, where one exists, the native rewrite (T-047).
  *
  * Never rejects a query for being broad, old or unconditioned. On high-volume tables an
  * unordered query gets `ORDERBYDESCsys_created_on`, and unselective queries get hints. A
@@ -15,12 +17,14 @@
 import {
   compileFilter,
   type FilterInput,
+  formatQueryError,
   isDeniedTable,
   isSensitiveFieldName,
-  MAX_ENCODED_QUERY_LENGTH,
+  MAX_RAW_QUERY_LENGTH,
   PASSWORD_INTERNAL_TYPES,
   type ParsedQuery,
   parseEncodedQuery,
+  serializeQuery,
   TEXT_SEARCH_FIELD,
   type Where,
 } from '@sn-mcp/shared';
@@ -36,7 +40,7 @@ export interface QueryRequest {
   any_of?: FilterInput['any_of'];
   order_by?: FilterInput['order_by'];
   text?: string;
-  /** Raw encoded query from the model (strict profile). Exclusive with structured filters. */
+  /** Raw encoded query from the model. Exclusive with structured filters. */
   encoded_query?: string;
   fields?: string[];
   include_total?: boolean;
@@ -120,7 +124,12 @@ export async function planQuery(
     );
   }
   if (req.encoded_query !== undefined && structured) {
-    throw invalid('Use either structured filters (where/any_of/text) or encoded_query, not both.');
+    throw invalid(
+      'Use either structured filters (where/any_of/text) or encoded_query, not both.',
+      opts.allowTextSearch
+        ? `For keyword search with encoded_query, start it with ${TEXT_SEARCH_FIELD}=<words>^.`
+        : undefined,
+    );
   }
   if (req.encoded_query !== undefined && req.internal !== undefined) {
     throw invalid(
@@ -133,21 +142,34 @@ export async function planQuery(
   }
 
   // 1. Compile or parse (syntax and safety).
+  const queryNotes: string[] = [];
   let query = '';
   let parsed: ParsedQuery;
   if (req.encoded_query !== undefined) {
-    if (req.encoded_query.length > MAX_ENCODED_QUERY_LENGTH) {
-      throw invalid(`encoded_query is longer than ${MAX_ENCODED_QUERY_LENGTH} characters.`);
+    if (req.encoded_query.length > MAX_RAW_QUERY_LENGTH) {
+      throw invalid(`encoded_query is longer than ${MAX_RAW_QUERY_LENGTH} characters.`);
     }
-    const p = parseEncodedQuery(req.encoded_query, { profile: 'strict', allowTextSearch: false });
-    if (!p.ok)
+    const p = parseEncodedQuery(req.encoded_query, {
+      allowTextSearch: opts.allowTextSearch === true,
+    });
+    if (!p.ok) {
       throw new QueryGuardError(
         p.error.code,
-        p.error.message,
-        'Prefer structured `where` filters.',
+        formatQueryError(p.error),
+        p.error.suggestion
+          ? `Try: ${p.error.suggestion}`
+          : 'Check the condition against docs/TOOLS.md, or use structured `where` filters.',
       );
-    query = req.encoded_query;
+    }
     parsed = p.value;
+    // Canonical form: what the extension enforces, and what ServiceNow documents.
+    query = serializeQuery(parsed);
+    if (parsed.normalizations.length > 0) {
+      queryNotes.push(
+        `encoded_query was rewritten to canonical form (${parsed.normalizations.join('; ')}). Sent: ${query.length > 300 ? `${query.slice(0, 300)}…` : query}`,
+      );
+    }
+    for (const w of parsed.warnings) queryNotes.push(`Check the query: ${w}`);
   } else {
     const internal = req.internal ?? [];
     const input: FilterInput = {
@@ -227,7 +249,7 @@ export async function planQuery(
 
   // 3. Cost-aware defaults (no rejection).
   const highVolume = isHighVolume(req.table, opts.highVolumeTables);
-  const hints: string[] = [];
+  const hints: string[] = [...queryNotes];
   let defaultedOrder = false;
   if (highVolume && !opts.aggregate) {
     if (parsed.orderBy.length === 0) {

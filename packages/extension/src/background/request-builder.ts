@@ -9,7 +9,7 @@
  * - Fixed headers (Accept, X-UserToken), `redirect: 'manual'` (a redirect is never followed),
  *   `credentials: 'include'`, `cache: 'no-store'`.
  * - The operation is re-validated with the shared schema and the encoded-query validator
- *   ('enforce' profile): the broker and MCP server are untrusted.
+ *   (the same rules as the server): the broker and MCP server are untrusted.
  * - The built URL is parsed back and checked (scheme, exact host, no port or credentials, path
  *   matches a template, every parameter allowlisted) before it is returned.
  */
@@ -97,7 +97,7 @@ export function revalidate(
   }
   const referenced: string[] = [];
   if ((o.kind === 'table.list' || o.kind === 'stats.aggregate') && o.query) {
-    const q = parseEncodedQuery(o.query, { profile: 'enforce', allowTextSearch: true });
+    const q = parseEncodedQuery(o.query, { allowTextSearch: true });
     if (!q.ok) return { ok: false, code: q.error.code, message: q.error.message };
     referenced.push(...q.value.referencedFields);
   }

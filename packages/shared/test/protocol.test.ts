@@ -247,7 +247,7 @@ describe('operation limits', () => {
   it('bounds query strings (full validation is the query module, T-003)', () => {
     expect(ok({ query: 'active=true' })).toBe(true);
     expect(ok({ query: 'active=true\n^NQsys_idISNOTEMPTY' })).toBe(false);
-    expect(ok({ query: 'a'.repeat(2049) })).toBe(false);
+    expect(ok({ query: 'a'.repeat(8001) })).toBe(false);
   });
 
   it('has no write/execute operation kinds', () => {

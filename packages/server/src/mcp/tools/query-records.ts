@@ -12,8 +12,8 @@ import {
   type ErrorCode,
   FieldPathSchema,
   isDeniedTable,
-  MAX_ENCODED_QUERY_LENGTH,
   MAX_FIELDS,
+  MAX_RAW_QUERY_LENGTH,
 } from '@sn-mcp/shared';
 import { z } from 'zod';
 import {
@@ -32,6 +32,7 @@ import {
   FILTER_NOT_APPLIED_MESSAGE,
 } from '../filter-check.js';
 import { type PageResult, type PaginateResult, paginate, type Row } from '../paginate.js';
+import { emptyResultHints } from '../query-diagnostics.js';
 import { planQuery } from '../query-guard.js';
 import { listResponse } from '../response.js';
 import { provenance, toolError } from '../results.js';
@@ -95,8 +96,8 @@ export function registerQueryRecords(server: McpServer, ctx: ToolContext): void 
         instance: InstanceInput,
         table: TableInput.optional(),
         where: WhereInput.optional(),
-        any_of: AnyOfInput.optional().describe('2–3 alternative where lists'),
-        encoded_query: lean(z.string().min(1).max(MAX_ENCODED_QUERY_LENGTH))
+        any_of: AnyOfInput.optional().describe('2–10 alternative where lists'),
+        encoded_query: lean(z.string().min(1).max(MAX_RAW_QUERY_LENGTH))
           .optional()
           .describe('Raw query, validated; prefer where'),
         text: lean(z.string().min(1).max(500)).optional().describe('Full-text search'),
@@ -393,6 +394,9 @@ export function registerQueryRecords(server: McpServer, ctx: ToolContext): void 
         );
       }
       if (page.error) hints.push(`Stopped early: ${page.error.code} — ${page.error.message}`);
+      if (args.cursor === undefined && page.records.length === 0 && !page.hasMore && !page.error) {
+        hints.push(...(await emptyResultHints(meta, ctx, table, state.query, known)));
+      }
       const nextState: CursorState = {
         ...state,
         offset: page.nextOffset,

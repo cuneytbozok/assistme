@@ -2,6 +2,7 @@
  * T-031: search_code finds matches from the dictionary with no hard-coded tables
  * (in-memory fake; mock only).
  */
+import { MAX_ENCODED_QUERY_LENGTH } from '@sn-mcp/shared';
 import { describe, expect, it } from 'vitest';
 import { buildTargets, makeSnippets } from '../src/mcp/tools/search-code.js';
 import { dictionaryFixture, type FakeServiceNow } from './fake-sn.js';
@@ -491,7 +492,7 @@ describe('snippet and target helpers', () => {
     for (const t of targets) {
       expect(t.fields.length).toBeLessThanOrEqual(10);
       const size = t.fields.reduce((n, f) => n + f.length + 200 + 10, 0);
-      expect(size).toBeLessThan(2048);
+      expect(size).toBeLessThan(MAX_ENCODED_QUERY_LENGTH);
     }
   });
 });

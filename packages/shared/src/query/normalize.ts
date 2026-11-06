@@ -66,20 +66,3 @@ export function containsScriptMarker(value: string): boolean {
   const n = normalizeForInspection(value);
   return SCRIPT_PREFIX_RE.test(n) || hasControlChars(n);
 }
-
-/**
- * Additional patterns rejected in the `strict` profile (raw `encoded_query` typed by the model).
- * Not applied to compiled structured filters, where literal code searches such as
- * `scriptLIKEgs.addErrorMessage` are legitimate (see ADR-005 addendum).
- */
-const SCRIPT_LIKE_PATTERNS: readonly RegExp[] = [
-  /\bgs\s*\./,
-  /\$\{/,
-  /\beval\s*\(/,
-  /\bnew\s+[a-z_$]/,
-];
-
-export function containsScriptLikePattern(value: string): boolean {
-  const n = normalizeForInspection(value);
-  return SCRIPT_LIKE_PATTERNS.some((re) => re.test(n));
-}

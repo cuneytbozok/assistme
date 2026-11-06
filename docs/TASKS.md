@@ -56,6 +56,7 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
 | T-044 | Windows support                                 | 037      | BLOCKED     |
 | T-045 | Skills in Codex                                 | 043      | DONE        |
 | T-046 | Mistral Vibe as a local STDIO client            | 037      | DONE        |
+| T-047 | Native encoded-query compatibility + diagnostics | 018, 034 | BLOCKED     |
 
 ---
 
@@ -1593,3 +1594,39 @@ Evidence format: date, commands run, result summary, artifacts (paths, screensho
   - **Not checked:** 643 wasn't compared with ServiceNow's own count.
 - **Still unverified:** two runs with one model aren't a pattern. Larger reads with a real model, in particular reading a saved result back from its file. That a new `vibe` process needs a new approval is expected from the per-process key and T-043, not run here. Whether a real model loads the skills. Windows.
 - **Registered (2026-11-05, at the user's request):** the printed block was added to the user's `~/.vibe/config.toml`, with the earlier file kept as `config.toml.before-sn-mcp`. Real Vibe loads that file. A throwaway copy of it, with the scripted model added, found the tools and the guidance, and `list_instances` returned `dev469966`, `connected`.
+
+### T-047 — Native encoded-query compatibility + diagnostics
+
+- **Status:** BLOCKED
+- **Purpose:** Valid read-only encoded queries shouldn't fail because of our own parser. Review the query implementation against the official SDK's `now-sdk query`, remove restrictions that protect nothing, accept ServiceNow's native forms without weakening read-only security, and explain refusals and empty results. Requested by the user on 2026-11-06. Chrome session authentication and the MCP architecture stay; no SDK dependency.
+- **Dependencies:** T-018, T-034
+- **Deliverables:** `packages/shared/src/query/{operators,encoded-query,diagnostics,normalize}.ts`, `shared/src/limits.ts`; `server/src/mcp/{query-guard,query-diagnostics,metadata}.ts`, `tools/query-records.ts`; `extension/src/background/executor.ts`; tests in `shared/test/query.test.ts` and both corpora, `server/test/query-compat.test.ts`, `extension/test/bridge.test.ts`; a live scenario in `test/e2e/scenarios.ts`; `docs/TOOLS.md`, `ARCHITECTURE.md` §6.2–6.5, `SECURITY.md`, `PRODUCT_SPEC.md` FR-5.2, ADR-005 addendum; server 0.1.8.
+- **Comparison (`@servicenow/sdk` 4.14.0, read from the package):** `now-sdk query` sends `--query` verbatim as `sysparm_query` to `/api/now/table/<table>` with the SDK's own credentials, does no parsing or validation, pages with the `Link` header, and on failure reports the HTTP status and ServiceNow's body. Our connector keeps its checks (allowlist, `javascript:` refusal, dictionary validation, row check), because it serves an AI with the user's session; the gaps were in what those checks refused.
+- **Restrictions found and what changed:**
+  1. `^EQ` (added by "Copy query") was refused → accepted and dropped; only `ORDERBY` may follow.
+  2. `NOTLIKE` (as the SDK docs write it), `CONTAINS`, `DOES NOT CONTAIN` were unknown operators → rewritten to `NOT LIKE` / `LIKE` / `NOT LIKE`.
+  3. `field=` / `field!=` were refused → accepted (ServiceNow's empty tests).
+  4. The `strict` profile refused `gs.`, `${`, `eval(`, `new X` in raw values (`short_descriptionLIKEnew laptop` failed) → removed: inert without `javascript:`, which stays refused everywhere.
+  5. The 500-character bound applied to a whole `IN` list (a structured `in` of 16 sys_ids failed) → per item; up to 1,000 items.
+  6. 2 KB / 20 terms / 3 `^NQ` groups refused copied queries → 8,000 characters (7,900 raw, room for the server's `ORDERBY`s, a pre-existing edge), 100 terms, 10 groups.
+  7. `123TEXTQUERY321` was refused in `encoded_query` even where `text` is offered → accepted in `query_records`, before any `^NQ`.
+  8. `ref_<table>` dot-walk downcasts failed dictionary validation → resolved through the `super_class` chain.
+  9. `priority==1` and `priority<>1` were *accepted* as literal `=1` / `>1` → refused with the rewrite.
+- **Kept refused, now explained:** `DYNAMIC`, `ON`/`NOTON`/`DATEPART`, `RLQUERY`/`SUBQUERY`/`JOIN`, `VALCHANGES`/`CHANGESFROM`/`CHANGESTO`, `MORETHAN`/`LESSTHAN`/`RELATIVEEE` (unverified live; reasons in the ADR-005 addendum), `GROUPBY`, `GOTO`, `IR_*`.
+- **Diagnostics added:** refusals give the condition's position and text, a reason code, and a native rewrite where one exists (script dates → `RELATIVE…` or literal date-times, `ON` → `BETWEEN`, `gs.getUserID()` / `DYNAMIC` → look up the sys_id, `RLQUERY` → `sys_idIN`, spacing and case fixes), as the error `hint` (`Try: …`). Rewrites to canonical form and likely mistakes (`AND`/`OR` words or quotes in values, stray spaces) are result hints. An empty `query_records` result gets hints on choice labels vs values, names vs reference sys_ids, booleans and `=` on date-times. The extension relays ServiceNow's `error.detail` and explains HTTP 414.
+- **Acceptance criteria:**
+  1. Each restriction above is lifted or explained, with tests; the attack corpus is still refused in the server and the extension, including through every new spelling.
+  2. `javascript:` stays refused in any disguise; no new operator runs script; GET-only templates and operation descriptors are unchanged.
+  3. The server sends the canonical form, and the result says what was rewritten and what was sent.
+  4. Every refusal of a raw query names the condition; the rewrites it suggests pass the validator.
+  5. An empty result explains a choice label used instead of its value, and a name compared with a reference.
+  6. `tools/list` stays under 12,000 bytes; existing tests pass.
+  7. **Live:** on a real instance, each native form selects the same rows as its canonical form (`^EQ`, `NOTLIKE`, `CONTAINS`, empty `=`, empty `!=`); a script date is refused and its suggested rewrite runs; a ~7,600-character `IN` query is accepted by ServiceNow; a `ref_` downcast returns only rows that have the field; `state=Closed` gets the label hint.
+- **Verification:** `npm run build`, `npm test`, `npm run lint`; then, after the user reloads the extension and installs server 0.1.8 (or using the built server, as the live runner does), `npm run e2e:live -- --instance dev469966 --only "native encoded"`, which needs one approval.
+- **Evidence (2026-11-06, mocked only, in a cloud container):**
+  - `npm run build`: passes. `npm test`: shared 306 passed (was 261), extension 318 passed (was 312), server 495 passed, 3 skipped (was 475), plus 9 failures in `installer`, `setup-scripts` and `capture` that also fail on the unchanged code here: this container's `/tmp` is mode 777, which the installer correctly refuses. They pass on the user's Mac (T-037).
+  - `npm run lint`: 17 errors, 24 warnings, the same as before this change, all in files it doesn't touch (`brag-output/`, `biome.json`, `test/e2e/vibe-client.ts`). `biome check` on the changed files: no errors.
+  - AC1, AC2: attack corpus 103 cases (adds aliases, `^EQ` and text-search placements), refused in the shared parser and in the extension's `revalidate` / `buildRequest`; valid corpus 63 cases, each a fixed point of `serializeQuery`. AC3–AC5: `server/test/query-compat.test.ts`, 20 tests (including `aggregate_records` reporting the rewrite). AC6: `tools/list` 11,939 bytes (was 11,938).
+  - The new live scenario passes against the in-memory fake (`live-scenarios.test.ts`), which checks its logic only.
+- **What remains (the blocker):** AC7 needs a live run against the user's instance, with one approval from the user, after reloading the extension (it enforces the shared rules) and with server 0.1.8. Mocks are not evidence (rule 11). Until then, unverified: how ServiceNow treats `field=` and `ref_` downcasts, the URL length it accepts near 8,000 characters, and the text of its `error.detail`.
+

@@ -15,9 +15,15 @@ export const DEFAULT_LIMIT = 20;
 export const MAX_PAGE_SIZE = 1000;
 export const MAX_FIELDS = 50;
 export const MAX_DOT_WALK_DEPTH = 3;
-export const MAX_ENCODED_QUERY_LENGTH = 2048;
-export const MAX_QUERY_TERMS = 20;
-export const MAX_NQ_GROUPS = 3;
+/**
+ * Size bounds of one query (T-047 raised them so UI-copied queries fit). They only stop a
+ * malformed or runaway input; a URL ServiceNow finds too long fails with a clear error.
+ */
+export const MAX_ENCODED_QUERY_LENGTH = 8000;
+/** A raw `encoded_query` from the model: leaves room for the ORDERBY terms the server adds. */
+export const MAX_RAW_QUERY_LENGTH = MAX_ENCODED_QUERY_LENGTH - 100;
+export const MAX_QUERY_TERMS = 100;
+export const MAX_NQ_GROUPS = 10;
 export const MAX_GROUP_BY_FIELDS = 2;
 export const MAX_AGGREGATES = 4;
 

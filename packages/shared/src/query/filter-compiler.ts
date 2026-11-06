@@ -184,7 +184,7 @@ function compileCondition(c: FilterCondition): QueryResult<string> {
       operator = SIMPLE_OPS[c.op] as string;
       value = str(c.value);
   }
-  const checked = validateValue(operator, value, 'enforce');
+  const checked = validateValue(operator, value);
   if (!checked.ok) return { ok: false, error: { ...checked.error, term: c.field } };
   return { ok: true, value: `${c.field}${operator}${value}` };
 }
@@ -237,7 +237,7 @@ export function compileFilter(
 
   const parts: string[] = [];
   if (f.text !== undefined) {
-    const checked = validateValue('=', f.text, 'enforce');
+    const checked = validateValue('=', f.text);
     if (!checked.ok) return checked as { ok: false; error: QueryError };
     parts.push(`${TEXT_SEARCH_FIELD}=${f.text}`);
   }
@@ -260,10 +260,7 @@ export function compileFilter(
 
   const query = parts.join('^');
   // Self-check: the compiled output must pass the authoritative validator.
-  const reparsed = parseEncodedQuery(query, {
-    profile: 'enforce',
-    allowTextSearch: options.allowTextSearch === true,
-  });
+  const reparsed = parseEncodedQuery(query, { allowTextSearch: options.allowTextSearch === true });
   if (!reparsed.ok) return reparsed;
   return {
     ok: true,

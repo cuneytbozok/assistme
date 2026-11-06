@@ -1,245 +1,280 @@
 [
   {
     "query": "",
-    "profiles": ["enforce", "strict"],
     "allowTextSearch": false,
     "referencedFields": []
   },
   {
     "query": "active=true",
-    "profiles": ["enforce", "strict"],
     "allowTextSearch": false,
     "referencedFields": ["active"]
   },
   {
     "query": "active=true^priority=1",
-    "profiles": ["enforce", "strict"],
     "allowTextSearch": false,
     "referencedFields": ["active", "priority"]
   },
   {
     "query": "active=true^priority=1^ORpriority=2",
-    "profiles": ["enforce", "strict"],
     "allowTextSearch": false,
     "referencedFields": ["active", "priority"]
   },
   {
     "query": "number=INC0012345",
-    "profiles": ["enforce", "strict"],
     "allowTextSearch": false
   },
   {
     "query": "sys_id=0123456789abcdef0123456789abcdef",
-    "profiles": ["enforce", "strict"],
     "allowTextSearch": false
   },
   {
     "query": "short_descriptionLIKEemail",
-    "profiles": ["enforce", "strict"],
     "allowTextSearch": false
   },
   {
     "query": "short_descriptionNOT LIKEtest",
-    "profiles": ["enforce", "strict"],
     "allowTextSearch": false
   },
   {
     "query": "nameSTARTSWITHDiscovery",
-    "profiles": ["enforce", "strict"],
     "allowTextSearch": false
   },
   {
     "query": "nameENDSWITH.js",
-    "profiles": ["enforce", "strict"],
     "allowTextSearch": false
   },
   {
     "query": "stateIN1,2,3",
-    "profiles": ["enforce", "strict"],
     "allowTextSearch": false
   },
   {
     "query": "stateNOT IN6,7",
-    "profiles": ["enforce", "strict"],
     "allowTextSearch": false
   },
   {
     "query": "assigned_toISEMPTY",
-    "profiles": ["enforce", "strict"],
     "allowTextSearch": false
   },
   {
     "query": "assigned_toISNOTEMPTY",
-    "profiles": ["enforce", "strict"],
     "allowTextSearch": false
   },
   {
     "query": "descriptionANYTHING",
-    "profiles": ["enforce", "strict"],
     "allowTextSearch": false
   },
   {
     "query": "descriptionEMPTYSTRING",
-    "profiles": ["enforce", "strict"],
     "allowTextSearch": false
   },
   {
     "query": "caller_id.department.name=IT",
-    "profiles": ["enforce", "strict"],
     "allowTextSearch": false,
     "referencedFields": ["caller_id.department.name"]
   },
   {
     "query": "sys_created_on>=2026-11-01 00:00:00",
-    "profiles": ["enforce", "strict"],
     "allowTextSearch": false
   },
   {
     "query": "sys_created_onRELATIVEGE@hour@ago@24",
-    "profiles": ["enforce", "strict"],
     "allowTextSearch": false
   },
   {
     "query": "sys_created_onRELATIVELT@day@ago@30",
-    "profiles": ["enforce", "strict"],
     "allowTextSearch": false
   },
   {
     "query": "due_dateRELATIVELE@week@ahead@2",
-    "profiles": ["enforce", "strict"],
     "allowTextSearch": false
   },
   {
     "query": "sys_created_onBETWEEN2026-11-01 00:00:00@2026-11-02 00:00:00",
-    "profiles": ["enforce", "strict"],
     "allowTextSearch": false
   },
   {
     "query": "priority<3",
-    "profiles": ["enforce", "strict"],
     "allowTextSearch": false
   },
   {
     "query": "priority<=3^priority!=1",
-    "profiles": ["enforce", "strict"],
     "allowTextSearch": false
   },
   {
     "query": "priority>1^priority>=2",
-    "profiles": ["enforce", "strict"],
     "allowTextSearch": false
   },
   {
     "query": "opened_bySAMEASassigned_to",
-    "profiles": ["enforce", "strict"],
     "allowTextSearch": false,
     "referencedFields": ["opened_by", "assigned_to"]
   },
   {
     "query": "sys_updated_onGT_FIELDsys_created_on",
-    "profiles": ["enforce", "strict"],
     "allowTextSearch": false,
     "referencedFields": ["sys_updated_on", "sys_created_on"]
   },
   {
     "query": "sys_class_nameINSTANCEOFcmdb_ci_server",
-    "profiles": ["enforce", "strict"],
     "allowTextSearch": false,
     "referencedFields": ["sys_class_name"]
   },
   {
     "query": "active=true^ORDERBYDESCsys_updated_on",
-    "profiles": ["enforce", "strict"],
     "allowTextSearch": false,
     "referencedFields": ["active", "sys_updated_on"]
   },
   {
     "query": "ORDERBYnumber",
-    "profiles": ["enforce", "strict"],
     "allowTextSearch": false,
     "referencedFields": ["number"]
   },
   {
     "query": "active=true^NQactive=false^priority=1",
-    "profiles": ["enforce", "strict"],
     "allowTextSearch": false,
     "referencedFields": ["active", "priority"]
   },
   {
     "query": "level=2^sourceSTARTSWITHDiscovery^sys_created_onRELATIVEGE@hour@ago@6^ORDERBYDESCsys_created_on",
-    "profiles": ["enforce", "strict"],
     "allowTextSearch": false,
     "referencedFields": ["level", "source", "sys_created_on"]
   },
   {
     "query": "name=incident^element=state^ORDERBYDESCsys_created_on",
-    "profiles": ["enforce", "strict"],
     "allowTextSearch": false
   },
   {
     "query": "documentkey=0123456789abcdef0123456789abcdef^ORDERBYsys_created_on",
-    "profiles": ["enforce", "strict"],
     "allowTextSearch": false
   },
   {
     "query": "u_custom_field=x^x_acme_app_flag=true",
-    "profiles": ["enforce", "strict"],
     "allowTextSearch": false
   },
   {
     "query": "emailLIKE@example.com",
-    "profiles": ["enforce", "strict"],
     "allowTextSearch": false
   },
   {
     "query": "short_descriptionLIKEjava runtime",
-    "profiles": ["enforce", "strict"],
     "allowTextSearch": false
   },
   {
     "query": "short_descriptionLIKEnew laptop",
-    "profiles": ["enforce"],
     "allowTextSearch": false
   },
   {
     "query": "scriptLIKEgs.addErrorMessage",
-    "profiles": ["enforce"],
     "allowTextSearch": false
   },
   {
     "query": "123TEXTQUERY321=disk full^active=true",
-    "profiles": ["enforce", "strict"],
     "allowTextSearch": true,
     "referencedFields": ["active"]
   },
   {
     "query": "name=automation_pipeline_transformer_javascript",
-    "profiles": ["enforce", "strict"],
     "allowTextSearch": false,
     "referencedFields": ["name"]
   },
   {
     "query": "scriptLIKEjavascript",
-    "profiles": ["enforce", "strict"],
     "allowTextSearch": false,
     "referencedFields": ["script"]
   },
   {
     "query": "short_descriptionLIKEJavaScript error at 10:30",
-    "profiles": ["enforce", "strict"],
     "allowTextSearch": false,
     "referencedFields": ["short_description"]
   },
   {
     "query": "textLIKEjavascript and more: details",
-    "profiles": ["enforce", "strict"],
     "allowTextSearch": false,
     "referencedFields": ["text"]
   },
   {
     "query": "nameINjavascript_a,javascript_b",
-    "profiles": ["enforce", "strict"],
     "allowTextSearch": false,
     "referencedFields": ["name"]
+  },
+  {
+    "query": "active=true^EQ",
+    "allowTextSearch": false,
+    "canonical": "active=true"
+  },
+  {
+    "query": "priority=",
+    "allowTextSearch": false
+  },
+  {
+    "query": "active=true^123TEXTQUERY321=foo",
+    "allowTextSearch": true,
+    "canonical": "123TEXTQUERY321=foo^active=true"
+  },
+  {
+    "query": "scriptLIKEgs.addErrorMessage",
+    "allowTextSearch": false
+  },
+  {
+    "query": "scriptLIKEgs .log",
+    "allowTextSearch": false
+  },
+  {
+    "query": "messageLIKE${number}",
+    "allowTextSearch": false
+  },
+  {
+    "query": "scriptLIKEeval(",
+    "allowTextSearch": false
+  },
+  {
+    "query": "scriptLIKEnew GlideRecord",
+    "allowTextSearch": false
+  },
+  {
+    "query": "short_descriptionNOTLIKEtest",
+    "allowTextSearch": false,
+    "canonical": "short_descriptionNOT LIKEtest"
+  },
+  {
+    "query": "short_descriptionCONTAINSemail",
+    "allowTextSearch": false,
+    "canonical": "short_descriptionLIKEemail"
+  },
+  {
+    "query": "short_descriptionDOES NOT CONTAINemail",
+    "allowTextSearch": false,
+    "canonical": "short_descriptionNOT LIKEemail"
+  },
+  {
+    "query": "active=true^ORDERBYDESCsys_updated_on^EQ",
+    "allowTextSearch": false,
+    "canonical": "active=true^ORDERBYDESCsys_updated_on"
+  },
+  {
+    "query": "active=true^EQ^ORDERBYnumber",
+    "allowTextSearch": false,
+    "canonical": "active=true^ORDERBYnumber"
+  },
+  {
+    "query": "EQ",
+    "allowTextSearch": false,
+    "canonical": ""
+  },
+  {
+    "query": "assignment_group!=",
+    "allowTextSearch": false
+  },
+  {
+    "query": "cmdb_ci.ref_cmdb_ci_server.os=Linux",
+    "allowTextSearch": false
+  },
+  {
+    "query": "active=true^NQf0=1^NQf1=1^NQf2=1^NQf3=1^NQf4=1^NQf5=1^NQf6=1^NQf7=1^NQf8=1",
+    "allowTextSearch": false
+  },
+  {
+    "query": "sys_idIN00000000000000000000000000000000,00000000000000000000000000000001,00000000000000000000000000000002,00000000000000000000000000000003,00000000000000000000000000000004,00000000000000000000000000000005,00000000000000000000000000000006,00000000000000000000000000000007,00000000000000000000000000000008,00000000000000000000000000000009,0000000000000000000000000000000a,0000000000000000000000000000000b,0000000000000000000000000000000c,0000000000000000000000000000000d,0000000000000000000000000000000e,0000000000000000000000000000000f,00000000000000000000000000000010,00000000000000000000000000000011,00000000000000000000000000000012,00000000000000000000000000000013,00000000000000000000000000000014,00000000000000000000000000000015,00000000000000000000000000000016,00000000000000000000000000000017,00000000000000000000000000000018,00000000000000000000000000000019,0000000000000000000000000000001a,0000000000000000000000000000001b,0000000000000000000000000000001c,0000000000000000000000000000001d,0000000000000000000000000000001e,0000000000000000000000000000001f,00000000000000000000000000000020,00000000000000000000000000000021,00000000000000000000000000000022,00000000000000000000000000000023,00000000000000000000000000000024,00000000000000000000000000000025,00000000000000000000000000000026,00000000000000000000000000000027,00000000000000000000000000000028,00000000000000000000000000000029,0000000000000000000000000000002a,0000000000000000000000000000002b,0000000000000000000000000000002c,0000000000000000000000000000002d,0000000000000000000000000000002e,0000000000000000000000000000002f,00000000000000000000000000000030,00000000000000000000000000000031,00000000000000000000000000000032,00000000000000000000000000000033,00000000000000000000000000000034,00000000000000000000000000000035,00000000000000000000000000000036,00000000000000000000000000000037,00000000000000000000000000000038,00000000000000000000000000000039,0000000000000000000000000000003a,0000000000000000000000000000003b,0000000000000000000000000000003c,0000000000000000000000000000003d,0000000000000000000000000000003e,0000000000000000000000000000003f,00000000000000000000000000000040,00000000000000000000000000000041,00000000000000000000000000000042,00000000000000000000000000000043,00000000000000000000000000000044,00000000000000000000000000000045,00000000000000000000000000000046,00000000000000000000000000000047,00000000000000000000000000000048,00000000000000000000000000000049,0000000000000000000000000000004a,0000000000000000000000000000004b,0000000000000000000000000000004c,0000000000000000000000000000004d,0000000000000000000000000000004e,0000000000000000000000000000004f,00000000000000000000000000000050,00000000000000000000000000000051,00000000000000000000000000000052,00000000000000000000000000000053,00000000000000000000000000000054,00000000000000000000000000000055,00000000000000000000000000000056,00000000000000000000000000000057,00000000000000000000000000000058,00000000000000000000000000000059,0000000000000000000000000000005a,0000000000000000000000000000005b,0000000000000000000000000000005c,0000000000000000000000000000005d,0000000000000000000000000000005e,0000000000000000000000000000005f,00000000000000000000000000000060,00000000000000000000000000000061,00000000000000000000000000000062,00000000000000000000000000000063,00000000000000000000000000000064,00000000000000000000000000000065,00000000000000000000000000000066,00000000000000000000000000000067,00000000000000000000000000000068,00000000000000000000000000000069,0000000000000000000000000000006a,0000000000000000000000000000006b,0000000000000000000000000000006c,0000000000000000000000000000006d,0000000000000000000000000000006e,0000000000000000000000000000006f,00000000000000000000000000000070,00000000000000000000000000000071,00000000000000000000000000000072,00000000000000000000000000000073,00000000000000000000000000000074,00000000000000000000000000000075,00000000000000000000000000000076,00000000000000000000000000000077,00000000000000000000000000000078,00000000000000000000000000000079,0000000000000000000000000000007a,0000000000000000000000000000007b,0000000000000000000000000000007c,0000000000000000000000000000007d,0000000000000000000000000000007e,0000000000000000000000000000007f,00000000000000000000000000000080,00000000000000000000000000000081,00000000000000000000000000000082,00000000000000000000000000000083,00000000000000000000000000000084,00000000000000000000000000000085,00000000000000000000000000000086,00000000000000000000000000000087,00000000000000000000000000000088,00000000000000000000000000000089,0000000000000000000000000000008a,0000000000000000000000000000008b,0000000000000000000000000000008c,0000000000000000000000000000008d,0000000000000000000000000000008e,0000000000000000000000000000008f,00000000000000000000000000000090,00000000000000000000000000000091,00000000000000000000000000000092,00000000000000000000000000000093,00000000000000000000000000000094,00000000000000000000000000000095,00000000000000000000000000000096,00000000000000000000000000000097,00000000000000000000000000000098,00000000000000000000000000000099,0000000000000000000000000000009a,0000000000000000000000000000009b,0000000000000000000000000000009c,0000000000000000000000000000009d,0000000000000000000000000000009e,0000000000000000000000000000009f,000000000000000000000000000000a0,000000000000000000000000000000a1,000000000000000000000000000000a2,000000000000000000000000000000a3,000000000000000000000000000000a4,000000000000000000000000000000a5,000000000000000000000000000000a6,000000000000000000000000000000a7,000000000000000000000000000000a8,000000000000000000000000000000a9,000000000000000000000000000000aa,000000000000000000000000000000ab,000000000000000000000000000000ac,000000000000000000000000000000ad,000000000000000000000000000000ae,000000000000000000000000000000af,000000000000000000000000000000b0,000000000000000000000000000000b1,000000000000000000000000000000b2,000000000000000000000000000000b3,000000000000000000000000000000b4,000000000000000000000000000000b5,000000000000000000000000000000b6,000000000000000000000000000000b7,000000000000000000000000000000b8,000000000000000000000000000000b9,000000000000000000000000000000ba,000000000000000000000000000000bb,000000000000000000000000000000bc,000000000000000000000000000000bd,000000000000000000000000000000be,000000000000000000000000000000bf,000000000000000000000000000000c0,000000000000000000000000000000c1,000000000000000000000000000000c2,000000000000000000000000000000c3,000000000000000000000000000000c4,000000000000000000000000000000c5,000000000000000000000000000000c6,000000000000000000000000000000c7",
+    "allowTextSearch": false
   }
 ]

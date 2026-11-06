@@ -185,7 +185,7 @@ describe('raw queries vs internal conditions', () => {
     ).rejects.toMatchObject({ code: 'INVALID_INPUT', message: expect.stringMatching(/not both/) });
   });
 
-  it('structured and raw input are exclusive; raw input uses the strict profile', async () => {
+  it('structured and raw input are exclusive; raw input follows the shared rules', async () => {
     const s = setup();
     await expect(
       s.plan({
@@ -194,8 +194,14 @@ describe('raw queries vs internal conditions', () => {
         where: [{ field: 'state', op: '=', value: 1 }],
       }),
     ).rejects.toMatchObject({ code: 'INVALID_INPUT' });
+    // T-047: code text is inert without the javascript: prefix, so a literal search passes.
     await expect(
       s.plan({ table: 'incident', encoded_query: 'short_descriptionLIKEgs.getUser()' }),
+    ).resolves.toMatchObject({
+      query: expect.stringMatching(/^short_descriptionLIKEgs\.getUser\(\)/),
+    });
+    await expect(
+      s.plan({ table: 'incident', encoded_query: 'short_descriptionLIKEjavascript:gs.getUser()' }),
     ).rejects.toMatchObject({ code: 'UNSAFE_QUERY' });
     await expect(
       s.plan({

@@ -203,9 +203,11 @@ Values containing `^`, control characters, or newlines are rejected, as are `,` 
 ### 6.2 Raw encoded query (`encoded_query`)
 
 - Tokenize on `^NQ`, `^OR`, `^`, then `ORDERBY`/`ORDERBYDESC`. Each term must parse as `<field><allowlisted op><value>`, with ops matched longest-first. Anything else is rejected.
-- Rejected: `DYNAMIC`, `RLQUERY`, `SUBQUERY`, `JOIN`, `123TEXTQUERY321`, `GOTO`, `EQ` tricks, unknown operators.
-- Values are normalized (NFKC, zero-width characters stripped, URL-decoded ≤2 passes, lowercased for matching). After that, these patterns are rejected: `javascript:` (the word followed by a colon, with any separators; the word alone is allowed), `gs.`, `${`, `new `, `eval(`.
-- Limits: ≤20 terms, ≤3 `^NQ` groups, ≤2 KB.
+- Accepted as ServiceNow's own tools write them, then sent in canonical form (T-047): the trailing `^EQ` end marker (dropped; only `ORDERBY` may follow it), `NOTLIKE` → `NOT LIKE`, `CONTAINS` → `LIKE`, `DOES NOT CONTAIN` → `NOT LIKE`, and empty `field=` / `field!=` (native empty tests). `123TEXTQUERY321=` is accepted where the tool offers text search (`query_records`), once, before any `^NQ`. Each rewrite is reported in the result's `hints`, with the query as sent.
+- Rejected: `DYNAMIC`, `ON`/`NOTON`/`DATEPART` (script values), `MORETHAN`/`LESSTHAN`/`RELATIVEEE` (not verified live), `VALCHANGES`/`CHANGESFROM`/`CHANGESTO`, `RLQUERY`, `SUBQUERY`, `JOIN`, `IR_*`, `GOTO`, `GROUPBY`, conditions after `^EQ`, unknown operators, and the SQL spellings `==` / `<>`.
+- Values are normalized (NFKC, zero-width characters stripped, URL-decoded ≤2 passes, lowercased for matching). After that, `javascript:` is rejected: the word followed by a colon, with any separators. The word alone, and code text such as `gs.` or `new GlideRecord`, are inert without that prefix and are allowed (T-047).
+- Limits: ≤100 terms, ≤10 `^NQ` groups, ≤8,000 characters (7,900 for a raw `encoded_query`, leaving room for the server's `ORDERBY`s), ≤1,000 `IN` items of ≤500 characters each, ≤3 `ORDERBY`.
+- **Diagnostics (T-047, `shared/src/query/diagnostics.ts`):** a refusal names the condition (position and text), the reason, and where one exists the native rewrite: `>=javascript:gs.daysAgoStart(7)` → `RELATIVEGE@day@ago@7`, `gs.dateGenerate(...)` and `ON` date ranges → literal date-times or `BETWEEN`, `gs.getUserID()` / `DYNAMIC` → resolve the sys_id first, `RLQUERY` → query the related table and use `sys_idIN`, `priority = 1` → `priority=1`, `Priority=1` → `priority=1`. A suggestion is never applied automatically. Valid conditions that look like mistakes (`AND`/`OR` words inside a value, quoted values, leading/trailing spaces) produce a warning hint, never a refusal.
 
 ### 6.3 Anti-broadening
 
@@ -230,10 +232,19 @@ Values containing `^`, control characters, or newlines are rejected, as are `,` 
   - Field validation covers filters, raw query terms, `fields`, `order_by` and every dot-walk hop (≤3 hops). Unknown fields are reported together with close-match suggestions, before any data request. Tool-internal conditions are structured only and ANDed into every `any_of` group; a raw `encoded_query` is refused where a tool has internal conditions.
   - **Fails closed:** metadata is read with the user's own session. If their roles can't read `sys_db_object`/`sys_dictionary`, the data query is not sent (the metadata error, e.g. `ACL_DENIED`, is returned).
 
-### 6.4a Profiles (T-003)
-`enforce` (authoritative; server + extension) vs `strict` (raw `encoded_query` from the model; additionally rejects `gs.`, `${`, `eval(`, `new X`). See the ADR-005 addendum.
+### 6.4a One rule set (T-047)
+The server and the extension apply the same parser. The former `strict` profile (raw input from the model, which also refused `gs.`, `${`, `eval(`, `new X`) was removed: those strings run nothing without the `javascript:` prefix, which is refused everywhere. See the ADR-005 addendum.
 
-### 6.5 Placement
+### 6.4b Empty results (T-047, `server/src/mcp/query-diagnostics.ts`)
+When a fresh `query_records` call returns no rows, the server looks for the common reasons a correct-looking query misses, and adds hints: a choice label where the stored value is compared (`state=In Progress` → `state=2`, from the cached choice list; at most 3 choice reads), a display value on a reference (suggesting a sys_id or `field.name=`), a non-boolean value on a boolean, and `=` on a date-time. The empty result itself is returned unchanged.
+
+### 6.4c Dot-walk downcasts (T-047)
+`ref_<table>` in a dot-walk (`cmdb_ci.ref_cmdb_ci_server.os`) is resolved to that table when it extends the reference's table (checked against its `super_class` chain), and the walk continues on the child table's fields. The child table counts as a hop for the denied-table check.
+
+### 6.5 Upstream errors
+The extension relays ServiceNow's own `error.message` and, when it adds something, `error.detail` (≤400 characters, untrusted text), as the official SDK relays the error body. HTTP 414 (URL too long) gets an explanation: split the IN list or `^NQ` groups.
+
+### 6.6 Placement
 
 The shared module (`packages/shared/query`) runs in the MCP server for friendly errors and in the extension for enforcement. The dictionary-aware checks run in the MCP server, and the extension re-runs the syntactic and safety checks.
 

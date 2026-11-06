@@ -8,8 +8,8 @@ import type { McpServer } from '@modelcontextprotocol/server';
 import {
   FieldPathSchema,
   MAX_AGGREGATES,
-  MAX_ENCODED_QUERY_LENGTH,
   MAX_GROUP_BY_FIELDS,
+  MAX_RAW_QUERY_LENGTH,
 } from '@sn-mcp/shared';
 import { z } from 'zod';
 import { planQuery } from '../query-guard.js';
@@ -106,7 +106,7 @@ export function registerAggregateRecords(server: McpServer, ctx: ToolContext): v
         table: TableInput.optional(),
         where: WhereInput.optional(),
         any_of: AnyOfInput.optional(),
-        encoded_query: lean(z.string().min(1).max(MAX_ENCODED_QUERY_LENGTH)).optional(),
+        encoded_query: lean(z.string().min(1).max(MAX_RAW_QUERY_LENGTH)).optional(),
         group_by: lean(
           z.array(FieldPathSchema).min(1).max(MAX_GROUP_BY_FIELDS),
           z.array(z.string()),
@@ -162,6 +162,7 @@ export function registerAggregateRecords(server: McpServer, ctx: ToolContext): v
             },
           );
           query = plan.query;
+          hints.push(...plan.hints); // with `aggregate`, only query rewrites and warnings
         } catch (e) {
           return metadataError(e, id);
         }

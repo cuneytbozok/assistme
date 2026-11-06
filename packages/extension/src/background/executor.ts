@@ -199,9 +199,14 @@ export class Executor {
         return fail('SN_API_ERROR', 'ServiceNow returned invalid JSON.');
       }
     }
+    // ServiceNow's own explanation (untrusted text, length-capped): `message`, plus `detail` when
+    // it adds something, as the official SDK relays the error body (T-047).
     const snMessage = () => {
-      const m = (body as { error?: { message?: unknown } } | undefined)?.error?.message;
-      return typeof m === 'string' ? m.slice(0, 300) : `HTTP ${r.status}`;
+      const e = (body as { error?: { message?: unknown; detail?: unknown } } | undefined)?.error;
+      const m = typeof e?.message === 'string' ? e.message.trim() : '';
+      const d = typeof e?.detail === 'string' ? e.detail.trim() : '';
+      const text = m && d && !m.includes(d) ? `${m} (${d})` : m || d;
+      return text ? text.slice(0, 400) : `HTTP ${r.status}`;
     };
     if (r.status === 200) {
       if (body === undefined)
@@ -217,6 +222,12 @@ export class Executor {
           : {}),
         bytes: r.bytes,
       };
+    }
+    if (r.status === 414) {
+      return fail(
+        'SN_API_ERROR',
+        'HTTP 414: the request URL is too long for ServiceNow. Split long IN lists or ^NQ groups across several queries.',
+      );
     }
     if (r.status === 403) return fail('ACL_DENIED', snMessage());
     if (r.status === 404) return fail('NOT_FOUND', snMessage());

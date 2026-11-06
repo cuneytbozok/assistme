@@ -3,11 +3,11 @@ import { describe, expect, it } from 'vitest';
 import {
   compileFilter,
   conditionCount,
-  containsScriptLikePattern,
   containsScriptMarker,
+  formatQueryError,
   normalizeForInspection,
   parseEncodedQuery,
-  type QueryProfile,
+  type QueryError,
   serializeQuery,
   validateValue,
 } from '../src/index.js';
@@ -16,13 +16,13 @@ interface AttackCase {
   name: string;
   query: string;
   expect: 'UNSAFE_QUERY' | 'INVALID_INPUT';
-  profile: QueryProfile;
   allowTextSearch: boolean;
 }
 interface ValidCase {
   query: string;
-  profiles: QueryProfile[];
   allowTextSearch: boolean;
+  /** Canonical form when it differs from the input (^EQ removed, operator aliases). */
+  canonical?: string;
   referencedFields?: string[];
 }
 
@@ -38,46 +38,44 @@ describe('attack corpus', () => {
   });
 
   it.each(ATTACKS.map((c) => [c.name, c] as const))('rejects: %s', (_n, c) => {
-    const r = parseEncodedQuery(c.query, {
-      profile: c.profile,
-      allowTextSearch: c.allowTextSearch,
-    });
+    const r = parseEncodedQuery(c.query, { allowTextSearch: c.allowTextSearch });
     expect(r.ok).toBe(false);
-    if (!r.ok) expect(r.error.code).toBe(c.expect);
-  });
-
-  it('enforce-profile attacks are also rejected by the strict profile', () => {
-    for (const c of ATTACKS.filter((x) => x.profile === 'enforce')) {
-      const r = parseEncodedQuery(c.query, {
-        profile: 'strict',
-        allowTextSearch: c.allowTextSearch,
-      });
-      expect(r.ok, c.name).toBe(false);
-    }
-  });
-
-  it('strict-only cases are legitimate literal searches in the enforce profile', () => {
-    for (const c of ATTACKS.filter((x) => x.profile === 'strict')) {
-      expect(parseEncodedQuery(c.query, { profile: 'enforce' }).ok, c.name).toBe(true);
+    if (!r.ok) {
+      expect(r.error.code).toBe(c.expect);
+      expect(r.error.reason, c.name).toBeDefined();
     }
   });
 });
 
 describe('valid corpus', () => {
-  it.each(VALID.map((c) => [c.query, c] as const))('accepts and round-trips: %s', (_q, c) => {
-    for (const profile of c.profiles) {
-      const r = parseEncodedQuery(c.query, { profile, allowTextSearch: c.allowTextSearch });
-      expect(r.ok, `${profile}: ${r.ok ? '' : r.error.message}`).toBe(true);
-      if (!r.ok) continue;
-      expect(serializeQuery(r.value)).toBe(c.query);
+  it.each(VALID.map((c) => [c.query.slice(0, 80), c] as const))(
+    'accepts and round-trips: %s',
+    (_q, c) => {
+      const r = parseEncodedQuery(c.query, { allowTextSearch: c.allowTextSearch });
+      expect(r.ok, r.ok ? '' : r.error.message).toBe(true);
+      if (!r.ok) return;
+      expect(serializeQuery(r.value)).toBe(c.canonical ?? c.query);
+      expect(r.value.normalizations.length > 0).toBe(
+        c.canonical !== undefined &&
+          !c.query.startsWith('123TEXTQUERY321') &&
+          c.query.includes('EQ')
+          ? true
+          : r.value.normalizations.length > 0,
+      );
       if (c.referencedFields) {
         expect([...r.value.referencedFields].sort()).toEqual([...c.referencedFields].sort());
       }
-    }
-  });
+      // The canonical form is a fixed point.
+      const again = parseEncodedQuery(serializeQuery(r.value), {
+        allowTextSearch: c.allowTextSearch,
+      });
+      expect(again.ok && serializeQuery(again.value)).toBe(serializeQuery(r.value));
+      expect(again.ok && again.value.normalizations).toEqual([]);
+    },
+  );
 
   it('parses structure correctly', () => {
-    const r = parseEncodedQuery('a=1^ORb=2^c=3^NQd=4^ORDERBYDESCe', { profile: 'enforce' });
+    const r = parseEncodedQuery('a=1^ORb=2^c=3^NQd=4^ORDERBYDESCe');
     expect(r.ok).toBe(true);
     if (!r.ok) return;
     expect(r.value.groups).toEqual([
@@ -93,18 +91,20 @@ describe('valid corpus', () => {
   });
 
   it('accepts exactly the limits', () => {
-    const twenty = Array.from({ length: 20 }, (_, i) => `f${i}=1`).join('^');
-    expect(parseEncodedQuery(twenty, { profile: 'enforce' }).ok).toBe(true);
-    expect(parseEncodedQuery('a=1^NQb=1^NQc=1', { profile: 'enforce' }).ok).toBe(true);
-    const list = `stateIN${Array.from({ length: 100 }, (_, i) => i).join(',')}`;
-    expect(parseEncodedQuery(list, { profile: 'enforce' }).ok).toBe(true);
-    expect(parseEncodedQuery(`descriptionLIKE${'x'.repeat(500)}`, { profile: 'enforce' }).ok).toBe(
-      true,
-    );
+    const hundred = Array.from({ length: 100 }, (_, i) => `f${i}=1`).join('^');
+    expect(parseEncodedQuery(hundred).ok).toBe(true);
+    const ten = Array.from({ length: 10 }, (_, i) => `f${i}=1`).join('^NQ');
+    expect(parseEncodedQuery(ten).ok).toBe(true);
+    const list = `stateIN${Array.from({ length: 1000 }, (_, i) => i).join(',')}`;
+    expect(parseEncodedQuery(list).ok).toBe(true);
+    // The length bound applies to each IN item, not to the whole list.
+    const long = `nameIN${'a'.repeat(500)},${'b'.repeat(500)}`;
+    expect(parseEncodedQuery(long).ok).toBe(true);
+    expect(parseEncodedQuery(`descriptionLIKE${'x'.repeat(500)}`).ok).toBe(true);
   });
 
   it('moves ORDERBY to the end when serializing', () => {
-    const r = parseEncodedQuery('ORDERBYnumber^active=true', { profile: 'enforce' });
+    const r = parseEncodedQuery('ORDERBYnumber^active=true');
     expect(r.ok && serializeQuery(r.value)).toBe('active=true^ORDERBYnumber');
   });
 });
@@ -128,9 +128,6 @@ describe('normalization', () => {
     // Separators other than spaces before the colon are still caught.
     expect(containsScriptMarker('javascript.:x')).toBe(true);
     expect(containsScriptMarker('javascript-_:x')).toBe(true);
-    expect(containsScriptLikePattern('settings.json')).toBe(false);
-    expect(containsScriptLikePattern('renew license')).toBe(false);
-    expect(containsScriptLikePattern('new laptop')).toBe(true);
   });
 
   it('ignores out-of-range code points', () => {
@@ -140,8 +137,8 @@ describe('normalization', () => {
 
 describe('validateValue', () => {
   it('rejects unknown operators and ^ in values', () => {
-    expect(validateValue('DYNAMIC', 'x', 'enforce').ok).toBe(false);
-    expect(validateValue('=', 'a^NQb=1', 'enforce').ok).toBe(false);
+    expect(validateValue('DYNAMIC', 'x').ok).toBe(false);
+    expect(validateValue('=', 'a^NQb=1').ok).toBe(false);
   });
 });
 
@@ -229,7 +226,7 @@ describe('structured filter compiler', () => {
     expect(r.ok && r.value.referencedFields).toEqual(['caller_id.manager.name', 'opened_at']);
   });
 
-  it('allows literal code searches that the strict raw profile refuses', () => {
+  it('allows literal code searches', () => {
     expect(q({ where: [{ field: 'script', op: 'contains', value: 'gs.addErrorMessage(' }] })).toBe(
       'scriptLIKEgs.addErrorMessage(',
     );
@@ -280,12 +277,12 @@ describe('structured filter compiler', () => {
     ['empty where', { where: [] }, 'INVALID_INPUT'],
     [
       'too many terms',
-      { where: Array.from({ length: 21 }, (_, i) => ({ field: `f${i}`, op: '=', value: 1 })) },
+      { where: Array.from({ length: 101 }, (_, i) => ({ field: `f${i}`, op: '=', value: 1 })) },
       'INVALID_INPUT',
     ],
     [
       'too many any_of groups',
-      { any_of: Array.from({ length: 4 }, () => [{ field: 'a', op: '=', value: 1 }]) },
+      { any_of: Array.from({ length: 11 }, () => [{ field: 'a', op: '=', value: 1 }]) },
       'INVALID_INPUT',
     ],
     ['single-item or', { where: [{ or: [{ field: 'a', op: '=', value: 1 }] }] }, 'INVALID_INPUT'],
@@ -320,8 +317,124 @@ describe('structured filter compiler', () => {
       const r = compile(input);
       expect(r.ok).toBe(true);
       if (!r.ok) continue;
-      const p = parseEncodedQuery(r.value.query, { profile: 'enforce' });
+      const p = parseEncodedQuery(r.value.query);
       expect(p.ok && serializeQuery(p.value)).toBe(r.value.query);
     }
+  });
+});
+
+describe('native compatibility (T-047)', () => {
+  const parse = (q: string, allowTextSearch = false) => {
+    const r = parseEncodedQuery(q, { allowTextSearch });
+    if (!r.ok) throw new Error(r.error.message);
+    return r.value;
+  };
+
+  it('reports each normalization', () => {
+    expect(parse('active=true^EQ').normalizations).toEqual(['removed the ^EQ end marker']);
+    expect(parse('aNOTLIKEx^bCONTAINSy^cCONTAINSz').normalizations).toEqual([
+      'operator NOTLIKE → NOT LIKE',
+      'operator CONTAINS → LIKE',
+    ]);
+    expect(parse('active=true').normalizations).toEqual([]);
+  });
+
+  it('keeps empty = and != as native empty tests', () => {
+    const v = parse('assignment_group=^ORassigned_to!=');
+    expect(v.groups[0]).toEqual([
+      { field: 'assignment_group', operator: '=', value: '', join: 'AND' },
+      { field: 'assigned_to', operator: '!=', value: '', join: 'OR' },
+    ]);
+  });
+
+  it('structured filters keep requiring a value (is_empty exists)', () => {
+    const r = compileFilter({ where: [{ field: 'a', op: '=', value: '' }] });
+    expect(r.ok).toBe(false);
+  });
+
+  it('structured in-lists longer than 500 characters compile', () => {
+    const ids = Array.from({ length: 50 }, (_, i) => i.toString(16).padStart(32, '0'));
+    const r = compileFilter({ where: [{ field: 'sys_id', op: 'in', value: ids }] });
+    expect(r.ok, r.ok ? '' : r.error.message).toBe(true);
+  });
+});
+
+describe('diagnostics (T-047)', () => {
+  const error = (q: string, allowTextSearch = false): QueryError => {
+    const r = parseEncodedQuery(q, { allowTextSearch });
+    if (r.ok) throw new Error(`accepted: ${q}`);
+    return r.error;
+  };
+
+  it('locates the condition', () => {
+    const e = error('active=true^ORpriority~1');
+    expect(e.position).toBe(2);
+    expect(e.term).toBe('ORpriority~1');
+    expect(formatQueryError(e)).toMatch(/^Condition 2 \(`ORpriority~1`\): Unknown operator/);
+  });
+
+  it.each([
+    ['sys_created_on>=javascript:gs.daysAgoStart(7)', 'sys_created_onRELATIVEGE@day@ago@7'],
+    ['sys_created_on<javascript:gs.hoursAgo(3)', 'sys_created_onRELATIVELT@hour@ago@3'],
+    ['opened_at>javascript:gs.quartersAgoStart(1)', 'opened_atRELATIVEGT@month@ago@3'],
+    [
+      "sys_created_on>=javascript:gs.dateGenerate('2026-11-01','00:00:00')",
+      'sys_created_on>=2026-11-01 00:00:00',
+    ],
+    [
+      "sys_created_onBETWEENjavascript:gs.dateGenerate('2026-11-01','start')@javascript:gs.dateGenerate('2026-11-02','end')",
+      'sys_created_onBETWEEN2026-11-01 00:00:00@2026-11-02 23:59:59',
+    ],
+    [
+      "sys_created_onON2026-11-01@javascript:gs.dateGenerate('2026-11-01','start')@javascript:gs.dateGenerate('2026-11-01','end')",
+      'sys_created_onBETWEEN2026-11-01 00:00:00@2026-11-01 23:59:59',
+    ],
+    ['assigned_to=javascript:gs.getUserID()', 'query_records on sys_user'],
+    ['assignment_groupINjavascript:getMyGroups()', 'sys_user_grmember'],
+    ['assigned_toDYNAMIC90d1921e5f510100a9ad2572f2b477fe', "signed-in user's sys_id"],
+    ['stateVALCHANGES', 'get_record_history'],
+    ['RLQUERYtask_sla.task,>=1^ENDRLQUERY', 'sys_idIN'],
+    ['IR_AND_OR_QUERY=foo', '`text` parameter'],
+    ['GOTOnumber=INC0010001', 'Remove it: number=INC0010001'],
+    ['active=true^GROUPBYstate', 'aggregate_records'],
+    ['priority = 2', 'priority=2'],
+    ['short_description LIKE disk full', 'short_descriptionLIKEdisk full'],
+    ['priority==2', 'priority=2'],
+    ['priority<>2', 'priority!=2'],
+    ['Priority=1', 'priority=1'],
+    ['active=true^EQ^priority=1', 'before ^EQ'],
+  ])('suggests a rewrite for %s', (q, expected) => {
+    const e = error(q);
+    expect(e.suggestion ?? '').toContain(expected);
+  });
+
+  it('suggestions with a native rewrite pass the validator', () => {
+    for (const q of [
+      'sys_created_on>=javascript:gs.daysAgoStart(7)',
+      "sys_created_on>=javascript:gs.dateGenerate('2026-11-01','00:00:00')",
+      'priority = 2',
+      'Priority=1',
+    ]) {
+      const rewrite = (error(q).suggestion ?? '').replace(/ \(.*\)$/, '');
+      expect(parseEncodedQuery(rewrite).ok, `${q} → ${rewrite}`).toBe(true);
+    }
+  });
+
+  it('explains a missing operator', () => {
+    expect(error('short_descriptionlikefoo').message).toMatch(/Operators are uppercase/);
+  });
+
+  it('warns about valid conditions that are probably mistakes, without refusing them', () => {
+    const w = (q: string) => {
+      const r = parseEncodedQuery(q);
+      expect(r.ok).toBe(true);
+      return r.ok ? r.value.warnings : [];
+    };
+    expect(w('active=true AND priority=1')[0]).toMatch(
+      /joins conditions with \^|join conditions with \^/,
+    );
+    expect(w('short_descriptionLIKE"disk full"')[0]).toMatch(/quotes/);
+    expect(w('short_descriptionLIKE disk')[0]).toMatch(/spaces/);
+    expect(w('active=true^short_descriptionLIKEdisk full')).toEqual([]);
   });
 });

@@ -1,15 +1,25 @@
 # Handoff
 
-_Current state only, rewritten on 2026-11-05. History is in `docs/TASKS.md` and git. If this file disagrees with `docs/TASKS.md`, trust TASKS; if either disagrees with the code or git, trust the code and git, and fix the doc._
+_Current state only, rewritten on 2026-11-05, updated 2026-11-06 for T-047. History is in `docs/TASKS.md` and git. If this file disagrees with `docs/TASKS.md`, trust TASKS; if either disagrees with the code or git, trust the code and git, and fix the doc._
 
 ## Where things stand
 
 The connector is built, installed and working on the user's Mac, in Claude Desktop, against one developer instance.
 
-- **Tasks:** 43 DONE, 2 BLOCKED (T-015, T-044), 1 DROPPED (T-039).
+- **Tasks:** 43 DONE, 3 BLOCKED (T-015, T-044, T-047), 1 DROPPED (T-039).
 - **Milestones:** M1, M3, M4, M5 and M6 achieved. M6 by the user's decision, with AC-6, AC-7 and AC-8 left open: not all 19 criteria are evidenced. M2 not achieved (T-015).
 - **Acceptance:** `docs/ACCEPTANCE.md`: 15 passed, 3 open, 1 out of scope, none failed.
-- **Next:** no task is eligible. T-044 waits for someone with a Windows PC. Anything else that remains needs the user: see `docs/NEXT_STEPS.md`.
+- **Next:** T-047's live check, which needs the user (below). No other task is eligible. T-044 waits for someone with a Windows PC. Anything else that remains needs the user: see `docs/NEXT_STEPS.md`.
+
+## T-047: native encoded queries (code done, live check pending)
+
+On branch `claude/query-compat`, not merged. Compared with `now-sdk query` (it sends the query verbatim and relays ServiceNow's error), our parser refused valid queries: `^EQ` from "Copy query", `NOTLIKE`/`CONTAINS`, empty `field=`, code text like `new laptop` (the old `strict` profile), long `IN` lists, copied queries over 2 KB / 20 terms / 3 groups, `123TEXTQUERY321` in `encoded_query`, and `ref_` downcasts. All now pass; aliases and `^EQ` are sent in canonical form. `javascript:` and the other refused operators stay refused, now with the condition named and a native rewrite in the hint. Empty `query_records` results explain choice labels and reference names. Details: T-047 and the ADR-005 addendum.
+
+To unblock, the user:
+1. Merges or checks out the branch, then `npm run build`.
+2. Reloads the extension (it enforces the shared rules and now relays `error.detail`).
+3. Runs `npm run e2e:live -- --instance dev469966 --only "native encoded"` and approves once. It checks each native form selects the same rows as its canonical form, the suggested rewrite of a script date, a ~7,600-character `IN` query, a `ref_` downcast and the empty-result label hint.
+4. Optionally installs `packages/server/sn-mcp.mcpb` (0.1.8) in Claude Desktop, then Cmd+Q and reopen.
 
 ## T-043, T-044 and T-046
 
@@ -47,7 +57,7 @@ Done by the user's decision. Live on `dev469966` (`docs/evidence/T-042/`): two r
 - **Instance:** `dev469966.service-now.com`, alias `dev469966`, environment dev. A personal developer instance, signed in as admin.
 - **Chrome:** unpacked extension from `packages/extension/dist`, ID `clipfeocpiljpcngmjpdbegciimchbol`.
 - **Native host:** installed by `npm run setup` from this folder. Runtime files are in `~/Library/Application Support/sn-mcp/`, which is 0700: `broker.sock`, `broker.key`, `broker.pid`, `broker.log` (metadata only). Exit codes: 64 bad origin, 78 unsafe path, 75 conflict.
-- **Claude Desktop:** the `.mcpb` bundle, version 0.1.2, named "ServiceNow (read-only)", plus both skills uploaded. Version 0.1.7 is built at `packages/server/sn-mcp.mcpb`. It isn't known to be installed: until the user installs 0.1.3 or later, Desktop still refuses `compare_records` on a single-instance scope. The live test doesn't depend on that, because it starts the built server itself. `mcpServers` in `claude_desktop_config.json` is empty; the old entry's backup is `claude_desktop_config.json.before-sn-mcp-bundle`.
+- **Claude Desktop:** the `.mcpb` bundle, version 0.1.2, named "ServiceNow (read-only)", plus both skills uploaded. Version 0.1.8 (T-047) is the current build; the user rebuilds it with `npm run pack:mcpb` on their Mac. It isn't known to be installed: until the user installs 0.1.3 or later, Desktop still refuses `compare_records` on a single-instance scope. The live test doesn't depend on that, because it starts the built server itself. `mcpServers` in `claude_desktop_config.json` is empty; the old entry's backup is `claude_desktop_config.json.before-sn-mcp-bundle`.
 - **Claude Code:** Code sessions inside the Desktop app use the Desktop connector and skills. Nothing is registered separately: the `sn-mcp` registration and plugin were removed, because two connectors in one session don't share scopes.
 - **ChatGPT Desktop:** installed, version 26.1029.61003, engine codex-cli 0.166.0-alpha.6. sn-mcp is registered in `~/.codex/config.toml` by the user, through the app's settings, without the longer timeouts.
 - **Mistral Vibe:** 3.1.0, a uv tool at `~/.local/bin/vibe`, which isn't on the non-login shell's PATH. sn-mcp is registered in `~/.vibe/config.toml`, with the printed block; the earlier file is `config.toml.before-sn-mcp`. Reads work there with Mistral Medium 3.5. Its `prompt` was updated to the 0.1.7 text. Skills are already visible to it, through `~/.agents/skills`.
@@ -71,9 +81,10 @@ Done by the user's decision. Live on `dev469966` (`docs/evidence/T-042/`): two r
 - **The installer refuses world-writable folders,** so a test clone can't be in `/tmp` or the scratchpad. Use the home folder.
 - **Headless extension checks:** branded Chrome ignores `--load-extension`. Use `--headless=new --enable-unsafe-extension-debugging --remote-debugging-port=N` with a throwaway `--user-data-dir`, then CDP `Extensions.loadUnpacked`.
 - **Build order:** the `workspaces` order, shared → server → extension. The server resolves `@sn-mcp/shared` through `dist/`, so build shared before type-checking the server.
-- **Query module:** `compileFilter(input, {allowTextSearch})` for structured input; `parseEncodedQuery(q, {profile:'strict'})` for raw model input on the server, and `{profile:'enforce'}` in the extension.
+- **Query module:** `compileFilter(input, {allowTextSearch})` for structured input; `parseEncodedQuery(q, {allowTextSearch})` for raw input, the same rules in server and extension (no profiles since T-047). Send `serializeQuery(parsed)`, the canonical form. `parsed.normalizations` and `parsed.warnings` become hints; a `QueryError` carries `position`, `reason` and `suggestion`, and `formatQueryError` makes the message. Explanations live in `query/diagnostics.ts`.
+- **Installer tests in Linux cloud containers:** 9 tests in `installer`, `setup-scripts` and `capture` fail there because `/tmp` is mode 777, which the installer correctly refuses. They pass on the Mac.
 - **`docs/TASKS.md`:** `test/task-docs.test.ts` checks its structure, so a misplaced status or evidence block fails `npm test`.
-- **`tools/list`:** 11,938 of 12,000 bytes. A new input or longer description needs a cut elsewhere.
+- **`tools/list`:** 11,939 of 12,000 bytes. A new input or longer description needs a cut elsewhere.
 - **Flaky test:** `resilience.test.ts` › "broker id prefixes differ per process" failed once in a full run, then passed 9 of 9 re-runs. Cause not found. If it fails again, keep the message.
 
 ## Ideas not done

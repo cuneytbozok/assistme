@@ -246,13 +246,13 @@ describe('AC1: only GET, two templates, allowlisted params, granted host', () =>
 describe('AC2: the attack corpus is rejected in the extension too', () => {
   const corpus = JSON.parse(
     readFileSync(new URL('../../shared/test/fixtures/attack-corpus.json', import.meta.url), 'utf8'),
-  ) as { name: string; query: string; profile: 'enforce' | 'strict' }[];
+  ) as { name: string; query: string }[];
   // Text search is a server-side policy (ADR-005); the extension allows it on purpose, so cases
   // whose only fault is text search are excluded (computed with the shared validator).
   const textSearchOnly = (c: { query: string }) =>
-    !parseEncodedQuery(c.query, { profile: 'enforce', allowTextSearch: false }).ok &&
-    parseEncodedQuery(c.query, { profile: 'enforce', allowTextSearch: true }).ok;
-  const enforce = corpus.filter((c) => c.profile === 'enforce' && !textSearchOnly(c));
+    !parseEncodedQuery(c.query, { allowTextSearch: false }).ok &&
+    parseEncodedQuery(c.query, { allowTextSearch: true }).ok;
+  const enforce = corpus.filter((c) => !textSearchOnly(c));
 
   it('has the shared corpus', () => {
     expect(enforce.length).toBeGreaterThanOrEqual(40);

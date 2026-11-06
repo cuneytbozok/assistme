@@ -173,6 +173,26 @@ describe('executor (path A)', () => {
     expect(await run(async () => jsonResponse(404, {}))).toMatchObject({ code: 'NOT_FOUND' });
     expect(await run(async () => jsonResponse(429, {}))).toMatchObject({ code: 'RATE_LIMITED' });
     expect(await run(async () => jsonResponse(500, {}))).toMatchObject({ code: 'SN_API_ERROR' });
+    // T-047: ServiceNow's detail is relayed with its message, as the official SDK relays the body.
+    expect(
+      await run(async () =>
+        jsonResponse(400, { error: { message: 'Invalid query', detail: 'field xyz not found' } }),
+      ),
+    ).toMatchObject({ code: 'SN_API_ERROR', message: 'Invalid query (field xyz not found)' });
+    expect(
+      await run(async () => jsonResponse(400, { error: { message: 'Same', detail: 'Same' } })),
+    ).toMatchObject({ message: 'Same' });
+    expect(
+      await run(async () => jsonResponse(400, { error: { detail: 'only detail' } })),
+    ).toMatchObject({ message: 'only detail' });
+    const long = await run(async () =>
+      jsonResponse(400, { error: { message: 'm'.repeat(300), detail: 'd'.repeat(300) } }),
+    );
+    expect(!long.ok && long.message.length).toBe(400);
+    expect(await run(async () => new Response('', { status: 414 }))).toMatchObject({
+      code: 'SN_API_ERROR',
+      message: expect.stringMatching(/^HTTP 414: the request URL is too long/),
+    });
     expect(
       await run(
         async () =>

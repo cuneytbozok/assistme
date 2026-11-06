@@ -291,6 +291,34 @@ export class MetadataService {
   }
 
   /** Resolves `a.b.c` from `table`, following reference fields. Unknown → INVALID_FIELD. */
+  /** Checks that `child` extends `parent`, for a `ref_<child>` segment. Returns `child`. */
+  private async downcast(
+    ctx: MetaContext,
+    parent: string,
+    child: string,
+    walked: string[],
+  ): Promise<string> {
+    let info: TableInfo;
+    try {
+      info = await this.table(ctx, child);
+    } catch (e) {
+      if (e instanceof MetadataError && e.code === 'NOT_FOUND') {
+        throw new MetadataError(
+          'INVALID_FIELD',
+          `"${walked.join('.')}": there is no table ${child} to downcast to.`,
+        );
+      }
+      throw e;
+    }
+    if (!info.chain.includes(parent)) {
+      throw new MetadataError(
+        'INVALID_FIELD',
+        `"${walked.join('.')}": ${child} doesn't extend ${parent}, so it can't downcast it.`,
+      );
+    }
+    return child;
+  }
+
   async resolvePath(ctx: MetaContext, table: string, path: string): Promise<ResolvedPath> {
     const segments = path.split('.');
     const tables = [table];
@@ -311,6 +339,18 @@ export class MetadataService {
               display: false,
             }
           : undefined);
+      if (!f && seg.startsWith('ref_') && seg.length > 4) {
+        // `ref_<table>` downcasts a reference to a child table (cmdb_ci.ref_cmdb_ci_server.os).
+        current = await this.downcast(ctx, current, seg.slice(4), segments.slice(0, i + 1));
+        if (i === segments.length - 1) {
+          throw new MetadataError(
+            'INVALID_FIELD',
+            `"${path}" ends with ${seg}; name a field of ${current} after it.`,
+          );
+        }
+        tables.push(current);
+        continue;
+      }
       if (!f) {
         const suggestions = closeMatches(seg, [...fields.keys()]);
         throw new MetadataError(
