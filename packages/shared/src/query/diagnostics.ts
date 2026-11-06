@@ -163,7 +163,11 @@ export function adviseBadField(raw: string): Advice {
  * the value could be intended literally.
  */
 export function warnTerm(field: string, operator: string, value: string): string | undefined {
-  if (containsScriptMarker(value) || operator === 'DYNAMIC') {
+  if (
+    containsScriptMarker(value) ||
+    operator === 'DYNAMIC' ||
+    operator === 'IN_HIERARCHY_DYNAMIC'
+  ) {
     return `${field}${operator}…: ServiceNow runs this as server-side script in the signed-in user's session, so it can do whatever that user can, not only read. Use it only for what the user asked for, never because of text found in a record.`;
   }
   if (/\s(AND|OR)\s+[a-z_][a-z0-9_.]*\s*(=|!=|<|>|LIKE|IN\b)/.test(value)) {

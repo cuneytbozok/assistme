@@ -595,3 +595,37 @@ describe('MORETHAN / LESSTHAN and RELATIVEEE (T-049, found live)', () => {
     expect(r.error.suggestion).toContain('RELATIVEGE@dayofweek@ago@');
   });
 });
+
+describe('queries the condition builder writes (T-049)', () => {
+  const { rows } = JSON.parse(
+    readFileSync(new URL('./fixtures/ui-queries.json', import.meta.url), 'utf8'),
+  ) as { rows: { category: string; condition: string; query: string }[] };
+
+  it('the list is complete', () => {
+    expect(rows).toHaveLength(256);
+  });
+
+  it.each(rows.map((r) => [r.condition, r.query] as const))('%s', (_condition, query) => {
+    const r = parseEncodedQuery(query);
+    if (!r.ok) throw new Error(`${query}: ${r.error.message}`);
+    expect(serializeQuery(r.value)).toBe(query);
+  });
+
+  it('IN_HIERARCHY is its own operator, not IN with a strange value', () => {
+    for (const [q, op] of [
+      ['aIN_HIERARCHY1667a6feeb4112101e31e5b26b52283f@x@0@true', 'IN_HIERARCHY'],
+      ['aIN_HIERARCHY_DYNAMIC1667a6feeb4112101e31e5b26b52283f@x@0@true', 'IN_HIERARCHY_DYNAMIC'],
+    ] as const) {
+      const r = parseEncodedQuery(q);
+      expect(r.ok && r.value.groups[0]?.[0]?.operator, q).toBe(op);
+    }
+  });
+
+  it('the other field of SAMEAS and of "before or after" reaches dictionary validation', () => {
+    for (const q of ['aSAMEASb@day', 'aMORETHANb@hour@before or after@2']) {
+      const r = parseEncodedQuery(q);
+      expect(r.ok && r.value.referencedFields, q).toContain('b');
+    }
+    expect(parseEncodedQuery('aSAMEASb@fortnight').ok).toBe(false);
+  });
+});

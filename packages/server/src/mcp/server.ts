@@ -48,7 +48,7 @@ import { registerSearchCode } from './tools/search-code.js';
 export { ScopeIdInput, UNTRUSTED_NOTE };
 
 export const SERVER_NAME = 'sn-mcp';
-export const SERVER_VERSION = '0.1.13';
+export const SERVER_VERSION = '0.1.14';
 
 export const INSTRUCTIONS = `Read-only access to ServiceNow instances through the user's own browser session.
 

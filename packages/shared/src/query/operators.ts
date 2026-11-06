@@ -26,7 +26,8 @@ export type ValueKind =
   | 'table' // value is a table name
   | 'range' // `a@b`
   | 'relative' // `@unit@ago|ahead@n`
-  | 'field_offset'; // `other_field@unit@before|after@n`
+  | 'field_offset' // `other_field@unit@before|after|before or after@n`
+  | 'field_same'; // `other_field`, or `other_field@unit` on dates
 
 export interface OperatorSpec {
   readonly op: string;
@@ -51,8 +52,8 @@ const SPECS: readonly OperatorSpec[] = [
   { op: 'ANYTHING', value: 'none' },
   { op: 'EMPTYSTRING', value: 'none' },
   { op: 'BETWEEN', value: 'range' },
-  { op: 'SAMEAS', value: 'field' },
-  { op: 'NSAMEAS', value: 'field' },
+  { op: 'SAMEAS', value: 'field_same' },
+  { op: 'NSAMEAS', value: 'field_same' },
   { op: 'GT_FIELD', value: 'field' },
   { op: 'LT_FIELD', value: 'field' },
   { op: 'GT_OR_EQUALS_FIELD', value: 'field' },
@@ -66,6 +67,8 @@ const SPECS: readonly OperatorSpec[] = [
   { op: 'NOTON', value: 'any' },
   { op: 'DATEPART', value: 'any' },
   { op: 'DYNAMIC', value: 'any' },
+  { op: 'IN_HIERARCHY', value: 'any' },
+  { op: 'IN_HIERARCHY_DYNAMIC', value: 'any' },
   { op: 'MORETHAN', value: 'field_offset' },
   { op: 'LESSTHAN', value: 'field_offset' },
 ];
@@ -141,7 +144,10 @@ export type RelativeDirection = 'ago' | 'ahead';
  * The other field is checked against the dictionary: a wrong one silently matches no rows (T-049).
  */
 export const FIELD_OFFSET_VALUE_RE =
-  /^([a-z0-9_.]+)@(minute|hour|day|week|month|quarter|year)@(before|after)@(0|[1-9][0-9]{0,3})$/;
+  /^([a-z0-9_.]+)@(minute|hour|day|week|month|quarter|year)@(before|after|before or after)@(0|[1-9][0-9]{0,3})$/;
+
+/** SAMEAS / NSAMEAS, as the condition builder writes them on dates: `other_field@day`. */
+export const FIELD_SAME_VALUE_RE = /^([a-z0-9_.]+)(?:@(minute|hour|day|week|month|quarter|year))?$/;
 
 export const RELATIVE_VALUE_RE =
   /^@(minute|hour|dayofweek|month|quarter|year)@(ago|ahead)@([1-9][0-9]{0,3})$/;

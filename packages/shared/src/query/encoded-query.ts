@@ -18,6 +18,7 @@ import {
   ALLOWED_OPERATORS,
   END_MARKER,
   FIELD_OFFSET_VALUE_RE,
+  FIELD_SAME_VALUE_RE,
   MAX_LIST_ITEMS,
   MAX_VALUE_LENGTH,
   normalizeRelativeValue,
@@ -191,13 +192,19 @@ export function validateValue(operator: string, value: string): QueryResult<stri
       return isValidFieldPath(value)
         ? { ok: true, value: [value] }
         : bad(`operator ${operator} needs a field name as value`);
+    case 'field_same': {
+      const other = FIELD_SAME_VALUE_RE.exec(value)?.[1];
+      return other !== undefined && isValidFieldPath(other)
+        ? { ok: true, value: [other] }
+        : bad(`operator ${operator} needs a field name as value, optionally with "@unit" on dates`);
+    }
     case 'field_offset': {
       const m = FIELD_OFFSET_VALUE_RE.exec(value);
       const other = m?.[1];
       return other !== undefined && isValidFieldPath(other)
         ? { ok: true, value: [other] }
         : bad(
-            `${operator} needs "other_field@unit@before|after@n" (unit: minute, hour, day, week, month, quarter or year; n 0–9999)`,
+            `${operator} needs "other_field@unit@before|after|before or after@n" (unit: minute, hour, day, week, month, quarter or year; n 0–9999)`,
             `e.g. ${operator}sys_created_on@hour@after@1`,
           );
     }

@@ -7,6 +7,7 @@
  * evidence file can be committed.
  */
 
+import { readFileSync } from 'node:fs';
 import { applyUnified } from '../../packages/server/src/mcp/line-diff.ts';
 import {
   describePayload,
@@ -994,6 +995,56 @@ export const SCENARIOS: {
         downcast_available: downcastAvailable,
         downcast_rows: rows.length,
       };
+    },
+  },
+  {
+    name: 'every query the condition builder writes runs (T-049)',
+    run: async (call, scope) => {
+      const { rows } = JSON.parse(
+        readFileSync(
+          new URL('../../packages/shared/test/fixtures/ui-queries.json', import.meta.url),
+          'utf8',
+        ),
+      ) as { rows: { category: string; condition: string; query: string }[] };
+      const count = async (encoded_query?: string): Promise<Result> =>
+        call('query_records', {
+          scope_id: scope,
+          table: 'cmdb_ci',
+          ...(encoded_query ? { encoded_query } : {}),
+          fields: ['sys_id'],
+          limit: 1,
+          include_total: true,
+        });
+      const described = await call('describe_table', { scope_id: scope, table: 'cmdb_ci' });
+      const hasField = (described?.data?.fields ?? []).some(
+        (f: { name?: string }) => f.name === 'first_discovered',
+      );
+      if (!hasField) return { skipped: 'no cmdb_ci.first_discovered here' };
+      const all = ok(await count(), 'all rows').page.total as number;
+      const results: Record<string, number> = {};
+      const failures: string[] = [];
+      for (const r of rows) {
+        const res = await count(r.query);
+        if (res?.ok === true) results[r.query] = res.page.total;
+        else failures.push(`${r.query}: ${res?.error?.code} ${res?.error?.message}`);
+      }
+      expectThat(
+        failures.length === 0,
+        `${failures.length} refused: ${failures.slice(0, 5).join(' | ')}`,
+      );
+      // Pairs whose counts must add up, so that a term ServiceNow ignores or misreads shows.
+      const pairs: [string, string][] = [
+        ['first_discoveredISEMPTY', 'first_discoveredISNOTEMPTY'],
+        ['assigned_toISEMPTY', 'assigned_toISNOTEMPTY'],
+      ];
+      for (const [a, b] of pairs) {
+        expectThat(
+          results[a] !== undefined && results[b] !== undefined && results[a] + results[b] === all,
+          `${a} + ${b}: ${results[a]} + ${results[b]} of ${all}`,
+        );
+      }
+      expectThat(results.first_discoveredANYTHING === all, 'ANYTHING must match every row');
+      return { queries: rows.length, all_rows: all, counts: results };
     },
   },
   {
