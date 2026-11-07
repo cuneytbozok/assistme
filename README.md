@@ -1,11 +1,11 @@
-# sn-mcp: let Claude read your ServiceNow
+# sn-mcp: let your AI read your ServiceNow
 
 https://github.com/user-attachments/assets/7fcee793-bfbb-4c07-93be-21e29cacea2c
 
-Ask Claude questions about your ServiceNow instance, such as "why did this incident change?" or "which scripts touch this field?". Claude finds the answer through your own browser session.
+Ask your AI client questions about your ServiceNow instance, such as "why did this incident change?" or "which scripts touch this field?". It finds the answer through your own browser session. It works with Claude Desktop, Claude Code, ChatGPT Desktop (Codex chats) and Mistral Vibe.
 
-- **You stay in control.** Claude can't reach an instance until you approve a request in Chrome.
-- **Your password stays in Chrome.** Claude never sees your password, cookies or session tokens.
+- **You stay in control.** Your AI client can't reach an instance until you approve a request in Chrome.
+- **Your password stays in Chrome.** Your AI client never sees your password, cookies or session tokens.
 - **What you can see is all it can see.** It reads as you, with your ServiceNow permissions.
 - **Read-only tools, with one exception.** It has no tool that creates, changes or deletes anything. But a query may contain a `javascript:` value or a `DYNAMIC` filter, as ServiceNow's own list filters do, and ServiceNow runs those as server-side script in your session. A script can do whatever your account can, so a query isn't guaranteed to only read. Keep this in mind before using it on production.
 
@@ -38,7 +38,7 @@ The SDK details are from its documentation for version 4.14.
 - A Mac with Google Chrome. Windows passes automated tests, but hasn't been tried on a real PC yet.
 - [Node.js](https://nodejs.org) 22.18 or newer. Run `node --version` to check.
 - A ServiceNow instance you can sign in to. If you don't have one to test with, you can request a free developer instance at [developer.servicenow.com](https://developer.servicenow.com).
-- [Claude Desktop](https://claude.ai/download). Claude Code, ChatGPT Desktop (Codex chats only) and Mistral Vibe also work.
+- An AI client: [Claude Desktop](https://claude.ai/download), Claude Code, ChatGPT Desktop (Codex chats only) or Mistral Vibe.
 
 You don't need an API key or Docker. Your ServiceNow account has to be able to read table definitions (`sys_db_object` and `sys_dictionary`). So far the connector has only been tested with an admin account.
 
@@ -48,7 +48,7 @@ It takes about 10 minutes, and has four parts. Here it is on video:
 
 https://github.com/user-attachments/assets/c9b03ae5-326e-464f-9f9d-b0b40fcf1e20
 
-There are two things called an "extension" below: one you add to **Chrome**, and one you add to **Claude Desktop**. You need both.
+There are two things called an "extension" below: one you add to **Chrome**, and, if you use it, one you add to **Claude Desktop**.
 
 ### 1. Download and install
 
@@ -99,7 +99,9 @@ The extension isn't in the Chrome Web Store, so you load it from the folder you 
 
 If an instance isn't clearly development or test, choose **Other**. It gets the same strict rules as production: shorter access, and you type the host name to approve.
 
-### 4. Connect Claude Desktop
+### 4. Connect your AI client
+
+**Claude Desktop:**
 
 1. In Terminal, run:
 
@@ -111,7 +113,7 @@ If an instance isn't clearly development or test, choose **Other**. It gets the 
 3. Choose `packages/server/sn-mcp.mcpb` inside `AssistMe`.
 4. Quit Claude Desktop completely with **Cmd+Q**, then open it again. Closing the window isn't enough.
 
-**Using something else?**
+**Other AI clients:**
 
 - **Claude Code:** run the `claude mcp add` command that the setup printed, then start a new session.
 - **ChatGPT Desktop:** see [how to connect it](docs/INSTALL.md#chatgpt-desktop). It only works in Codex chats.
@@ -119,14 +121,14 @@ If an instance isn't clearly development or test, choose **Other**. It gets the 
 
 ## Your first question
 
-Start a new chat and ask:
+Start a new chat in your AI client and ask:
 
 > List my ServiceNow instances, then show me the five most recent incidents.
 
-1. Claude asks for access and shows you an **approval code**, such as `K7QF-2M`.
+1. Your AI client asks for access and shows you an **approval code**, such as `K7QF-2M`.
 2. Click the magnifying glass icon in Chrome. You'll see the request.
-3. **Check that the code matches what Claude showed you**, then approve it.
-4. Claude carries on.
+3. **Check that the code matches what it showed you**, then approve it.
+4. It carries on.
 
 Keep the instance open in a Chrome tab while you work. That's how the connector uses your session.
 
@@ -148,16 +150,16 @@ Skills teach your AI client how to investigate and build on ServiceNow. They add
 
 ### Documentation research
 
-Off by default. This lets Claude search ServiceNow's published documentation through GitMCP, and read its pages from GitHub, with no key or download. It's one more source for Claude, alongside anything else it can use.
+Off by default. This lets your AI client search ServiceNow's published documentation through GitMCP, and read its pages from GitHub, with no key or download. It's one more source, alongside anything else your AI client can use.
 
-1. In Claude Desktop, go to **Settings → Extensions → ServiceNow (read-only)** and open its settings.
+1. In Claude Desktop, go to **Settings → Extensions → ServiceNow (read-only)** and open its settings. For other AI clients, [set `SN_MCP_DOCS`](docs/INSTALL.md#documentation-research).
 2. Turn on **Documentation research**.
 3. Quit with **Cmd+Q** and open it again. Saving the setting isn't enough.
 
 Good to know:
 
 - Search terms are sent to gitmcp.io and GitHub, so leave customer data out of them.
-- Claude may choose web search on its own. To ask for documentation, say so, for example: "Check the ServiceNow documentation with `docs_search`. If it isn't there, search the web."
+- Your AI client may choose web search on its own. To ask for documentation, say so, for example: "Check the ServiceNow documentation with `docs_search`. If it isn't there, search the web."
 - A search usually takes 10 to 25 seconds. It depends on a free community service, so it can sometimes be slow or unavailable. Nothing else depends on it.
 
 More in [docs/INSTALL.md](docs/INSTALL.md#documentation-research).
@@ -165,11 +167,12 @@ More in [docs/INSTALL.md](docs/INSTALL.md#documentation-research).
 ## Good to know
 
 - **Follow-up questions:** access stays open for the time you chose when approving, so follow-ups in the same chat don't need a new code. A new chat asks again.
-- **Ending access:** access ends when it expires, when you click **Revoke** in the popup, when you tell Claude you're finished, or when Chrome restarts. The popup's **Active access** section and its **Revoke** button only show while access is open.
+- **Ending access:** access ends when it expires, when you click **Revoke** in the popup, when you tell your AI client you're finished, or when Chrome restarts. The popup's **Active access** section and its **Revoke** button only show while access is open.
 - **How long it lasts:** 4 hours by default on development and test, 15 minutes on production. You can choose when you approve.
-- **"Part of the query has been ignored" banners:** after a wide script search, these can appear the next time you load a ServiceNow page. They're harmless, and nothing is changed. Asking Claude to search specific tables avoids most of them.
-- **Tables Claude can't read:** Claude tells you, so you know an answer may be partial. Tables that hold credentials are always blocked.
-- **Treat answers like any other research:** Claude reads what's in your records, and records can contain anything. The connector tells it to treat that content as data, not instructions, but check anything important.
+- **"Part of the query has been ignored" banners:** after a wide script search, these can appear the next time you load a ServiceNow page. They're harmless, and nothing is changed. Asking your AI client to search specific tables avoids most of them.
+- **Tables it can't read:** your AI client is told, so you know an answer may be partial. Tables that hold credentials are always blocked.
+- **Where your data goes:** what the tools read goes to the model behind your AI client, under that provider's terms. Choose one you trust with that data.
+- **Treat answers like any other research:** your AI client reads what's in your records, and records can contain anything. The connector tells it to treat that content as data, not instructions, but check anything important.
 
 ## If something goes wrong
 
@@ -180,9 +183,9 @@ More in [docs/INSTALL.md](docs/INSTALL.md#documentation-research).
 | `BRIDGE_UNAVAILABLE`, or "host not found" in the popup | Run `npm run setup`, then press the reload icon on the extension's card at `chrome://extensions` |
 | `NO_INSTANCE_TAB` | Open your instance in Chrome and sign in |
 | `SESSION_EXPIRED` | Sign in to ServiceNow again. Your approval still works |
-| `SCOPE_UNKNOWN` or `SCOPE_EXPIRED` | Ask Claude to request access again, then approve the new code |
+| `SCOPE_UNKNOWN` or `SCOPE_EXPIRED` | Ask your AI client to request access again, then approve the new code |
 | Tools are missing or out of date, including the documentation tools | Quit Claude Desktop with Cmd+Q, reopen it, and start a new chat |
-| `DOCS_UNAVAILABLE` | Documentation search is slow or down. Claude can use other sources, and you can try again later |
+| `DOCS_UNAVAILABLE` | Documentation search is slow or down. Your AI client can use other sources, and you can try again later |
 
 There's more in [docs/INSTALL.md](docs/INSTALL.md#troubleshooting).
 
@@ -219,7 +222,7 @@ Then reload the extension at `chrome://extensions`, and follow [the remaining st
 npm run uninstall
 ```
 
-Then remove the extension at `chrome://extensions`, and remove sn-mcp from Claude. The command lists what's left. After that you can delete the `AssistMe` folder.
+Then remove the extension at `chrome://extensions`, and remove sn-mcp from your AI client. The command lists what's left. After that you can delete the `AssistMe` folder.
 
 ## More
 

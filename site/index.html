@@ -4,12 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>AssistMe</title>
-<meta name="description" content="Ask Claude what happened on your ServiceNow instance. It works through your own Chrome session, and nothing reaches an instance until you approve it.">
+<meta name="description" content="Ask your AI what happened on your ServiceNow instance. Works with Claude, ChatGPT Desktop (Codex chats) and Mistral Vibe. It works through your own Chrome session, and nothing reaches an instance until you approve it.">
 <meta property="og:title" content="AssistMe">
-<meta property="og:description" content="Claude reads your ServiceNow. You stay in control.">
+<meta property="og:description" content="Your AI reads your ServiceNow. You stay in control.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://cuneytbozok.github.io/assistme/">
-<meta property="og:image" content="https://cuneytbozok.github.io/assistme/poster.jpg">
+<meta property="og:image" content="https://cuneytbozok.github.io/assistme/poster.png">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="icon" href="icon.png" type="image/png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -170,6 +170,10 @@ h1 { font-size: clamp(2.5rem, 6vw, 4.125rem); letter-spacing: -0.03em; }
 .exception { display: grid; gap: 8px; margin-top: 36px; padding: 22px 24px; background: var(--warn-soft); border-radius: 12px; max-width: 54rem; }
 .exception h3 { color: var(--warn); }
 
+.works-with { color: var(--band-ink); font-size: 1rem; max-width: 34rem; }
+.works-with span { display: block; color: var(--band-muted); font: 500 0.75rem var(--mono); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 2px; }
+.video-note { margin-top: 14px; color: var(--muted); }
+
 /* What's included */
 .included { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 32px 44px; }
 .included > div { display: grid; gap: 8px; align-content: start; min-width: 0; }
@@ -251,12 +255,13 @@ footer { border-top: 1px solid var(--line); padding-block: 28px; color: var(--mu
     </header>
     <div class="hero" id="top">
       <div class="hero-copy">
-        <h1>Ask Claude what happened on your ServiceNow instance.</h1>
+        <h1>Ask your AI what happened on your ServiceNow instance.</h1>
         <p class="lede">AssistMe lets your AI client investigate records, scripts and logs through your own Chrome session. Nothing reaches an instance until you approve it.</p>
         <div class="actions">
           <a class="btn btn-primary" href="https://github.com/cuneytbozok/assistme#set-it-up">Set it up on GitHub</a>
           <a class="btn btn-quiet" href="#demo">Watch the demo</a>
         </div>
+        <p class="works-with"><span>Works with</span> Claude Desktop, Claude Code, ChatGPT Desktop (Codex chats) and Mistral Vibe</p>
         <ul class="facts">
           <li>Mac and Chrome</li>
           <li>No API key</li>
@@ -268,7 +273,7 @@ footer { border-top: 1px solid var(--line); padding-block: 28px; color: var(--mu
       <div class="moment" id="moment">
         <span class="example-tag">Example. Press Approve to try it</span>
         <div class="pane" aria-live="polite">
-          <span class="pane-label">Claude</span>
+          <span class="pane-label">Your AI client</span>
           <div class="chat">
             <p class="msg msg-you">Why was INC0010023 reassigned last night?</p>
             <p class="msg">I need access to <strong>dev</strong>. Please approve this code in Chrome if it matches: <span class="code code-mark">K7QF-2M</span></p>
@@ -325,9 +330,9 @@ footer { border-top: 1px solid var(--line); padding-block: 28px; color: var(--mu
     <div class="wrap">
       <div class="section-head"><h2>How it works</h2></div>
       <ol class="steps">
-        <li><h3>You ask</h3><p>Ask your question in Claude Desktop or another supported AI client. It requests access to one instance and shows you a short code.</p></li>
+        <li><h3>You ask</h3><p>Ask your question in your AI client. It requests access to one instance and shows you a short code.</p></li>
         <li><h3>You approve</h3><p>Click the extension in Chrome. If the code matches, approve it and choose how long the access lasts.</p></li>
-        <li><h3>Claude investigates</h3><p>Requests go through your signed-in browser session. Follow-up questions in that chat keep using the access you approved.</p></li>
+        <li><h3>Your AI investigates</h3><p>Requests go through your signed-in browser session. Follow-up questions in that chat keep using the access you approved.</p></li>
       </ol>
     </div>
   </section>
@@ -337,9 +342,9 @@ footer { border-top: 1px solid var(--line); padding-block: 28px; color: var(--mu
       <div class="section-head"><h2>You decide what it can reach</h2></div>
       <div class="controls">
         <div><h3>Nothing without your approval</h3><p>Only you can approve access, in Chrome. By default it lasts 4 hours on development and test, and 15 minutes on production, where you also type the host name.</p></div>
-        <div><h3>Your password stays in Chrome</h3><p>Claude never sees your password, cookies or session tokens.</p></div>
-        <div><h3>It reads as you</h3><p>What you can see in ServiceNow is all it can see. Your roles and access rules still apply.</p></div>
-        <div><h3>Credential tables are blocked</h3><p>Tables that hold credentials are always blocked. If Claude can't read something, it tells you, so you know an answer may be partial.</p></div>
+        <div><h3>Your password stays in Chrome</h3><p>Your AI client never sees your password, cookies or session tokens.</p></div>
+        <div><h3>It reads as you</h3><p>What you can see in ServiceNow is all it can see, and your roles and access rules still apply. What it reads goes to the model behind your AI client, so choose one you trust with that data.</p></div>
+        <div><h3>Credential tables are blocked</h3><p>Tables that hold credentials are always blocked. If something can't be read, your AI client is told, so you know an answer may be partial.</p></div>
       </div>
       <div class="exception">
         <h3>Read-only tools, with one exception</h3>
@@ -352,8 +357,9 @@ footer { border-top: 1px solid var(--line); padding-block: 28px; color: var(--mu
     <div class="wrap">
       <div class="section-head"><h2>See it run</h2></div>
       <div class="video-frame">
-        <video controls preload="none" playsinline poster="poster.jpg" src="https://github.com/user-attachments/assets/7fcee793-bfbb-4c07-93be-21e29cacea2c" aria-label="AssistMe demo video"></video>
+        <video controls preload="none" playsinline poster="poster.png" src="https://github.com/user-attachments/assets/7fcee793-bfbb-4c07-93be-21e29cacea2c" aria-label="AssistMe demo video"></video>
       </div>
+      <p class="video-note">This demo uses Claude. Approving access works the same way in the other AI clients.</p>
     </div>
   </section>
 
@@ -428,7 +434,7 @@ npm run setup</code></pre>
           <li><h3>Install</h3><p>Run these commands. Setup prints the exact paths for your Mac. Keep the folder where it is afterwards.</p></li>
           <li><h3>Add the extension to Chrome</h3><p>Load it from the project folder with Chrome's developer mode.</p></li>
           <li><h3>Add your instance</h3><p>Sign in, click the extension, and register the instance. Chrome asks for access to that one site.</p></li>
-          <li><h3>Connect your AI client</h3><p>Install the bundle in Claude Desktop. Claude Code, ChatGPT Desktop (Codex chats only) and Mistral Vibe also work.</p></li>
+          <li><h3>Connect your AI client</h3><p>Claude Desktop, Claude Code, ChatGPT Desktop (Codex chats only) or Mistral Vibe. The README has the steps for each.</p></li>
         </ol>
       </div>
       <div class="after">
@@ -444,7 +450,7 @@ npm run setup</code></pre>
         <p>This is an early project, and trying it on other setups is the most useful help right now.</p>
       </div>
       <div class="status">
-        <div><h3>Tested</h3><p>One Mac, with Chrome, one developer instance and an admin account.</p></div>
+        <div><h3>Tested</h3><p>One Mac, with Chrome, one developer instance and an admin account, through Claude Desktop, ChatGPT Desktop and Mistral Vibe.</p></div>
         <div><h3>Not tested yet</h3><p>Accounts without admin rights, and real Windows PCs. It needs read access to table definitions, which not every account has.</p></div>
         <div><h3>Before you rely on it</h3><p>Start on a development instance, and check answers you can verify. Records can contain anything, so treat answers like any other research.</p></div>
       </div>
