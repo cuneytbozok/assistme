@@ -35,7 +35,7 @@ Then upload `dist-skill/servicenow-readonly-troubleshooting.zip` in the skills s
 
 General ServiceNow development and product knowledge: scripting, business rules, flows, portals, ITSM, ITOM, HRSD, CSM, SecOps and more, in 28 references. It helps when you build things, and when Claude needs to know how a feature is meant to work.
 
-It's by a third party ([Vanka07/servicenow-skill](https://github.com/Vanka07/servicenow-skill), MIT), where it's called `servicenow`. The copy in `plugin/skills/servicenow-development-guide` is pinned to one commit: [PROVENANCE.md](../plugin/skills/servicenow-development-guide/PROVENANCE.md) records it, along with the one local change and how far it was reviewed.
+It's by a third party ([Vanka07/servicenow-skill](https://github.com/Vanka07/servicenow-skill), under its own MIT license), where it's called `servicenow`. The copy in `plugin/skills/servicenow-development-guide` is pinned to one commit: [PROVENANCE.md](../plugin/skills/servicenow-development-guide/PROVENANCE.md) records it, along with the one local change and how far it was reviewed.
 
 - **It can't write through the connector.** It can suggest code that changes data, including background scripts. Those change real data if you run them yourself, so review them and try them in a development instance first.
 - **Its ServiceNow content hasn't been checked for accuracy.** It's a small project. The note added to it tells Claude to confirm table and field names against the instance.

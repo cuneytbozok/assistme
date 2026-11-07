@@ -9,7 +9,7 @@ Ask Claude questions about your ServiceNow instance, such as "why did this incid
 - **What you can see is all it can see.** It reads as you, with your ServiceNow permissions.
 - **Read-only tools, with one exception.** It has no tool that creates, changes or deletes anything. But a query may contain a `javascript:` value or a `DYNAMIC` filter, as ServiceNow's own list filters do, and ServiceNow runs those as server-side script in your session. A script can do whatever your account can, so a query isn't guaranteed to only read. Keep this in mind before using it on production.
 
-sn-mcp is an independent project, not affiliated with or endorsed by ServiceNow.
+sn-mcp is free and open source under the [MIT License](LICENSE). It's an independent project, not affiliated with or endorsed by ServiceNow.
 
 ## How is this different from the ServiceNow SDK?
 

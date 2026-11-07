@@ -43,6 +43,10 @@ Merged into `main`, server 0.1.14. The user has reloaded the extension on this b
 
 Done by the user's decision. Live on `dev469966` (`docs/evidence/T-042/`): two records compare, and two versions of a `sys_script` compare by element, with the diff applied back exactly. Not live: reaching another instance (no second instance exists; mock and the unchanged extension only), an over-long line being cut, and `compare_records` between two instances. Payload forms beyond the 9 pairs checked may come back as raw text.
 
+## Licence
+
+MIT, the user's decision of 2026-11-07, in `LICENSE`. The third-party skill keeps its own MIT `LICENSE` in `plugin/skills/servicenow-development-guide`.
+
 ## Decisions made by the user (2026-11-05)
 
 - Terminal Claude Code and Cowork aren't used: not tested, and recorded as such.
@@ -65,7 +69,7 @@ Done by the user's decision. Live on `dev469966` (`docs/evidence/T-042/`): two r
 - **Instance:** `dev469966.service-now.com`, alias `dev469966`, environment dev. A personal developer instance, signed in as admin.
 - **Chrome:** unpacked extension from `packages/extension/dist`, ID `clipfeocpiljpcngmjpdbegciimchbol`.
 - **Native host:** installed by `npm run setup` from this folder. Runtime files are in `~/Library/Application Support/sn-mcp/`, which is 0700: `broker.sock`, `broker.key`, `broker.pid`, `broker.log` (metadata only). Exit codes: 64 bad origin, 78 unsafe path, 75 conflict.
-- **Claude Desktop:** the `.mcpb` bundle, named "ServiceNow (read-only)", plus both skills uploaded. The installed bundle is 0.1.16, with Documentation research on and the time limit at 55. `mcpServers` in `claude_desktop_config.json` is empty; the old entry's backup is `claude_desktop_config.json.before-sn-mcp-bundle`.
+- **Claude Desktop:** the `.mcpb` bundle, named "ServiceNow (read-only)", plus both skills uploaded. The installed bundle is 0.1.16, with Documentation research on and the time limit at 55. 0.1.17 is built and only changes the licence field, so there is no need to reinstall. `mcpServers` in `claude_desktop_config.json` is empty; the old entry's backup is `claude_desktop_config.json.before-sn-mcp-bundle`.
 - **Claude Code:** Code sessions inside the Desktop app use the Desktop connector and skills. Nothing is registered separately: the `sn-mcp` registration and plugin were removed, because two connectors in one session don't share scopes.
 - **ChatGPT Desktop:** installed, version 26.1029.61003, engine codex-cli 0.166.0-alpha.6. sn-mcp is registered in `~/.codex/config.toml` by the user, through the app's settings, without the longer timeouts.
 - **Mistral Vibe:** 3.1.0, a uv tool at `~/.local/bin/vibe`, which isn't on the non-login shell's PATH. sn-mcp is registered in `~/.vibe/config.toml`, with the printed block; the earlier file is `config.toml.before-sn-mcp`. Reads work there with Mistral Medium 3.5. Its `prompt` was updated to the 0.1.7 text. Skills are already visible to it, through `~/.agents/skills`.

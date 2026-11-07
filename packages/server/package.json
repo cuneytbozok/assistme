@@ -1,6 +1,7 @@
 {
   "name": "@sn-mcp/server",
   "version": "0.0.0",
+  "license": "MIT",
   "private": true,
   "description": "Local MCP server (stdio) and Chrome native-messaging broker",
   "type": "module",

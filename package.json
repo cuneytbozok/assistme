@@ -1,6 +1,7 @@
 {
   "name": "sn-mcp",
   "version": "0.0.0",
+  "license": "MIT",
   "private": true,
   "description": "Read-only ServiceNow MCP connector: local MCP server + Chrome session bridge",
   "type": "module",

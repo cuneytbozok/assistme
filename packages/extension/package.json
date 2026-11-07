@@ -1,6 +1,7 @@
 {
   "name": "@sn-mcp/extension",
   "version": "0.0.0",
+  "license": "MIT",
   "private": true,
   "description": "Chrome MV3 extension: ServiceNow session bridge, instance registry and user approvals",
   "type": "module",

@@ -1,6 +1,7 @@
 {
   "name": "@sn-mcp/shared",
   "version": "0.0.0",
+  "license": "MIT",
   "private": true,
   "description": "Shared protocol schemas and validation used by the MCP server and the Chrome extension",
   "type": "module",
