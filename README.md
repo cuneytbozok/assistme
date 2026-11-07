@@ -136,17 +136,19 @@ Everything above works without these.
 
 ### Skills
 
-Skills teach Claude how to investigate and build on ServiceNow. They add no access. To add them to Claude Desktop, run the command below, then upload the zip files from `dist-skill` in the skills section of Claude Desktop's settings:
+Skills teach your AI client how to investigate and build on ServiceNow. They add no access. There are two: a troubleshooting method from this project, and a development guide from a third party, whose content hasn't been checked for accuracy.
 
-```bash
-npm run pack:skill
-```
+| AI client | How to add them |
+| --------- | --------------- |
+| **Claude Desktop** | Run `npm run pack:skill`, then upload each zip from `dist-skill` in the skills section of Claude Desktop's settings |
+| **Claude Code** | Run `/plugin marketplace add` with this folder's path, then `/plugin install sn-mcp-skills@sn-mcp` |
+| **Codex and Mistral Vibe** | Run `npm run codex-skills`, then start a new chat or session |
 
-[docs/SKILLS.md](docs/SKILLS.md) explains each one, and how to use them in other clients.
+[docs/SKILLS.md](docs/SKILLS.md) explains each one.
 
 ### Documentation research
 
-Off by default. This lets Claude search and read ServiceNow's published documentation, with no key or download. It's one more source for Claude, alongside anything else it can use.
+Off by default. This lets Claude search ServiceNow's published documentation through GitMCP, and read its pages from GitHub, with no key or download. It's one more source for Claude, alongside anything else it can use.
 
 1. In Claude Desktop, go to **Settings → Extensions → ServiceNow (read-only)** and open its settings.
 2. Turn on **Documentation research**.
@@ -223,6 +225,7 @@ Then remove the extension at `chrome://extensions`, and remove sn-mcp from Claud
 
 | Document | What's in it |
 | -------- | ------------ |
+| [Project site](https://cuneytbozok.github.io/assistme/) | A short introduction to share with others |
 | [docs/INSTALL.md](docs/INSTALL.md) | Full install, updates, settings and troubleshooting |
 | [docs/TOOLS.md](docs/TOOLS.md) | What each tool does, and every error |
 | [docs/SECURITY.md](docs/SECURITY.md) | The threat model and protections |

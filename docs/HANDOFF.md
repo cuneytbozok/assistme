@@ -71,6 +71,10 @@ Done by the user's decision. Live on `dev469966` (`docs/evidence/T-042/`): two r
 - **Mistral Vibe:** 3.1.0, a uv tool at `~/.local/bin/vibe`, which isn't on the non-login shell's PATH. sn-mcp is registered in `~/.vibe/config.toml`, with the printed block; the earlier file is `config.toml.before-sn-mcp`. Reads work there with Mistral Medium 3.5. Its `prompt` was updated to the 0.1.7 text. Skills are already visible to it, through `~/.agents/skills`.
 - **Git:** `origin` is https://github.com/cuneytbozok/assistme (public). Commits use the no-reply address set in this repo's git config.
 
+## Project site
+
+`site/` is the English landing page, published to https://cuneytbozok.github.io/assistme/ by `.github/workflows/pages.yml` on pushes that change it. Only `site/` is published. It repeats some README facts by hand, such as the setup steps, the script exception and the test status, so keep them in step.
+
 ## After changing code
 
 1. `npm run build`, `npm test`, `npm run lint`.

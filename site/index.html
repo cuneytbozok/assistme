@@ -1,0 +1,500 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>AssistMe</title>
+<meta name="description" content="Ask Claude what happened on your ServiceNow instance. It works through your own Chrome session, and nothing reaches an instance until you approve it.">
+<meta property="og:title" content="AssistMe">
+<meta property="og:description" content="Claude reads your ServiceNow. You stay in control.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://cuneytbozok.github.io/assistme/">
+<meta property="og:image" content="https://cuneytbozok.github.io/assistme/poster.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="icon.png" type="image/png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: a deep-teal opening band holds the approval moment, a chat and a Chrome popup sharing one code; quieter sections follow on a teal-tinted ground. */
+:root {
+  --bg: #f2f7f6;
+  --surface: #ffffff;
+  --sunk: #e6efed;
+  --ink: #122a2c;
+  --muted: #4c6365;
+  --line: #d3e0de;
+  --accent: #0a6f6b;
+  --accent-ink: #ffffff;
+  --band: #0f3a3d;
+  --band-ink: #eaf5f3;
+  --band-muted: #a9c9c6;
+  --mint: #5eead4;
+  --mint-ink: #08302f;
+  --ok: #15703a;
+  --ok-soft: #e0f3e7;
+  --warn: #a8430a;
+  --warn-soft: #fbeadf;
+  --display: "Bricolage Grotesque", "Avenir Next", "Segoe UI", sans-serif;
+  --body: "IBM Plex Sans", -apple-system, "Segoe UI", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+  --gutter-l: max(20px, env(safe-area-inset-left, 0px));
+  --gutter-r: max(20px, env(safe-area-inset-right, 0px));
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0d1c1e;
+    --surface: #15282b;
+    --sunk: #1c3236;
+    --ink: #e7f1f0;
+    --muted: #a0b6b6;
+    --line: #2a4347;
+    --accent: #5eead4;
+    --accent-ink: #08302f;
+    --band: #0a2a2d;
+    --ok: #6ee7a0;
+    --ok-soft: #15322a;
+    --warn: #fdae7a;
+    --warn-soft: #3a2519;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0d1c1e;
+  --surface: #15282b;
+  --sunk: #1c3236;
+  --ink: #e7f1f0;
+  --muted: #a0b6b6;
+  --line: #2a4347;
+  --accent: #5eead4;
+  --accent-ink: #08302f;
+  --band: #0a2a2d;
+  --ok: #6ee7a0;
+  --ok-soft: #15322a;
+  --warn: #fdae7a;
+  --warn-soft: #3a2519;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font: 400 1.0625rem/1.6 var(--body);
+  -webkit-text-size-adjust: 100%;
+}
+img, video { max-width: 100%; display: block; }
+[hidden] { display: none !important; }
+a { color: var(--accent); text-underline-offset: 3px; }
+a:focus-visible, button:focus-visible, video:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+.band a:focus-visible, .band button:focus-visible { outline-color: var(--mint); }
+h1, h2, h3 { font-family: var(--display); font-weight: 700; line-height: 1.08; margin: 0; text-wrap: balance; }
+h2 { font-size: clamp(1.75rem, 4vw, 2.5rem); letter-spacing: -0.02em; }
+h3 { font-size: 1.1875rem; line-height: 1.25; letter-spacing: -0.005em; }
+p { margin: 0; }
+code, .mono { font-family: var(--mono); font-size: 0.9em; }
+.wrap {
+  max-width: 1120px;
+  margin-inline: auto;
+  padding-left: var(--gutter-l);
+  padding-right: var(--gutter-r);
+}
+section { padding-block: clamp(56px, 8vw, 96px); }
+.section-head { display: grid; gap: 12px; max-width: 42rem; margin-bottom: clamp(28px, 4vw, 44px); }
+.section-head p { color: var(--muted); }
+
+/* Opening band */
+.band { background: var(--band); color: var(--band-ink); }
+.band a { color: var(--mint); }
+.topbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-block: 20px; }
+.brand { display: flex; align-items: center; gap: 10px; color: var(--band-ink); font: 700 1.1875rem var(--display); text-decoration: none; }
+.brand img { width: 30px; height: 30px; border-radius: 8px; }
+.hero { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.06fr); gap: clamp(32px, 5vw, 64px); align-items: center; padding-block: clamp(20px, 4vw, 44px) clamp(52px, 7vw, 84px); }
+.hero-copy { display: grid; gap: 22px; min-width: 0; }
+h1 { font-size: clamp(2.5rem, 6vw, 4.125rem); letter-spacing: -0.03em; }
+.lede { color: var(--band-muted); font-size: 1.1875rem; max-width: 34rem; }
+.actions { display: flex; flex-wrap: wrap; gap: 12px; }
+.btn { display: inline-flex; align-items: center; min-height: 46px; padding: 10px 20px; border-radius: 8px; font-weight: 600; text-decoration: none; }
+.band a.btn-primary { background: var(--mint); color: var(--mint-ink); }
+.band a.btn-primary:hover { background: #8df3e2; }
+.band a.btn-quiet { color: var(--band-ink); border: 1px solid #3d6a6c; }
+.band a.btn-quiet:hover { background: #17494c; }
+.facts { display: flex; flex-wrap: wrap; gap: 4px 18px; padding: 0; margin: 0; list-style: none; color: var(--band-muted); font-size: 0.9375rem; }
+
+/* The approval moment */
+.moment { position: relative; display: grid; gap: 14px; min-width: 0; color: var(--ink); }
+.example-tag { color: var(--band-muted); font: 500 0.75rem var(--mono); letter-spacing: 0.08em; text-transform: uppercase; }
+.pane { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 18px; min-width: 0; }
+.pane-label { display: block; color: var(--muted); font: 500 0.75rem var(--mono); letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 12px; }
+.chat { display: grid; gap: 10px; }
+.msg { font-size: 0.9688rem; line-height: 1.5; }
+.msg-you { justify-self: end; max-width: 88%; background: var(--sunk); padding: 8px 12px; border-radius: 10px; }
+.code { font: 600 1.25rem var(--mono); letter-spacing: 0.1em; white-space: nowrap; }
+.code-mark { background: var(--mint); color: var(--mint-ink); padding: 1px 7px; border-radius: 5px; }
+.msg-answer { border-top: 1px solid var(--line); padding-top: 10px; animation: rise 0.28s ease-out; }
+.msg-answer ul { margin: 6px 0 0; padding-left: 18px; }
+@keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+.popup-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
+.env { display: inline-block; background: var(--ok-soft); color: var(--ok); font: 600 0.75rem var(--mono); padding: 3px 8px; border-radius: 5px; }
+.popup-row { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; font-size: 0.9375rem; margin-bottom: 14px; color: var(--muted); }
+.popup-row strong { color: var(--ink); font-weight: 600; }
+.choices { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.choice { min-height: 44px; border-radius: 8px; border: 1px solid var(--line); background: transparent; color: var(--ink); font: 600 0.9688rem var(--body); cursor: pointer; }
+.choice:hover { background: var(--sunk); }
+.choice-go { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.choice-go:hover { background: var(--accent); filter: brightness(1.1); }
+.result { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; font-size: 0.9688rem; font-weight: 500; }
+.replay { background: none; border: 0; padding: 4px 0; color: var(--accent); font: 500 0.9375rem var(--body); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+
+/* Questions: instance vocabulary, set as an index */
+.questions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 48px; margin: 0; padding: 0; list-style: none; border-top: 1px solid var(--line); }
+.questions li { display: grid; gap: 4px; padding-block: 18px; border-bottom: 1px solid var(--line); min-width: 0; }
+.questions q { quotes: none; font: 500 1.1875rem/1.3 var(--display); letter-spacing: -0.005em; }
+.questions span { color: var(--muted); font-size: 0.9688rem; }
+
+/* How it works: a real sequence, so it is numbered */
+.steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: clamp(24px, 4vw, 44px); margin: 0; padding: 0; list-style: none; counter-reset: step; }
+.steps li { counter-increment: step; display: grid; gap: 8px; align-content: start; min-width: 0; }
+.steps li::before { content: counter(step); font: 700 2.75rem/1 var(--display); color: var(--accent); }
+.steps p { color: var(--muted); }
+
+.tinted { background: var(--sunk); }
+.controls { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px 48px; }
+.controls > div { display: grid; gap: 6px; align-content: start; min-width: 0; }
+.controls p { color: var(--muted); }
+.exception { display: grid; gap: 8px; margin-top: 36px; padding: 22px 24px; background: var(--warn-soft); border-radius: 12px; max-width: 54rem; }
+.exception h3 { color: var(--warn); }
+
+/* What's included */
+.included { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 32px 44px; }
+.included > div { display: grid; gap: 8px; align-content: start; min-width: 0; }
+.included p { color: var(--muted); }
+.included dl { display: grid; gap: 10px; margin: 6px 0 0; }
+.included dt { font-weight: 600; }
+.included dd { margin: 0; color: var(--muted); font-size: 0.9688rem; }
+.included-note { margin-top: 32px; padding-top: 20px; border-top: 1px solid var(--line); color: var(--muted); }
+.included-note strong { color: var(--ink); }
+
+/* Demo */
+.video-frame { background: var(--band); border-radius: 12px; overflow: hidden; aspect-ratio: 16 / 9; max-width: 100%; }
+.video-frame video { width: 100%; height: 100%; object-fit: cover; }
+
+/* Comparison */
+.table-scroll { overflow-x: auto; border-top: 1px solid var(--line); }
+table { width: 100%; min-width: 640px; border-collapse: collapse; font-size: 1rem; }
+th, td { text-align: left; vertical-align: top; padding: 14px 18px 14px 0; border-bottom: 1px solid var(--line); }
+thead th { font: 700 1.0625rem var(--display); }
+tbody th { font-weight: 600; width: 22%; }
+td { color: var(--muted); width: 39%; }
+td.ours { color: var(--ink); }
+.table-note { margin-top: 18px; color: var(--muted); max-width: 46rem; }
+
+/* Setup */
+.setup { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: clamp(32px, 5vw, 64px); align-items: start; }
+.setup-list { display: grid; gap: 18px; margin: 0; padding: 0; list-style: none; counter-reset: setup; }
+.setup-list li { counter-increment: setup; display: grid; grid-template-columns: 34px minmax(0, 1fr); column-gap: 8px; }
+.setup-list li::before { content: counter(setup); grid-row: span 2; font: 700 1.5rem/1.2 var(--display); color: var(--accent); }
+.setup-list p { color: var(--muted); grid-column: 2; }
+.terminal { background: var(--band); color: var(--band-ink); border-radius: 12px; padding: 16px 18px 18px; min-width: 0; }
+.terminal-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 10px; color: var(--band-muted); font-size: 0.875rem; }
+.terminal pre { margin: 0; overflow-x: auto; font: 400 0.875rem/1.75 var(--mono); }
+.copy { min-height: 34px; padding: 4px 12px; background: transparent; color: var(--band-ink); border: 1px solid #3d6a6c; border-radius: 6px; font: 500 0.875rem var(--body); cursor: pointer; }
+.copy:hover { background: #17494c; }
+.after { margin-top: 18px; display: grid; gap: 10px; color: var(--muted); }
+
+/* Status */
+.status { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 28px 40px; }
+.status > div { display: grid; gap: 6px; align-content: start; min-width: 0; }
+.status p { color: var(--muted); }
+.closing { margin-top: 40px; display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: center; }
+.btn-solid { background: var(--accent); color: var(--accent-ink); }
+.btn-solid:hover { filter: brightness(1.1); }
+
+footer { border-top: 1px solid var(--line); padding-block: 28px; color: var(--muted); font-size: 0.9375rem; }
+.foot { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px 24px; }
+
+@media (max-width: 860px) {
+  .hero, .setup { grid-template-columns: minmax(0, 1fr); }
+  .questions, .controls { grid-template-columns: minmax(0, 1fr); }
+  .steps, .status, .included { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 640px) {
+  table { min-width: 0; display: block; }
+  thead { display: none; }
+  tbody, tbody tr, tbody th, tbody td { display: block; width: auto; }
+  tbody tr { padding-block: 14px; border-bottom: 1px solid var(--line); }
+  tbody th, tbody td { padding: 0; border: 0; }
+  tbody th { margin-bottom: 6px; font: 700 1.0625rem var(--display); }
+  tbody td + td { margin-top: 6px; }
+  td::before { display: block; font: 500 0.75rem var(--mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+  td.ours::before { content: "AssistMe"; }
+  td:not(.ours)::before { content: "ServiceNow SDK"; }
+}
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .msg-answer { animation: none; }
+}
+</style>
+</head>
+<body>
+
+<div class="band">
+  <div class="wrap">
+    <header class="topbar">
+      <a class="brand" href="#top"><img src="icon.png" alt="" width="30" height="30">AssistMe</a>
+      <a href="https://github.com/cuneytbozok/assistme">GitHub</a>
+    </header>
+    <div class="hero" id="top">
+      <div class="hero-copy">
+        <h1>Ask Claude what happened on your ServiceNow instance.</h1>
+        <p class="lede">AssistMe lets your AI client investigate records, scripts and logs through your own Chrome session. Nothing reaches an instance until you approve it.</p>
+        <div class="actions">
+          <a class="btn btn-primary" href="https://github.com/cuneytbozok/assistme#set-it-up">Set it up on GitHub</a>
+          <a class="btn btn-quiet" href="#demo">Watch the demo</a>
+        </div>
+        <ul class="facts">
+          <li>Mac and Chrome</li>
+          <li>No API key</li>
+          <li>About 10 minutes to set up</li>
+        </ul>
+      </div>
+
+      <div class="moment" id="moment">
+        <span class="example-tag">Example. Press Approve to try it</span>
+        <div class="pane" aria-live="polite">
+          <span class="pane-label">Claude</span>
+          <div class="chat">
+            <p class="msg msg-you">Why was INC0010023 reassigned last night?</p>
+            <p class="msg">I need access to <strong>dev</strong>. Please approve this code in Chrome if it matches: <span class="code code-mark">K7QF-2M</span></p>
+            <div class="msg msg-answer" id="answer" hidden>
+              A business rule did it, not a person.
+              <ul>
+                <li>The record history shows <code>assignment_group</code> changed at 22:14 by <code>system</code>.</li>
+                <li>The business rule <em>Route by category</em> ran on that update, after the category changed.</li>
+              </ul>
+            </div>
+            <p class="msg" id="denied" hidden>Understood. I didn't read anything from that instance.</p>
+          </div>
+        </div>
+        <div class="pane">
+          <span class="pane-label">Chrome extension</span>
+          <div class="popup-head">
+            <span class="code">K7QF-2M</span>
+            <span class="env">DEV</span>
+          </div>
+          <p class="popup-row"><strong>dev12345.service-now.com</strong> <span>Access lasts 4 h</span></p>
+          <div class="choices" id="choices">
+            <button class="choice" id="deny" type="button">Deny</button>
+            <button class="choice choice-go" id="approve" type="button">Approve</button>
+          </div>
+          <div class="result" id="result" hidden>
+            <span id="result-text"></span>
+            <button class="replay" id="replay" type="button">Start again</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<main>
+  <section>
+    <div class="wrap">
+      <div class="section-head">
+        <h2>Questions you'd otherwise dig for</h2>
+        <p>Ask in plain language. You don't have to know the tables first.</p>
+      </div>
+      <ul class="questions">
+        <li><q>Why did this incident change at 14:32?</q><span>Follows the record's history, then what could have acted on it.</span></li>
+        <li><q>Which scripts touch this field?</q><span>Searches business rules and other scripts, then reads the likely ones in full.</span></li>
+        <li><q>Why can't this user see this record?</q><span>Checks the user's roles against the access rules on the table.</span></li>
+        <li><q>Why did last night's Discovery run fail?</q><span>Reads the logs and the ECC queue around that time.</span></li>
+        <li><q>What changed between these two versions of the script?</q><span>Compares saved versions, line by line.</span></li>
+        <li><q>How many P1 incidents did each group get last month?</q><span>Counts and groups without reading every row.</span></li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="tinted">
+    <div class="wrap">
+      <div class="section-head"><h2>How it works</h2></div>
+      <ol class="steps">
+        <li><h3>You ask</h3><p>Ask your question in Claude Desktop or another supported AI client. It requests access to one instance and shows you a short code.</p></li>
+        <li><h3>You approve</h3><p>Click the extension in Chrome. If the code matches, approve it and choose how long the access lasts.</p></li>
+        <li><h3>Claude investigates</h3><p>Requests go through your signed-in browser session. Follow-up questions in that chat keep using the access you approved.</p></li>
+      </ol>
+    </div>
+  </section>
+
+  <section id="control">
+    <div class="wrap">
+      <div class="section-head"><h2>You decide what it can reach</h2></div>
+      <div class="controls">
+        <div><h3>Nothing without your approval</h3><p>Only you can approve access, in Chrome. By default it lasts 4 hours on development and test, and 15 minutes on production, where you also type the host name.</p></div>
+        <div><h3>Your password stays in Chrome</h3><p>Claude never sees your password, cookies or session tokens.</p></div>
+        <div><h3>It reads as you</h3><p>What you can see in ServiceNow is all it can see. Your roles and access rules still apply.</p></div>
+        <div><h3>Credential tables are blocked</h3><p>Tables that hold credentials are always blocked. If Claude can't read something, it tells you, so you know an answer may be partial.</p></div>
+      </div>
+      <div class="exception">
+        <h3>Read-only tools, with one exception</h3>
+        <p>There's no tool that creates, changes or deletes anything. But a query may contain a <code>javascript:</code> value or a <code>DYNAMIC</code> filter, as ServiceNow's own list filters do, and ServiceNow runs those as server-side script in your session. A script can do whatever your account can, so a query isn't guaranteed to only read. Keep this in mind before using it on production.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="tinted" id="demo">
+    <div class="wrap">
+      <div class="section-head"><h2>See it run</h2></div>
+      <div class="video-frame">
+        <video controls preload="none" playsinline poster="poster.jpg" src="https://github.com/user-attachments/assets/7fcee793-bfbb-4c07-93be-21e29cacea2c" aria-label="AssistMe demo video"></video>
+      </div>
+    </div>
+  </section>
+
+  <section id="included">
+    <div class="wrap">
+      <div class="section-head"><h2>What's included</h2></div>
+      <div class="included">
+        <div>
+          <h3>14 tools</h3>
+          <p>Your AI client uses these for you. Four handle access, and the rest only work after you approve it.</p>
+          <dl>
+            <dt>Read</dt><dd>Records, and any field in full, however long</dd>
+            <dt>Trace</dt><dd>A record's history, related records, and scripts that mention a field</dd>
+            <dt>Understand</dt><dd>Tables and their fields, counts, and comparisons of two records or versions</dd>
+          </dl>
+        </div>
+        <div>
+          <h3>Documentation research</h3>
+          <p>Optional, and off by default. Searches ServiceNow's published documentation through GitMCP and reads its pages from GitHub, with no key or download. Each result names its release, and your AI client can still use the web or anything else.</p>
+        </div>
+        <div>
+          <h3>2 skills</h3>
+          <p>Optional guidance that adds no access.</p>
+          <dl>
+            <dt>Troubleshooting</dt><dd>A method for investigating problems on an instance, such as business rules, flows, Discovery and access rules</dd>
+            <dt>Development guide</dt><dd>Scripting, flows, portals and product knowledge, for building on ServiceNow</dd>
+          </dl>
+        </div>
+      </div>
+      <p class="included-note"><strong>Adding the skills:</strong> upload the zip files in Claude Desktop, install the plugin in Claude Code, or run <code>npm run codex-skills</code> for Codex and Mistral Vibe. <a href="https://github.com/cuneytbozok/assistme#skills">See how in the README.</a></p>
+    </div>
+  </section>
+
+  <section class="tinted" id="sdk">
+    <div class="wrap">
+      <div class="section-head">
+        <h2>How is this different from the ServiceNow SDK?</h2>
+        <p>They solve different problems. The <a href="https://servicenow.github.io/sdk/">ServiceNow SDK</a> is for building applications as source code. AssistMe is for finding out what's on an instance and why.</p>
+      </div>
+      <div class="table-scroll">
+        <table>
+          <thead><tr><td></td><th scope="col">AssistMe</th><th scope="col">ServiceNow SDK</th></tr></thead>
+          <tbody>
+            <tr><th scope="row">Made for</th><td class="ours">Investigating and understanding an instance</td><td>Developing and deploying applications</td></tr>
+            <tr><th scope="row">How you use it</th><td class="ours">Ask questions in a chat</td><td>Work in a code project with TypeScript and command-line tools</td></tr>
+            <tr><th scope="row">Signing in</th><td class="ours">Your existing Chrome session</td><td>Its own sign-in with <code>now-sdk auth</code>, saved on your computer in encrypted form</td></tr>
+            <tr><th scope="row">Reading data</th><td class="ours">Records, history, scripts, related records, counts and comparisons</td><td><code>now-sdk query</code> for read-only table queries</td></tr>
+            <tr><th scope="row">Changing the instance</th><td class="ours">No tool for it, apart from the script exception above</td><td>Yes: installing and updating applications is its purpose</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="table-note">You can use both. If you build applications, the SDK is the right tool for that. SDK details are from its documentation for version 4.14.</p>
+    </div>
+  </section>
+
+  <section id="setup">
+    <div class="wrap">
+      <div class="section-head">
+        <h2>Set it up in four parts</h2>
+        <p>You'll need <a href="https://nodejs.org">Node.js</a> 22.18 or newer, Google Chrome, and an instance you can sign in to. A free one is available from <a href="https://developer.servicenow.com">developer.servicenow.com</a>.</p>
+      </div>
+      <div class="setup">
+        <div class="terminal">
+          <div class="terminal-head"><span>Terminal</span><button class="copy" id="copy" type="button">Copy</button></div>
+          <pre id="commands"><code>cd ~
+git clone https://github.com/cuneytbozok/assistme.git AssistMe
+cd AssistMe
+npm install
+npm run setup</code></pre>
+        </div>
+        <ol class="setup-list">
+          <li><h3>Install</h3><p>Run these commands. Setup prints the exact paths for your Mac. Keep the folder where it is afterwards.</p></li>
+          <li><h3>Add the extension to Chrome</h3><p>Load it from the project folder with Chrome's developer mode.</p></li>
+          <li><h3>Add your instance</h3><p>Sign in, click the extension, and register the instance. Chrome asks for access to that one site.</p></li>
+          <li><h3>Connect your AI client</h3><p>Install the bundle in Claude Desktop. Claude Code, ChatGPT Desktop (Codex chats only) and Mistral Vibe also work.</p></li>
+        </ol>
+      </div>
+      <div class="after">
+        <p><a href="https://github.com/cuneytbozok/assistme#set-it-up">Follow the full steps in the README.</a> Skills and optional documentation research are explained there too.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="tinted" id="status">
+    <div class="wrap">
+      <div class="section-head">
+        <h2>Where it stands today</h2>
+        <p>This is an early project, and trying it on other setups is the most useful help right now.</p>
+      </div>
+      <div class="status">
+        <div><h3>Tested</h3><p>One Mac, with Chrome, one developer instance and an admin account.</p></div>
+        <div><h3>Not tested yet</h3><p>Accounts without admin rights, and real Windows PCs. It needs read access to table definitions, which not every account has.</p></div>
+        <div><h3>Before you rely on it</h3><p>Start on a development instance, and check answers you can verify. Records can contain anything, so treat answers like any other research.</p></div>
+      </div>
+      <div class="closing">
+        <a class="btn btn-solid" href="https://github.com/cuneytbozok/assistme#help-test-it">Help test it</a>
+        <a href="https://github.com/cuneytbozok/assistme/issues">Report a problem</a>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap foot">
+    <span>AssistMe is an independent project, not affiliated with or endorsed by ServiceNow.</span>
+    <a href="https://github.com/cuneytbozok/assistme">GitHub</a>
+  </div>
+</footer>
+
+<script>
+(function () {
+  var el = function (id) { return document.getElementById(id); };
+  function finish(approved) {
+    el('choices').hidden = true;
+    el('result').hidden = false;
+    el('result-text').textContent = approved ? 'Approved for 4 h. You can revoke it anytime.' : 'Denied. Nothing was read.';
+    el(approved ? 'answer' : 'denied').hidden = false;
+    el('replay').focus();
+  }
+  el('approve').addEventListener('click', function () { finish(true); });
+  el('deny').addEventListener('click', function () { finish(false); });
+  el('replay').addEventListener('click', function () {
+    el('answer').hidden = true;
+    el('denied').hidden = true;
+    el('result').hidden = true;
+    el('choices').hidden = false;
+    el('approve').focus();
+  });
+  var copy = el('copy');
+  copy.addEventListener('click', function () {
+    var text = el('commands').textContent;
+    var done = function (label) {
+      copy.textContent = label;
+      setTimeout(function () { copy.textContent = 'Copy'; }, 1800);
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function () { done('Copied'); }, function () { done('Select the text to copy'); });
+    } else {
+      done('Select the text to copy');
+    }
+  });
+})();
+</script>
+</body>
+</html>
